@@ -15,9 +15,8 @@ class Categoria extends Model
         'activo',
     ];
 
-    public function productos(): HasMany
+    public function productos()
     {
         return $this->hasMany(Producto::class);
-        //especificamente aca conecto y digo que una categoria tiene mucho productos
     }
 }

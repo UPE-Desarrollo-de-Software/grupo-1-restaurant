@@ -22,4 +22,14 @@ class Producto extends Model
         return $this->belongsTo(Categoria::class);
         //ahora la inversa que un producto pertenece a una categoria
     }
+
+    public function ingredientes()
+    {
+        return $this->belongsToMany(
+            Ingrediente::class,
+            'producto_ingrediente',
+            'producto_id',
+            'ingrediente_id'
+        );
+    }
 }
