@@ -20,18 +20,18 @@ class CategoriaController extends Controller
         return response()->json($categorias);
     }
 
-    public function show()
+    public function show($id)
     {
-        $categorias = $this->service->obtenerTodos();
+        $categoria = $this->service->obtenerPorId($id);
 
-        if ($categorias->isEmpty()) {
+        if (!$categoria) {
             $data = [
                 'message' => 'No se encontraron categorias'
             ];
             return response()->json($data, 200);
         }
 
-        return response()->json($categorias, 200);
+        return response()->json($categoria, 200);
     }
 
     public function store(Request $request)

@@ -13,6 +13,8 @@ Route::get('/user', function (Request $request) {
 //con esta ruta traemos las categorias que despues se muestran en el front
 Route::get('/categorias', [CategoriaController::class, 'index']);
 
+Route::get('/categorias/{id}', [CategoriaController::class, 'show']);
+
 Route::post('/categorias', [CategoriaController::class, 'store']);
 
 Route::put('/categorias/{id}', [CategoriaController::class, 'update']);
