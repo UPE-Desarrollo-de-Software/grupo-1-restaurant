@@ -20,9 +20,13 @@ class AuthService
         }
 
         // generar token (sanctum)
+
+        $token = $usuario->createToken('auth_token')->plainTextToken;
+
         return response()->json([
             'message' => 'Inicio de sesión exitoso',
-            'usuario' => $usuario
+            'usuario' => $usuario,
+            'token' => $token
         ]);
     }
 }
