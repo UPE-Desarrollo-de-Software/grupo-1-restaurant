@@ -6,6 +6,7 @@ use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\UsuarioController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -51,13 +52,17 @@ Route::delete('/ingredientes/{id}', [IngredienteController::class, 'destroy']);
 // USUARIO
 
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
+
 
 
 // RUTAS PROTEGIDAS POR TOKEN
+Route::middleware('auth:sanctum', 'gerente')->group(function () {
+
+    // aca agregar todas la funciones que requieran inicio de sesion y rol de gerente
+    Route::post('/usuarios', [UsuarioController::class, 'register']);
+});
+
 Route::middleware('auth:sanctum')->group(function () {
-
     // aca agregar todas la funciones que requieran inicio de sesion
-
-
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
