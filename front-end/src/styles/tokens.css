@@ -1,0 +1,303 @@
+/* ============================================================
+   tokens.css
+   Terracotta & Sage Dining — Design tokens para GastroApp
+   Cargar SIEMPRE después de bootstrap.min.css
+   ============================================================ */
+
+:root {
+  /* ============ COLORES (tokens propios, fuente de verdad) ============ */
+  --color-surface: #fbf8fb;
+  --color-surface-dim: #dcd9dc;
+  --color-surface-bright: #fbf8fb;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f6f3f5;
+  --color-surface-container: #f0edef;
+  --color-surface-container-high: #eae7ea;
+  --color-surface-container-highest: #e4e2e4;
+
+  --color-on-surface: #1b1b1d;
+  --color-on-surface-variant: #57423b;
+  --color-inverse-surface: #303032;
+  --color-inverse-on-surface: #f3f0f2;
+  --color-outline: #8a726a;
+  --color-outline-variant: #dec0b7;
+
+  --color-primary: #9f3c16;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #bf542c;
+  --color-on-primary-container: #fffbff;
+  --color-inverse-primary: #ffb59c;
+
+  --color-secondary: #4c6450;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #ceead0;
+  --color-on-secondary-container: #526a56;
+
+  --color-tertiary: #815215;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #9d6a2c;
+  --color-on-tertiary-container: #fffbff;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  --color-background: #fbf8fb;
+  --color-on-background: #1b1b1d;
+
+  /* ============ TIPOGRAFÍA ============ */
+  --font-family-base: 'Plus Jakarta Sans', sans-serif;
+
+  --text-display-lg-size: 36px;
+  --text-display-lg-weight: 700;
+  --text-display-lg-line: 44px;
+  --text-display-lg-tracking: -0.03em;
+
+  --text-headline-lg-size: 28px;
+  --text-headline-lg-weight: 700;
+  --text-headline-lg-line: 34px;
+  --text-headline-lg-tracking: -0.02em;
+
+  --text-headline-md-size: 22px;
+  --text-headline-md-weight: 600;
+  --text-headline-md-line: 28px;
+  --text-headline-md-tracking: -0.015em;
+
+  --text-headline-sm-size: 18px;
+  --text-headline-sm-weight: 600;
+  --text-headline-sm-line: 24px;
+  --text-headline-sm-tracking: -0.01em;
+
+  --text-body-lg-size: 16px;
+  --text-body-lg-weight: 400;
+  --text-body-lg-line: 24px;
+
+  --text-body-md-size: 14px;
+  --text-body-md-weight: 400;
+  --text-body-md-line: 20px;
+
+  --text-body-sm-size: 12px;
+  --text-body-sm-weight: 400;
+  --text-body-sm-line: 16px;
+  --text-body-sm-tracking: 0.01em;
+
+  --text-label-lg-size: 14px;
+  --text-label-lg-weight: 600;
+  --text-label-lg-line: 18px;
+  --text-label-lg-tracking: 0.01em;
+
+  --text-label-md-size: 12px;
+  --text-label-md-weight: 600;
+  --text-label-md-line: 16px;
+  --text-label-md-tracking: 0.02em;
+
+  --text-label-sm-size: 11px;
+  --text-label-sm-weight: 700;
+  --text-label-sm-line: 14px;
+  --text-label-sm-tracking: 0.04em;
+
+  --text-price-display-size: 18px;
+  --text-price-display-weight: 700;
+  --text-price-display-line: 22px;
+  --text-price-display-tracking: -0.01em;
+
+  /* ============ ESPACIADO ============ */
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.25rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+  --space-3xl: 3rem;
+
+  --gutter-mobile: 1rem;
+  --margin-mobile: 1rem;
+  --bottom-nav-height: 4.5rem;
+
+  /* ============ RADIOS ============ */
+  --radius-sm: 0.25rem;
+  --radius-default: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ============ SOMBRAS (elevación) ============ */
+  --shadow-level-1: 0 2px 8px rgba(32, 32, 34, 0.04), 0 1px 2px rgba(200, 90, 50, 0.03);
+  --shadow-level-2: 0 8px 30px rgba(32, 32, 34, 0.12);
+  --shadow-level-3: 0 -4px 20px rgba(32, 32, 34, 0.08);
+
+  /* ============================================================
+     PUENTE CON BOOTSTRAP
+     Pisamos las variables internas de Bootstrap para que TODOS
+     los componentes (btn, badge, card, alert, form-control, etc.)
+     hereden la paleta sin tocarlos uno por uno.
+     ============================================================ */
+  --bs-body-font-family: var(--font-family-base);
+  --bs-body-color: var(--color-on-surface);
+  --bs-body-bg: var(--color-background);
+
+  --bs-primary: var(--color-primary);
+  --bs-primary-rgb: 159, 60, 22;
+  --bs-secondary: var(--color-secondary);
+  --bs-secondary-rgb: 76, 100, 80;
+  --bs-tertiary: var(--color-tertiary);
+
+  --bs-danger: var(--color-error);
+  --bs-danger-rgb: 186, 26, 26;
+
+  --bs-light: var(--color-surface-container-low);
+  --bs-dark: var(--color-inverse-surface);
+
+  --bs-border-color: var(--color-outline-variant);
+  --bs-border-radius: var(--radius-default);
+  --bs-border-radius-sm: var(--radius-sm);
+  --bs-border-radius-lg: var(--radius-lg);
+  --bs-border-radius-xl: var(--radius-xl);
+  --bs-border-radius-pill: var(--radius-full);
+
+  --bs-link-color: var(--color-primary);
+  --bs-link-hover-color: var(--color-primary-container);
+}
+
+/* ============================================================
+   CLASES DE TIPOGRAFÍA (para usar junto a las clases de Bootstrap)
+   Ejemplo: <h1 className="text-headline-lg">Menú</h1>
+   ============================================================ */
+.text-display-lg {
+  font-size: var(--text-display-lg-size);
+  font-weight: var(--text-display-lg-weight);
+  line-height: var(--text-display-lg-line);
+  letter-spacing: var(--text-display-lg-tracking);
+}
+.text-headline-lg {
+  font-size: var(--text-headline-lg-size);
+  font-weight: var(--text-headline-lg-weight);
+  line-height: var(--text-headline-lg-line);
+  letter-spacing: var(--text-headline-lg-tracking);
+}
+.text-headline-md {
+  font-size: var(--text-headline-md-size);
+  font-weight: var(--text-headline-md-weight);
+  line-height: var(--text-headline-md-line);
+  letter-spacing: var(--text-headline-md-tracking);
+}
+.text-headline-sm {
+  font-size: var(--text-headline-sm-size);
+  font-weight: var(--text-headline-sm-weight);
+  line-height: var(--text-headline-sm-line);
+  letter-spacing: var(--text-headline-sm-tracking);
+}
+.text-body-lg {
+  font-size: var(--text-body-lg-size);
+  font-weight: var(--text-body-lg-weight);
+  line-height: var(--text-body-lg-line);
+}
+.text-body-md {
+  font-size: var(--text-body-md-size);
+  font-weight: var(--text-body-md-weight);
+  line-height: var(--text-body-md-line);
+}
+.text-body-sm {
+  font-size: var(--text-body-sm-size);
+  font-weight: var(--text-body-sm-weight);
+  line-height: var(--text-body-sm-line);
+  letter-spacing: var(--text-body-sm-tracking);
+}
+.text-label-lg {
+  font-size: var(--text-label-lg-size);
+  font-weight: var(--text-label-lg-weight);
+  line-height: var(--text-label-lg-line);
+  letter-spacing: var(--text-label-lg-tracking);
+}
+.text-label-md {
+  font-size: var(--text-label-md-size);
+  font-weight: var(--text-label-md-weight);
+  line-height: var(--text-label-md-line);
+  letter-spacing: var(--text-label-md-tracking);
+}
+.text-label-sm {
+  font-size: var(--text-label-sm-size);
+  font-weight: var(--text-label-sm-weight);
+  line-height: var(--text-label-sm-line);
+  letter-spacing: var(--text-label-sm-tracking);
+  text-transform: uppercase;
+}
+.text-price-display {
+  font-size: var(--text-price-display-size);
+  font-weight: var(--text-price-display-weight);
+  line-height: var(--text-price-display-line);
+  letter-spacing: var(--text-price-display-tracking);
+}
+
+/* ============================================================
+   ELEVACIÓN (para cards, modales y la barra sticky de pedido)
+   ============================================================ */
+.elevation-1 {
+  box-shadow: var(--shadow-level-1);
+  border: 1px solid var(--color-outline-variant);
+}
+.elevation-2 {
+  box-shadow: var(--shadow-level-2);
+}
+.elevation-3 {
+  box-shadow: var(--shadow-level-3);
+  backdrop-filter: blur(12px);
+}
+
+/* ============================================================
+   OVERRIDE DE BOTONES (Bootstrap 5.3+ hardcodea sus propias
+   variables --bs-btn-* dentro de .btn-primary/.btn-secondary,
+   así que pisar --bs-primary/--bs-secondary en :root NO alcanza.
+   Hay que pisarlas acá, a nivel de componente.
+   ============================================================ */
+.btn-primary {
+  --bs-btn-bg: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-hover-bg: var(--color-primary-container);
+  --bs-btn-hover-border-color: var(--color-primary-container);
+  --bs-btn-active-bg: var(--color-primary-container);
+  --bs-btn-active-border-color: var(--color-primary-container);
+  --bs-btn-disabled-bg: var(--color-primary);
+  --bs-btn-disabled-border-color: var(--color-primary);
+}
+
+.btn-secondary {
+  --bs-btn-bg: var(--color-secondary);
+  --bs-btn-border-color: var(--color-secondary);
+  --bs-btn-hover-bg: var(--color-secondary-container);
+  --bs-btn-hover-border-color: var(--color-secondary-container);
+  --bs-btn-active-bg: var(--color-secondary-container);
+  --bs-btn-active-border-color: var(--color-secondary-container);
+  --bs-btn-disabled-bg: var(--color-secondary);
+  --bs-btn-disabled-border-color: var(--color-secondary);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-hover-bg: var(--color-primary);
+  --bs-btn-hover-border-color: var(--color-primary);
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: var(--color-secondary);
+  --bs-btn-border-color: var(--color-secondary);
+  --bs-btn-hover-bg: var(--color-secondary);
+  --bs-btn-hover-border-color: var(--color-secondary);
+}
+
+/* ============================================================
+   CHIPS / BADGES DIETÉTICOS (sage, no cubiertos por Bootstrap)
+   ============================================================ */
+.chip-dietary {
+  background-color: rgba(76, 100, 80, 0.08); /* sage al 8% */
+  color: var(--color-secondary);
+  border-radius: var(--radius-md);
+  font-size: var(--text-label-sm-size);
+  font-weight: var(--text-label-sm-weight);
+  letter-spacing: var(--text-label-sm-tracking);
+  padding: var(--space-2xs) var(--space-xs);
+}
