@@ -56,7 +56,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 
 // RUTAS PROTEGIDAS POR TOKEN
-Route::middleware('auth:sanctum', 'gerente')->group(function () {
+Route::middleware(['auth:sanctum', 'gerente'])->group(function () {
 
     // aca agregar todas la funciones que requieran inicio de sesion y rol de gerente
     Route::post('/usuarios', [UsuarioController::class, 'register']);
@@ -65,4 +65,10 @@ Route::middleware('auth:sanctum', 'gerente')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     // aca agregar todas la funciones que requieran inicio de sesion
     Route::post('/logout', [AuthController::class, 'logout']);
+});
+
+Route::middleware(['auth:sanctum', 'mozo'])->group(function () {
+
+    // aca agregar todas la funciones que requieran inicio de sesion y rol de mozo
+    Route::post('/usuarios', [UsuarioController::class, 'register']);
 });
