@@ -48,7 +48,6 @@ class Sesion extends Model
     public function cerrar(): void
     {
         $this->update([
-            'codigoGrupal' => null,
             'estado' => 'cerrada',
             'fin' => now(),
         ]);

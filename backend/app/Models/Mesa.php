@@ -12,7 +12,6 @@ class Mesa extends Model
     protected $table = 'mesas';
 
     protected $fillable = [
-        'numero_mesa',
         'capacidad',
         'estado',
         'qr',
@@ -23,5 +22,26 @@ class Mesa extends Model
     public function sesiones()
     {
         return $this->belongsToMany(Sesion::class, 'mesa_sesion', 'mesaID', 'sesionID');
+    }
+
+    public function Reservar(): void
+    {
+        $this->update([
+            'estado' => 'reservada',
+        ]);
+    }
+
+    public function estaReservada(): bool
+    {
+
+        return $this->estado === 'reservada';
+    }
+
+    public function expirarReserva(): void
+    {
+
+        $this->update([
+            'estado' => 'disponible',
+        ]);
     }
 }

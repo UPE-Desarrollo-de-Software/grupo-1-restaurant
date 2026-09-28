@@ -26,7 +26,9 @@ class SesionService
 
         ]);
 
-        // Asociar mesas (relación N:M)
+        // Filtrar y asociar mesas
+        $mesasIds = array_filter($mesasIds, fn($id) => $id !== null);
+
         if (!empty($mesasIds)) {
             $sesion->mesas()->attach($mesasIds);
         }
@@ -63,7 +65,7 @@ class SesionService
         $token = $sesion->createToken('cliente_token')->plainTextToken;
 
         // Obtener detalles de mesas
-        $mesas = $sesion->mesas()->select('mesas.id', 'numero_mesa', 'capacidad')->get();
+        $mesas = $sesion->mesas()->select('mesas.id', 'capacidad')->get();
 
         return response()->json([
             'message' => 'Inicio de sesión exitoso',

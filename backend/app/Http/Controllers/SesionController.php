@@ -16,6 +16,7 @@ class SesionController extends Controller
      */
     public function loginConCodigoGrupal(Request $request)
     {
+
         $request->validate([
             'codigoGrupal' => 'required|digits:4',
         ]);

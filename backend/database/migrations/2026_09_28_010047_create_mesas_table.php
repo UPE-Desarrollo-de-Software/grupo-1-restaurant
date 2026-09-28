@@ -10,7 +10,6 @@ return new class extends Migration
     {
         Schema::create('mesas', function (Blueprint $table) {
             $table->id();
-            $table->string('numero_mesa');
             $table->integer('capacidad');
             $table->enum('estado', ['disponible', 'ocupada', 'reservada'])->default('disponible');
             $table->string('qr')->nullable();

@@ -14,12 +14,15 @@ class MozoController extends Controller
     public function crearSesion(Request $request, Mesa $mesa)
     {
         $request->validate([
-            'mesasIds' => 'required|array|min:1',
+            'mesasIds' => 'nullable|array|min:1',
             'mesasIds.*' => 'integer|exists:mesas,id',
         ]);
 
         $mozo = $request->user(); // Obtener el mozo autenticado
+
+
         $mesasIds = $request->get('mesasIds', [$mesa->id]); // Obtener las mesas seleccionadas, si no se proporcionan, usar la mesa actual
+
 
         $sesion = $this->sesionService->crearSesion($mozo, $mesasIds);
 
@@ -29,7 +32,7 @@ class MozoController extends Controller
             'sesion' => [
                 'id' => $sesion->id,
                 'codigoGrupal' => $sesion->codigoGrupal,
-                'mesas' => $sesion->mesas()->select('mesas.id', 'numero_mesa')->get(),
+                'mesas' => $sesion->mesas()->select('mesas.id')->get(),
             ]
         ], 201);
     }
