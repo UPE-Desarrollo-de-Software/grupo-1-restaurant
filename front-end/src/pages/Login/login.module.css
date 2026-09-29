@@ -1,0 +1,72 @@
+.page {
+  flex: 1;
+  display: flex;
+  padding: var(--space-lg) var(--gutter-mobile);
+}
+
+.page > * {
+  margin: auto;
+}
+
+.card {
+  width: 100%;
+  max-width: 26rem;
+  background-color: var(--color-surface-container-lowest);
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-level-2);
+  padding: var(--space-xl);
+}
+
+.card :global(.card-body) {
+  padding: 0;
+}
+
+.title {
+  color: var(--color-on-surface);
+  margin: 0 0 var(--space-2xs) 0;
+  text-align: center;
+}
+
+.subtitle {
+  color: var(--color-on-surface-variant);
+  margin: 0 0 var(--space-lg) 0;
+  text-align: center;
+}
+
+.field {
+  margin-bottom: var(--space-sm);
+}
+
+.label {
+  color: var(--color-on-surface);
+  margin-bottom: var(--space-2xs);
+}
+
+.input {
+  border-color: var(--color-outline-variant);
+  border-radius: var(--radius-default);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 0.2rem rgba(159, 60, 22, 0.15);
+}
+
+.button {
+  width: 100%;
+  margin-top: var(--space-sm);
+  padding: var(--space-xs) 0;
+}
+
+.link {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.link:hover {
+  color: var(--color-primary-container);
+  text-decoration: none;
+}
