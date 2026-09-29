@@ -21,4 +21,11 @@ class AuthController extends Controller
             $request->password
         );
     }
+
+
+    public function logout(Request $request)
+    {
+        $usuario = $request->user();
+        return $this->usuarioService->logout($usuario);
+    }
 }

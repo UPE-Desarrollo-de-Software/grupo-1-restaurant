@@ -29,4 +29,13 @@ class AuthService
             'token' => $token
         ]);
     }
+
+    public function logout(Usuario $usuario)
+    {
+        $usuario->tokens()->delete();
+
+        return response()->json([
+            'message' => 'Cierre de sesión exitoso'
+        ]);
+    }
 }

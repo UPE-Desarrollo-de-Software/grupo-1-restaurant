@@ -6,6 +6,9 @@ use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\SesionController;
+use App\Http\Controllers\MozoController;
 use App\Http\Controllers\PedidoController;
 
 Route::get('/user', function (Request $request) {
@@ -49,18 +52,48 @@ Route::put('/ingredientes/{id}', [IngredienteController::class, 'update']);
 
 Route::delete('/ingredientes/{id}', [IngredienteController::class, 'destroy']);
 
-// USUARIO
+// USUARIOS
 
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
 
 
-// RUTAS PROTEGIDAS POR TOKEN
+//  CLIENTE
+
+Route::post('/login-cliente', [SesionController::class, 'loginConCodigoGrupal']);
+//limitar la cantidad de logins a la capacidad de la mesa
+
+
+Route::middleware(['auth:sanctum', 'cliente'])->group(function () {
+    // Funciones con la sesion del cliente abierta
+
+    Route::post('/logout-cliente', [SesionController::class, 'logout']);
+    Route::get('/sesion', [SesionController::class, 'detalles']);
+});
+
+// MOZO
+Route::middleware(['auth:sanctum', 'mozo'])->group(function () {
+
+    //crear sesion con pin de 4 digitos para el cliente
+    Route::post('/mesas/{mesa}/sesion', [MozoController::class, 'crearSesion']);
+
+    Route::post('/sesiones/{id}/cerrar', [MozoController::class, 'cerrarSesion']);
+
+    Route::get('/sesiones/{id}', [MozoController::class, 'verDetalles']);
+});
+
+
+
+
+// GERENTE
+Route::middleware(['auth:sanctum', 'gerente'])->group(function () {
+
+    // aca agregar todas la funciones que requieran inicio de sesion y rol de gerente
+    Route::post('/usuarios', [UsuarioController::class, 'register']);
+});
+
 Route::middleware('auth:sanctum')->group(function () {
 
-    // aca agregar todas la funciones que requieran inicio de sesion
-
-
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
 
 //Ruta para agregar productos a pedido
