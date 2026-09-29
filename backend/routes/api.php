@@ -6,6 +6,7 @@ use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PedidoController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -61,3 +62,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 });
+
+//Ruta para agregar productos a pedido
+Route::post('/pedidos/agregar-producto', [PedidoController::class, 'agregarProducto']);
