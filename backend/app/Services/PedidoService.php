@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class PedidoService
 {
-    public function agregarProducto(string $sessionId, int $productoId, int $cantidad, array $ingredientesSeleccionados = [])
+    public function agregarProducto(int $sessionId, int $productoId, int $cantidad, array $ingredientesSeleccionados = [])
     {
         return Db::transaction(function () use($sessionId, $productoId, $cantidad, $ingredientesSeleccionados)
         {
@@ -19,7 +19,7 @@ class PedidoService
                 );
             }
             //valido que exista la sesion
-            if(!DB::table('sessions')->where('id', $sessionId)->exists()){
+            if(!DB::table('sesiones')->where('id', $sessionId)->exists()){
                 throw new \Exception(
                     "La sesión no existe"
                 );
@@ -63,7 +63,7 @@ class PedidoService
                 //busco el pedido de la sesion
                 $pedido = Pedido::create(
                     [
-                        'session_id' => $sessionId,
+                        'sesion_id' => $sessionId,
                     ],
                     [
                         'estado' => 'recibido',

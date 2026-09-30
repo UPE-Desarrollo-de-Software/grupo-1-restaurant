@@ -14,16 +14,21 @@ return new class extends Migration
         Schema::create('pedidos', function (Blueprint $table) {
             $table->id();
 
-            $table->string('session_id');
-
-            $table->foreign('session_id')
+            $table->foreignId('sesion_id')
                     ->references('id')
-                    ->on('sessions')
+                    ->on('sesiones')
                     ->cascadeOnDelete();
 
-            $table->string('estado');
-            $table->decimal('total', 10, 2);
-            $table->dateTime('fecha');
+            $table->enum('estado', [
+                'recibido',
+                'en_preparacion',
+                'listo',
+                'entregado'
+            ])->default('recibido');
+
+            $table->decimal('total', 10, 2)->default(0);
+
+            $table->dateTime('fecha')->useCurrent();
 
             $table->timestamps();
         });

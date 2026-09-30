@@ -10,7 +10,7 @@ class PedidoController extends Controller
     public function agregarProducto(Request $request, PedidoService $pedidoService)
     {
         $request->validate([
-            'session_id' => 'required|string',
+            'sesion_id' => 'required|integer',
             'producto_id' => 'required|integer',
             'cantidad' => 'required|integer|min:1',
             'ingredientes' => 'nullable|array',
@@ -18,7 +18,7 @@ class PedidoController extends Controller
         ]);
 
         $detalle = $pedidoService->agregarProducto(
-            $request->session_id,
+            $request->sesion_id,
             $request->producto_id,
             $request->cantidad,
             $request->ingredientes ?? []
