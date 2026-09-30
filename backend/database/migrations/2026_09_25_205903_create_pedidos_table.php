@@ -15,16 +15,21 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('sesion_id')
-                    ->references('id')
-                    ->on('sesiones')
-                    ->cascadeOnDelete();
+                ->references('id')
+                ->on('sesiones')
+                ->cascadeOnDelete();
 
             $table->enum('estado', [
                 'recibido',
                 'en_preparacion',
                 'listo',
-                'entregado'
+                'entregado',
             ])->default('recibido');
+
+            $table->foreignId('cliente_id')
+                ->nullable()
+                ->constrained('clientes')
+                ->nullOnDelete();
 
             $table->decimal('total', 10, 2)->default(0);
 

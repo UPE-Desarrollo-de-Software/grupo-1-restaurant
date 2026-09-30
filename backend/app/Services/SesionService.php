@@ -2,10 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Cliente;
 use App\Models\Sesion;
 use App\Models\Usuario;
-use App\Models\Mesa;
-use Illuminate\Database\Eloquent\Collection;
 
 class SesionService
 {
@@ -27,9 +26,9 @@ class SesionService
         ]);
 
         // Filtrar y asociar mesas
-        $mesasIds = array_filter($mesasIds, fn($id) => $id !== null);
+        $mesasIds = array_filter($mesasIds, fn ($id) => $id !== null);
 
-        if (!empty($mesasIds)) {
+        if (! empty($mesasIds)) {
             $sesion->mesas()->attach($mesasIds);
         }
 
@@ -50,19 +49,37 @@ class SesionService
      * Login del cliente con código grupal
      * Retorna token Sanctum
      */
-    public function loginConCodigoGrupal(string $codigo)
+    public function loginConCodigoGrupal(string $codigo, ?string $nombre = null)
     {
         // Validar código
         $sesion = $this->validarCodigoGrupal($codigo);
 
-        if (!$sesion) {
+        if (! $sesion) {
             return response()->json([
-                'message' => 'Código grupal inválido o expirado'
+                'message' => 'Código grupal inválido o expirado',
             ], 401);
         }
 
+        $capacidad = (int) $sesion->mesas()->sum('capacidad');
+
+        if ($capacidad == 0) {
+            return response()->json([
+                'message' => 'La sesion no tiene mesa asignada',
+            ], 403);
+        }
+
+        if ($this->clientesActivos($sesion) >= $capacidad) {
+            return response()->json([
+                'message' => 'La mesa esta completa',
+                'capacidad' => $capacidad,
+            ], 403);
+        }
+
         // Generar token Sanctum (igual que con Usuario)
-        $token = $sesion->createToken('cliente_token')->plainTextToken;
+
+        $cliente = $sesion->clientes()->create(['nombre' => $nombre]);
+
+        $token = $cliente->createToken('cliente_token')->plainTextToken;
 
         // Obtener detalles de mesas
         $mesas = $sesion->mesas()->select('mesas.id', 'capacidad')->get();
@@ -75,21 +92,24 @@ class SesionService
                 'mozo' => $sesion->mozo->nombre,
                 'mesas' => $mesas,
             ],
-            'token' => $token
+            'cliente' => [
+                'id' => $cliente->id,
+                'nombre' => $cliente->nombre,
+            ],
+            'token' => $token,
         ]);
     }
 
     /**
-     * Cerrar sesión 
+     * Cerrar sesión
      */
     public function cerrarSesion(Sesion $sesion)
     {
-
         $sesion->cerrar();
-        $sesion->tokens()->delete();
+        $sesion->clientes()->get()->each(fn (Cliente $c) => $c->tokens()->delete());
 
         return response()->json([
-            'message' => 'Cierre de sesión exitoso'
+            'message' => 'Cierre de sesión exitoso',
         ]);
     }
 
@@ -106,18 +126,17 @@ class SesionService
                 'mozo' => $sesion->mozo->nombre,
                 'inicio' => $sesion->inicio,
                 'fin' => $sesion->fin,
-                'mesas' => $sesion->mesas()->select('mesas.id', 'numero_mesa', 'capacidad')->get(),
-            ]
+                'mesas' => $sesion->mesas()->select('mesas.id', 'capacidad')->get(),
+            ],
         ]);
     }
-
 
     /**
      * Obtener clientes activos en una sesión
      */
     public function obtenerClientesActivos(Sesion $sesion): int
     {
-        return $sesion->tokens()->where('revoked', false)->count();
+        return $this->clientesActivos($sesion);
     }
 
     /**
@@ -130,5 +149,19 @@ class SesionService
         } while (Sesion::where('codigoGrupal', $codigo)->where('estado', 'activa')->exists());
 
         return $codigo;
+    }
+
+    private function clientesActivos(Sesion $sesion): int
+    {
+        return $sesion->clientes()
+            ->whereHas('tokens')
+            ->count();
+    }
+
+    public function logoutCliente(Cliente $cliente)
+    {
+        $cliente->tokens()->delete();
+
+        return response()->json(['message' => 'Cierre de sesión exitoso']);
     }
 }

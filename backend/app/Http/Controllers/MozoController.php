@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Mesa;
+use App\Models\Sesion;
 use App\Services\SesionService;
 use Illuminate\Http\Request;
-use App\Models\Mesa;
-use app\Models\Sesion;
 
 class MozoController extends Controller
 {
@@ -20,12 +20,9 @@ class MozoController extends Controller
 
         $mozo = $request->user(); // Obtener el mozo autenticado
 
-
         $mesasIds = $request->get('mesasIds', [$mesa->id]); // Obtener las mesas seleccionadas, si no se proporcionan, usar la mesa actual
 
-
         $sesion = $this->sesionService->crearSesion($mozo, $mesasIds);
-
 
         return response()->json([
             'message' => 'Sesión creada exitosamente',
@@ -33,7 +30,7 @@ class MozoController extends Controller
                 'id' => $sesion->id,
                 'codigoGrupal' => $sesion->codigoGrupal,
                 'mesas' => $sesion->mesas()->select('mesas.id')->get(),
-            ]
+            ],
         ], 201);
     }
 
@@ -49,7 +46,7 @@ class MozoController extends Controller
         $this->sesionService->cerrarSesion($sesion);
 
         return response()->json([
-            'message' => 'Sesión cerrada exitosamente'
+            'message' => 'Sesión cerrada exitosamente',
         ]);
     }
 
@@ -57,11 +54,12 @@ class MozoController extends Controller
     {
         $clientesActivos = $this->sesionService->obtenerClientesActivos($sesion);
         $detalles = $this->sesionService->obtenerDetalles($sesion);
+
         return response()->json([
             'sesion' => [
                 'detalles' => $detalles->original['sesion'],
                 'clientesActivos' => $clientesActivos,
-            ]
+            ],
         ]);
     }
 }

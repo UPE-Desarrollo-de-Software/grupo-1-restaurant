@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Usuario;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,9 +13,9 @@ class EsGerente
     {
         $usuario = $request->user();
 
-        if (!$usuario || $usuario->rol->nombre !== 'Gerente') {
+        if (! $usuario instanceof Usuario || $usuario->rol->nombre !== 'Gerente') {
             return response()->json([
-                'message' => 'No tenes permisos para realizar esta accion.'
+                'message' => 'No tenes permisos para realizar esta accion.',
             ], 403);
         }
 

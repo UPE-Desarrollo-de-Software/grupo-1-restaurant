@@ -19,10 +19,12 @@ class SesionController extends Controller
 
         $request->validate([
             'codigoGrupal' => 'required|digits:4',
+            'nombre' => 'nullable|string|max:50',
         ]);
 
         return $this->sesionService->loginConCodigoGrupal(
             $request->codigoGrupal,
+            $request->nombre,
         );
     }
 
@@ -32,8 +34,9 @@ class SesionController extends Controller
      */
     public function logout(Request $request)
     {
-        $sesion = $request->user();
-        return $this->sesionService->cerrarSesion($sesion);
+        $cliente = $request->user();
+
+        return $this->sesionService->logoutCliente($cliente);
     }
 
     /**
@@ -42,7 +45,8 @@ class SesionController extends Controller
      */
     public function detalles(Request $request)
     {
-        $sesion = $request->user();
-        return $this->sesionService->obtenerDetalles($sesion);
+        $cliente = $request->user();
+
+        return $this->sesionService->obtenerDetalles($cliente->sesion);
     }
 }
