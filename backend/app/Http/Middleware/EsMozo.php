@@ -7,13 +7,13 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EsGerente
+class EsMozo
 {
     public function handle(Request $request, Closure $next): Response
     {
         $usuario = $request->user();
 
-        if (! $usuario instanceof Usuario || $usuario->rol->nombre !== 'Gerente') {
+        if (! $usuario instanceof Usuario || $usuario->rol->nombre !== 'Mozo') {
             return response()->json([
                 'message' => 'No tenes permisos para realizar esta accion.',
             ], 403);

@@ -5,6 +5,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use App\Http\Middleware\EsGerente;
+use App\Http\Middleware\EsMozo;
+use App\Http\Middleware\ClienteMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'gerente' => EsGerente::class,
+            'mozo' => EsMozo::class,
+            'cliente' => ClienteMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
