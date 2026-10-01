@@ -10,9 +10,75 @@
   justify-content: center;
   width: 2.25rem;
   height: 2.25rem;
+  padding: 0;
+  border: none;
   border-radius: 50%;
   background-color: var(--color-surface-container-high);
   color: var(--color-primary);
   font-size: 1.5rem;
   flex-shrink: 0;
+}
+
+.avatar:hover,
+.avatar:focus-visible {
+  background-color: var(--color-surface-container-highest);
+  color: var(--color-primary-container);
+}
+
+.modalContent {
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-level-2);
+  background-color: var(--color-surface-container-lowest);
+}
+
+.modalBody {
+  padding: var(--space-2xl) var(--space-xl);
+}
+
+.modalClose {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+}
+
+.modalAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto var(--space-md);
+  border-radius: 50%;
+  background-color: var(--color-surface-container-high);
+  color: var(--color-primary);
+  font-size: 2.5rem;
+}
+
+.modalTitle {
+  color: var(--color-on-surface);
+  margin: 0 0 var(--space-2xs);
+}
+
+.modalEmail {
+  color: var(--color-on-surface-variant);
+  margin: 0 0 var(--space-xl);
+  word-break: break-all;
+}
+
+.modalAction {
+  padding: var(--space-xs) 0;
+  margin-bottom: var(--space-xs);
+}
+
+.modalCancel {
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: var(--space-xs) 0;
+}
+
+.modalCancel:hover,
+.modalCancel:focus-visible {
+  color: var(--color-primary-container);
+  text-decoration: none;
 }

@@ -4,6 +4,8 @@ import { MainLayout } from './layouts/MainLayout'
 import { AuthLayout } from './layouts/AuthLayout'
 import { LoginPage } from './pages/Login/Login'
 import { RegisterPage } from './pages/Register/Register'
+import { RequireAuth } from './components/RequireAuth'
+import { ROLES } from './api/auth'
 
 function App() {
 
@@ -15,7 +17,11 @@ function App() {
             </Route>
             <Route element={<AuthLayout/>}>
               <Route path='/login' element={<LoginPage/>}/>
-              <Route path='/register' element={<RegisterPage/>}/>
+              <Route path='/register' element={
+                <RequireAuth rolesPermitidos={[ROLES.GERENTE]}>
+                  <RegisterPage/>
+                </RequireAuth>
+                }/>
             </Route>
         </Routes>
       </BrowserRouter>

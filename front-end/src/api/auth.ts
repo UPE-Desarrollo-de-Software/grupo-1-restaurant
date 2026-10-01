@@ -1,11 +1,6 @@
 import { API_BASE_URL } from "../config/env";
-import type { LoginInput, RegisterInput } from "../schemas/auth";
-
-interface LoginResponse{
-    message: string,
-    usuario: {id: number; nombre: string, email: string; rol_id: number},
-    token: string
-}
+import type { LoginInput, RegisterInput, UsuarioSesion } from "../types/Auth";
+import type { LoginResponse, RegisterResponse } from "../types/Auth";
 
 
 export async function login(credenciales: LoginInput, signal?: AbortSignal): Promise<LoginResponse> {
@@ -24,18 +19,13 @@ export async function login(credenciales: LoginInput, signal?: AbortSignal): Pro
     return data as LoginResponse
 }
 
-interface RegisterResponse{
-    message: string,
-    usuario: {id: number; nombre: string, email: string; rol_id: number},
-}
-
 export async function register(credenciales: RegisterInput, signal?: AbortSignal): Promise<RegisterResponse> {
     const response = await fetch(`${API_BASE_URL}/usuarios`,{
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem('token')}`},
+            "Authorization": `Bearer ${getToken()}`},
         body: JSON.stringify(credenciales),
         signal
     })
@@ -47,3 +37,58 @@ export async function register(credenciales: RegisterInput, signal?: AbortSignal
     }
     return data as RegisterResponse
 }
+
+export function setSesion(token: string, usuario: UsuarioSesion){
+    localStorage.setItem('token', token)
+    localStorage.setItem('usuario', JSON.stringify(usuario))
+}
+
+export function getToken() : string | null {
+    return localStorage.getItem('token')
+}
+
+export function getUsuario():UsuarioSesion | null {
+    try {
+        const raw = localStorage.getItem('usuario')
+        return raw ? JSON.parse(raw) : null
+    } catch{
+        return null
+    }
+}
+
+export function logoutLocal(){
+    localStorage.removeItem('token')
+    localStorage.removeItem('usuario')
+}
+
+export async function logoutSesion(): Promise<void>{
+    try {
+        const response = await fetch(`${API_BASE_URL}/logout`,{
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${getToken()}`
+            }
+        })
+
+        if(!response.ok) console.warn(`No se pudo invalidar el token: ${response.status}`)
+    }finally{
+        logoutLocal()
+    }
+}
+
+//despues pedirlo al back
+export function getRoles(){
+}
+
+export const ROLES = {
+  GERENTE: 1,
+  COCINA: 2,
+  MOZO: 3,
+} as const
+
+// Forma 2: lista con id + nombre → para selects y UI (Register.tsx)
+export const ROLES_LISTA = [
+  { id: ROLES.GERENTE, nombre: 'Gerente' },
+  { id: ROLES.COCINA,  nombre: 'Cocina'  },
+  { id: ROLES.MOZO,    nombre: 'Mozo'    },
+]

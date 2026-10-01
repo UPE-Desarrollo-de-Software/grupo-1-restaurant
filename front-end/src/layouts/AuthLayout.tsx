@@ -5,7 +5,7 @@ import s from "./AuthLayout.module.css";
 export function AuthLayout(){
     return(
         <div className={s.shell}>
-            <NavbarComponent showUserAvatar />
+            <NavbarComponent/>
             <main className={s.main}>
                 <Outlet/>
             </main>

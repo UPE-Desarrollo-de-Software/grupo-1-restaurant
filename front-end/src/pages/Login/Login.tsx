@@ -3,7 +3,7 @@ import s from './login.module.css'
 import { Link, useNavigate } from "react-router-dom"
 import React, { useState } from "react"
 import { loginSchema } from "../../schemas/auth"
-import { login } from "../../api/auth"
+import { login, setSesion } from "../../api/auth"
 
 export function LoginPage(){
   const [email, setEmail] = useState('')
@@ -33,9 +33,8 @@ export function LoginPage(){
     setEnviando(true)
     setErrorApi(null)
     try {
-      const {token} = await login(resultado.data)
-      console.log(token)
-      localStorage.setItem("token", token)
+      const {token, usuario} = await login(resultado.data)
+      setSesion(token, usuario)
       navigate('/register')
     } catch (err) {
       setErrorApi(err instanceof Error ? err.message : "Error desconocido al iniciar sesión")
