@@ -7,6 +7,7 @@ use App\Http\Controllers\MozoController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\SesionController;
+use App\Http\Controllers\RolController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+//nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front
+Route::get('/roles', [RolController::class, 'index']);
+
 
 // con esta ruta traemos las categorias que despues se muestran en el front
 Route::get('/categorias', [CategoriaController::class, 'index']);
