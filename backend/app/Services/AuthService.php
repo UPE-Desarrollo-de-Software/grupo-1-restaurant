@@ -19,6 +19,12 @@ class AuthService
             ], 401);
         }
 
+        if (!$usuario->activo) {
+            return response()->json([
+                'message' => 'Usuario inactivo. Contacte al administrador.'
+            ], 403);
+        }
+
         // generar token (sanctum)
 
         $token = $usuario->createToken('auth_token')->plainTextToken;

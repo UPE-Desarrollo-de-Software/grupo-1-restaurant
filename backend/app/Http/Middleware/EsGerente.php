@@ -13,6 +13,12 @@ class EsGerente
     {
         $usuario = $request->user();
 
+        if (!$usuario->activo) {
+            return response()->json([
+                'message' => 'Usuario desactivado. Contacte con el gerente.',
+            ], 403);
+        }
+
         if (! $usuario instanceof Usuario || $usuario->rol->nombre !== 'Gerente') {
             return response()->json([
                 'message' => 'No tenes permisos para realizar esta accion.',

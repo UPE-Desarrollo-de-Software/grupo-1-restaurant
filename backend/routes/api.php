@@ -89,7 +89,12 @@ Route::middleware(['auth:sanctum', 'mozo'])->group(function () {
 Route::middleware(['auth:sanctum', 'gerente'])->group(function () {
 
     // aca agregar todas la funciones que requieran inicio de sesion y rol de gerente
-    Route::post('/usuarios', [UsuarioController::class, 'register']);
+    Route::post('/usuarios/registrar', [UsuarioController::class, 'register'])->whereNumber('id');
+    Route::get('/usuarios', [UsuarioController::class, 'index']);
+    Route::get('/usuarios/{id}', [UsuarioController::class, 'show'])->whereNumber('id');
+    Route::put('/usuarios/{id}', [UsuarioController::class, 'update'])->whereNumber('id');
+    Route::delete('/usuarios/{id}', [UsuarioController::class, 'destroy'])->whereNumber('id');
+    Route::post('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar'])->whereNumber('id');
 });
 
 Route::middleware('auth:sanctum')->group(function () {

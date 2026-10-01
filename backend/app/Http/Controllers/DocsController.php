@@ -57,6 +57,12 @@ class DocsController extends Controller
         'AuthController@logout' => 'Cerrar la sesión del empleado: borra todos sus tokens.',
         'Closure' => 'Devuelve los datos del usuario autenticado según el token enviado.',
         'UsuarioController@register' => 'Crear un usuario empleado con su rol (solo gerente).',
+        'UsuarioController@index' => 'Listar todos los usuarios empleados, con su rol y estado.',
+        'UsuarioController@show' => 'Obtener un usuario empleado por ID, con su
+        rol y estado.',
+        'UsuarioController@update' => 'Actualizar un usuario empleado por ID (solo gerente).',
+        'UsuarioController@destroy' => 'Desactivar un usuario empleado por ID (solo gerente).',
+        'UsuarioController@reactivar' => 'Reactivar un usuario empleado por ID (solo gerente).',
         'RolController@index' => 'Listar los roles disponibles, para el alta de usuarios en el front.',
         'CategoriaController@index' => 'Listar todas las categorías.',
         'CategoriaController@show' => 'Obtener una categoría por ID.',
@@ -80,6 +86,7 @@ class DocsController extends Controller
         'MozoController@crearSesion' => 'Crear una sesión en una o más mesas y generar el código grupal.',
         'MozoController@cerrarSesion' => 'Cerrar una sesión propia: la marca como cerrada y saca a los clientes.',
         'MozoController@verDetalles' => 'Ver el detalle de una sesión: mesas, clientes activos y estado.',
+
     ];
 
     /**
@@ -109,7 +116,7 @@ class DocsController extends Controller
 
             $porSeccion[$seccion][] = [
                 'metodo' => $metodos[0],
-                'uri' => '/'.$ruta->uri(),
+                'uri' => '/' . $ruta->uri(),
                 'descripcion' => self::DESCRIPCIONES[$accion] ?? null,
                 'accion' => $accion,
                 'acceso' => $acceso['texto'],
@@ -130,7 +137,7 @@ class DocsController extends Controller
 
         return view('welcome', [
             'secciones' => $secciones,
-            'total' => array_sum(array_map(fn (array $s) => count($s['endpoints']), $secciones)),
+            'total' => array_sum(array_map(fn(array $s) => count($s['endpoints']), $secciones)),
             'baseUrl' => url('/api'),
         ]);
     }
@@ -148,7 +155,7 @@ class DocsController extends Controller
 
         [$controller, $metodo] = array_pad(explode('@', $accion, 2), 2, '__sin_metodo');
 
-        return class_basename($controller).'@'.$metodo;
+        return class_basename($controller) . '@' . $metodo;
     }
 
     /**

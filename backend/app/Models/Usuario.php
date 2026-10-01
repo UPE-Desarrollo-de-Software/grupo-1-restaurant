@@ -17,16 +17,20 @@ class Usuario extends Authenticatable
         'nombre',
         'email',
         'password',
-        'rol_id'
+        'rol_id',
+        'activo',
     ];
 
     protected $hidden = [
         'password',
     ];
 
+    protected $casts = [
+        'activo' => 'boolean',
+    ];
+
     public function rol()
     {
         return $this->belongsTo(Rol::class);
     }
-
 }
