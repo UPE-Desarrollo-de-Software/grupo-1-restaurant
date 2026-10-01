@@ -1,13 +1,12 @@
 <?php
 
-namespace App\http\Controllers;
+namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Services\UsuarioService;
+use Illuminate\Http\Request;
 
 class UsuarioController extends Controller
 {
-
     public function __construct(private UsuarioService $usuarioService) {}
 
     public function register(Request $request)
@@ -18,6 +17,7 @@ class UsuarioController extends Controller
             'password' => 'required|string|min:6',
             'rol_id' => 'required|exists:rol,id',
         ]);
+
         return $this->usuarioService->register(
             $request->nombre,
             $request->email,
