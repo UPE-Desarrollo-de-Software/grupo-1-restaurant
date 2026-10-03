@@ -29,8 +29,8 @@ class MesaController extends Controller
     public function create(Request $request)
     {
         $datos = $request->validate([
-            'capacidad' => 'required|int',
-            'estado' => 'required|enum',
+            'capacidad' => 'required|integer',
+            'estado' => ['required', 'in:disponible,ocupada,reservada'],
             'qr' => 'string',
         ]);
 
@@ -73,7 +73,7 @@ class MesaController extends Controller
     public function update(Request $request, string $id)
     {
         $datos = $request->validate([
-            'capacidad' => 'required|int',
+            'capacidad' => 'required|integer',
             'estado' => 'required|enum',
             'qr' => 'string',
         ]);

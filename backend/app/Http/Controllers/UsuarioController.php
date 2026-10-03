@@ -35,7 +35,7 @@ class UsuarioController extends Controller
     {
         $usuario = $this->usuarioService->obtenerPorId($id);
         if (! $usuario) {
-            return response()->json(['message' => 'Usuario no encontrado'], 404);
+            return response()->json(['message' => 'Usuario no encontrado'], 200);
         }
         return $usuario;
     }
@@ -106,7 +106,7 @@ class UsuarioController extends Controller
         $usuario = $this->usuarioService->obtenerPorId($id);
 
         if (! $usuario) {
-            return response()->json(['message' => 'Usuario no encontrado'], 404);
+            return response()->json(['message' => 'Usuario no encontrado'], 200);
         }
 
         $this->usuarioService->reactivar($usuario->id);

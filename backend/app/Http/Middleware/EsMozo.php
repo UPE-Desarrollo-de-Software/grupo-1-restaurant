@@ -13,17 +13,20 @@ class EsMozo
     {
         $usuario = $request->user();
 
-        if (!$usuario->activo) {
-            return response()->json([
-                'message' => 'Usuario desactivado. Contacte con el gerente.',
-            ], 403);
-        }
 
         if (! $usuario instanceof Usuario || $usuario->rol->nombre !== 'Mozo') {
             return response()->json([
                 'message' => 'No tenes permisos para realizar esta accion.',
-            ], 403);
+            ], 200);
         }
+
+
+        if (!$usuario->activo) {
+            return response()->json([
+                'message' => 'Usuario desactivado. Contacte con el gerente.',
+            ], 200);
+        }
+
 
         return $next($request);
     }

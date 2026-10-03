@@ -26,10 +26,11 @@ class SesionService
         ]);
 
         // Filtrar y asociar mesas
-        $mesasIds = array_filter($mesasIds, fn ($id) => $id !== null);
+        $mesasIds = array_filter($mesasIds, fn($id) => $id !== null);
 
         if (! empty($mesasIds)) {
             $sesion->mesas()->attach($mesasIds);
+            $sesion->mesas()->update(['estado' => 'ocupada']);
         }
 
         return $sesion;
@@ -106,7 +107,9 @@ class SesionService
     public function cerrarSesion(Sesion $sesion)
     {
         $sesion->cerrar();
-        $sesion->clientes()->get()->each(fn (Cliente $c) => $c->tokens()->delete());
+        $sesion->mesas()->update(['estado' => 'disponible']);
+        $sesion->mesas()->detach();
+        $sesion->clientes()->get()->each(fn(Cliente $c) => $c->tokens()->delete());
 
         return response()->json([
             'message' => 'Cierre de sesión exitoso',

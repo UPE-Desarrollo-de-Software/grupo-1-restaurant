@@ -16,47 +16,19 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-//nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front
-Route::get('/roles', [RolController::class, 'index']);
 
+// MENU
 
-// con esta ruta traemos las categorias que despues se muestran en el front
 Route::get('/categorias', [CategoriaController::class, 'index']);
 
 Route::get('/categorias/{id}', [CategoriaController::class, 'show']);
-
-Route::post('/categorias', [CategoriaController::class, 'store']);
-
-Route::put('/categorias/{id}', [CategoriaController::class, 'update']);
-
-Route::delete('/categorias/{id}', [CategoriaController::class, 'destroy']);
-
-// PRODUCTOS
-// con esta traemos los productos
 Route::get('/productos', [ProductoController::class, 'index']);
 
 // con esta producto por id para mostrar uno en especifico
 Route::get('/productos/{id}', [ProductoController::class, 'show']);
-
-Route::post('/productos', [ProductoController::class, 'store']);
-
-Route::put('/productos/{id}', [ProductoController::class, 'update']);
-
-Route::delete('/productos/{id}', [ProductoController::class, 'destroy']);
-
-// INGREDIENTES
-
 Route::get('/ingredientes', [IngredienteController::class, 'index']);
 
 Route::get('/ingredientes/{id}', [IngredienteController::class, 'show']);
-
-Route::post('/ingredientes', [IngredienteController::class, 'store']);
-
-Route::put('/ingredientes/{id}', [IngredienteController::class, 'update']);
-
-Route::delete('/ingredientes/{id}', [IngredienteController::class, 'destroy']);
-
-// USUARIOS
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -88,13 +60,50 @@ Route::middleware(['auth:sanctum', 'mozo'])->group(function () {
 // GERENTE
 Route::middleware(['auth:sanctum', 'gerente'])->group(function () {
 
+    // USUARIOS
+
     // aca agregar todas la funciones que requieran inicio de sesion y rol de gerente
-    Route::post('/usuarios/registrar', [UsuarioController::class, 'register'])->whereNumber('id');
+    Route::post('/usuarios/registrar', [UsuarioController::class, 'register']);
     Route::get('/usuarios', [UsuarioController::class, 'index']);
     Route::get('/usuarios/{id}', [UsuarioController::class, 'show'])->whereNumber('id');
     Route::put('/usuarios/{id}', [UsuarioController::class, 'update'])->whereNumber('id');
     Route::delete('/usuarios/{id}', [UsuarioController::class, 'destroy'])->whereNumber('id');
     Route::post('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar'])->whereNumber('id');
+
+
+    //nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front
+    Route::get('/roles', [RolController::class, 'index']);
+
+
+    // CATEGORIAS
+    // con esta ruta traemos las categorias que despues se muestran en el front
+
+
+    Route::post('/categorias', [CategoriaController::class, 'store']);
+
+    Route::put('/categorias/{id}', [CategoriaController::class, 'update']);
+
+    Route::delete('/categorias/{id}', [CategoriaController::class, 'destroy']);
+
+    // PRODUCTOS
+    // con esta traemos los productos
+
+
+    Route::post('/productos', [ProductoController::class, 'store']);
+
+    Route::put('/productos/{id}', [ProductoController::class, 'update']);
+
+    Route::delete('/productos/{id}', [ProductoController::class, 'destroy']);
+
+    // INGREDIENTES
+
+
+
+    Route::post('/ingredientes', [IngredienteController::class, 'store']);
+
+    Route::put('/ingredientes/{id}', [IngredienteController::class, 'update']);
+
+    Route::delete('/ingredientes/{id}', [IngredienteController::class, 'destroy']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {
