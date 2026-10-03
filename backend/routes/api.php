@@ -69,7 +69,9 @@ Route::middleware(['auth:sanctum', 'cliente'])->group(function () {
     Route::post('/logout-cliente', [SesionController::class, 'logout']);
     Route::get('/sesion', [SesionController::class, 'detalles']);
     //Ruta para agregar productos a pedido
-    Route::post('/sesion/pedidos/agregar-producto', [PedidoController::class, 'agregarProducto']);
+    Route::post('/sesion/pedidos/agregar-productos', [PedidoController::class, 'agregarProductos']);
+    //ruta para enviar pedido
+    Route::post('/sesion/pedidos/enviar-pedido', [PedidoController::class, 'enviarPedido']);
 });
 
 // MOZO

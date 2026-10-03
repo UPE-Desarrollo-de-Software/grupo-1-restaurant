@@ -20,11 +20,12 @@ return new class extends Migration
                     ->cascadeOnDelete();
 
             $table->enum('estado', [
+                'en_seleccion',
                 'recibido',
                 'en_preparacion',
                 'listo',
                 'entregado'
-            ])->default('recibido');
+            ])->default('en_seleccion');//acordarse de migrar
 
             $table->decimal('total', 10, 2)->default(0);
 

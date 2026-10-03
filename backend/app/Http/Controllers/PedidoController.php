@@ -7,26 +7,41 @@ use App\Services\PedidoService;
 
 class PedidoController extends Controller
 {
-    public function agregarProducto(Request $request, PedidoService $pedidoService)
+    public function agregarProductos(Request $request, PedidoService $pedidoService)
     {
         $request->validate([
             'sesion_id' => 'required|integer',
-            'producto_id' => 'required|integer',
-            'cantidad' => 'required|integer|min:1',
-            'ingredientes' => 'nullable|array',
-            'ingredientes.*' => 'integer',//cada ingrediente dentro del array ingredientes tiene que ser un entero
+
+            'productos' => 'required|array|min:1',
+
+            'productos.*.producto_id' => 'required|integer',//cada producto dentro del array
+            'productos.*.cantidad' => 'required|integer|min:1',
+            'productos.*.ingredientes' => 'nullable|array',
+            'productos.*.ingredientes.*' => 'integer',//cada ingrediente dentro del array ingredientes tiene que ser un entero
         ]);
 
-        $detalle = $pedidoService->agregarProducto(
+        $pedido = $pedidoService->agregarProductos(
             $request->sesion_id,
-            $request->producto_id,
-            $request->cantidad,
-            $request->ingredientes ?? []
+            $request->productos
         );
 
         return response()->json([
             'mensaje' => 'Producto agregado correctamente.',
-            'detalle' => $detalle
+            'pedido' => $pedido
         ], 201);
+    }
+
+    public function enviarPedido(Request $request, PedidoService $pedidoService)
+    {
+        $request->validate([
+            'sesion_id' => 'required|integer',
+        ]);
+
+        $pedido = $pedidoService->enviarPedido($request->sesion_id);
+
+        return response()->json([
+            'mensaje' => 'Pedido enviado correctamente.',
+            'pedido' => $pedido
+        ], 200);
     }
 }
