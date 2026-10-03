@@ -6,8 +6,8 @@ use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\MozoController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\ProductoController;
-use App\Http\Controllers\SesionController;
 use App\Http\Controllers\RolController;
+use App\Http\Controllers\SesionController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
-
 
 // MENU
 
@@ -44,6 +43,8 @@ Route::middleware(['auth:sanctum', 'cliente'])->group(function () {
     Route::get('/sesion', [SesionController::class, 'detalles']);
     // Ruta para agregar productos a pedido
     Route::post('/sesion/pedidos/agregar-producto', [PedidoController::class, 'agregarProducto']);
+    // ruta para enviar pedido
+    Route::post('/sesion/pedidos/enviar-pedido', [PedidoController::class, 'enviarPedido']);
 });
 
 // MOZO
@@ -70,14 +71,11 @@ Route::middleware(['auth:sanctum', 'gerente'])->group(function () {
     Route::delete('/usuarios/{id}', [UsuarioController::class, 'destroy'])->whereNumber('id');
     Route::post('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar'])->whereNumber('id');
 
-
-    //nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front
+    // nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front
     Route::get('/roles', [RolController::class, 'index']);
-
 
     // CATEGORIAS
     // con esta ruta traemos las categorias que despues se muestran en el front
-
 
     Route::post('/categorias', [CategoriaController::class, 'store']);
 
@@ -88,7 +86,6 @@ Route::middleware(['auth:sanctum', 'gerente'])->group(function () {
     // PRODUCTOS
     // con esta traemos los productos
 
-
     Route::post('/productos', [ProductoController::class, 'store']);
 
     Route::put('/productos/{id}', [ProductoController::class, 'update']);
@@ -96,8 +93,6 @@ Route::middleware(['auth:sanctum', 'gerente'])->group(function () {
     Route::delete('/productos/{id}', [ProductoController::class, 'destroy']);
 
     // INGREDIENTES
-
-
 
     Route::post('/ingredientes', [IngredienteController::class, 'store']);
 

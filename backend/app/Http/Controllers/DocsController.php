@@ -82,7 +82,8 @@ class DocsController extends Controller
         'SesionController@loginConCodigoGrupal' => 'Entrar a la sesión del grupo con el código grupal de 4 dígitos y obtener un token de cliente.',
         'SesionController@detalles' => 'Ver la sesión actual: mesas, mozo, estado y horarios.',
         'SesionController@logout' => 'Salir de la sesión como cliente: borra sus tokens.',
-        'PedidoController@agregarProducto' => 'Agregar un producto al pedido de la sesión, con ingredientes opcionales y su precio adicional.',
+        'PedidoController@agregarProducto' => 'Agregar uno o varios productos al pedido en selección de la sesión, con ingredientes opcionales y su precio adicional.',
+        'PedidoController@enviarPedido' => 'Enviar el pedido en selección de la sesión: lo pasa a "recibido" para que llegue a cocina.',
         'MozoController@crearSesion' => 'Crear una sesión en una o más mesas y generar el código grupal.',
         'MozoController@cerrarSesion' => 'Cerrar una sesión propia: la marca como cerrada y saca a los clientes.',
         'MozoController@verDetalles' => 'Ver el detalle de una sesión: mesas, clientes activos y estado.',
@@ -116,7 +117,7 @@ class DocsController extends Controller
 
             $porSeccion[$seccion][] = [
                 'metodo' => $metodos[0],
-                'uri' => '/' . $ruta->uri(),
+                'uri' => '/'.$ruta->uri(),
                 'descripcion' => self::DESCRIPCIONES[$accion] ?? null,
                 'accion' => $accion,
                 'acceso' => $acceso['texto'],
@@ -137,7 +138,7 @@ class DocsController extends Controller
 
         return view('welcome', [
             'secciones' => $secciones,
-            'total' => array_sum(array_map(fn(array $s) => count($s['endpoints']), $secciones)),
+            'total' => array_sum(array_map(fn (array $s) => count($s['endpoints']), $secciones)),
             'baseUrl' => url('/api'),
         ]);
     }
@@ -155,7 +156,7 @@ class DocsController extends Controller
 
         [$controller, $metodo] = array_pad(explode('@', $accion, 2), 2, '__sin_metodo');
 
-        return class_basename($controller) . '@' . $metodo;
+        return class_basename($controller).'@'.$metodo;
     }
 
     /**

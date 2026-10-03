@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Pedido extends Model
@@ -14,6 +15,11 @@ class Pedido extends Model
         'fecha',
         'cliente_id',
     ];
+
+    public function sesion(): BelongsTo
+    {
+        return $this->belongsTo(Sesion::class);
+    }
 
     public function detalles(): HasMany
     {

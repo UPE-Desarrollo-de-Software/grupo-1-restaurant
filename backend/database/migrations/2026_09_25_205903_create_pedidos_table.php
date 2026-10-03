@@ -20,11 +20,12 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             $table->enum('estado', [
+                'en_seleccion',
                 'recibido',
                 'en_preparacion',
                 'listo',
                 'entregado',
-            ])->default('recibido');
+            ])->default('en_seleccion');
 
             $table->foreignId('cliente_id')
                 ->nullable()

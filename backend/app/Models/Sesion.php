@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sesion extends Model
 {
@@ -39,6 +40,11 @@ class Sesion extends Model
     public function clientes()
     {
         return $this->hasMany(Cliente::class, 'sesionID');
+    }
+
+    public function pedidos(): HasMany
+    {
+        return $this->hasMany(Pedido::class);
     }
 
     // ==================== MÉTODOS ÚTILES ====================
