@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('email', 100)->unique();
             $table->string('password');
             $table->foreignId('rol_id')->constrained('rol');
+            $table->boolean('activo')->default(true);
             $table->timestamps();
         });
     }

@@ -5,11 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Laravel\Sanctum\HasApiTokens;
 
 class Sesion extends Model
 {
-    use HasApiTokens;
     use HasFactory;
 
     protected $table = 'sesiones';
@@ -37,6 +35,11 @@ class Sesion extends Model
     public function mesas()
     {
         return $this->belongsToMany(Mesa::class, 'mesa_sesion', 'sesionID', 'mesaID');
+    }
+
+    public function clientes()
+    {
+        return $this->hasMany(Cliente::class, 'sesionID');
     }
 
     public function pedidos(): HasMany

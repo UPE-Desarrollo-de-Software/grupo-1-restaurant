@@ -2,32 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Services\PedidoService;
+use Illuminate\Http\Request;
 
 class PedidoController extends Controller
 {
-    public function agregarProductos(Request $request, PedidoService $pedidoService)
+    public function agregarProducto(Request $request, PedidoService $pedidoService)
     {
         $request->validate([
             'sesion_id' => 'required|integer',
 
             'productos' => 'required|array|min:1',
 
-            'productos.*.producto_id' => 'required|integer',//cada producto dentro del array
+            'productos.*.producto_id' => 'required|integer', // cada producto dentro del array
             'productos.*.cantidad' => 'required|integer|min:1',
             'productos.*.ingredientes' => 'nullable|array',
-            'productos.*.ingredientes.*' => 'integer',//cada ingrediente dentro del array ingredientes tiene que ser un entero
+            'productos.*.ingredientes.*' => 'integer', // cada ingrediente dentro del array ingredientes tiene que ser un entero
         ]);
 
-        $pedido = $pedidoService->agregarProductos(
+        $cliente = $request->user();
+
+        $pedido = $pedidoService->agregarProducto(
             $request->sesion_id,
-            $request->productos
+            $request->productos,
+            $cliente->id
         );
 
         return response()->json([
             'mensaje' => 'Producto agregado correctamente.',
-            'pedido' => $pedido
+            'pedido' => $pedido,
         ], 201);
     }
 
@@ -41,7 +44,7 @@ class PedidoController extends Controller
 
         return response()->json([
             'mensaje' => 'Pedido enviado correctamente.',
-            'pedido' => $pedido
+            'pedido' => $pedido,
         ], 200);
     }
 }

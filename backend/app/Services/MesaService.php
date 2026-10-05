@@ -28,6 +28,8 @@ class MesaService
         $mesas = Mesa::findOrFail($id);
 
         $mesas->update($datos);
+
+        return $mesas;
     }
 
     public function eliminar($id)

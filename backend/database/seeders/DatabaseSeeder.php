@@ -21,6 +21,9 @@ class DatabaseSeeder extends Seeder
             RolSeeder::class,
             UsuarioSeeder::class,
             MesaSeeder::class,
+            CategoriaSeeder::class,
+            IngredienteSeeder::class,
+            ProductoSeeder::class,
         ]);
     }
 }

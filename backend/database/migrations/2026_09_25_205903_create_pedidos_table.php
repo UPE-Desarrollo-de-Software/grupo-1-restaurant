@@ -15,17 +15,22 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('sesion_id')
-                    ->references('id')
-                    ->on('sesiones')
-                    ->cascadeOnDelete();
+                ->references('id')
+                ->on('sesiones')
+                ->cascadeOnDelete();
 
             $table->enum('estado', [
                 'en_seleccion',
                 'recibido',
                 'en_preparacion',
                 'listo',
-                'entregado'
-            ])->default('en_seleccion');//acordarse de migrar
+                'entregado',
+            ])->default('en_seleccion');
+
+            $table->foreignId('cliente_id')
+                ->nullable()
+                ->constrained('clientes')
+                ->nullOnDelete();
 
             $table->decimal('total', 10, 2)->default(0);
 

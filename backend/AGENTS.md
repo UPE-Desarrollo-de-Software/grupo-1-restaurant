@@ -1,3 +1,56 @@
+# AGENTS.md
+
+API REST de un restaurante (proyecto final). Laravel 13 + Sanctum. Este repo es **solo el backend**: no hay front-end (el front consume `/api/*`); `../documentacion` (DER, historias de usuario, minutas) queda fuera del repo.
+
+## Comandos
+
+- `composer run dev` → `php artisan dev` (serve + queue + vite). Requiere `npm install` antes: `node_modules/` no está commiteado y hoy no existe.
+- `php artisan test --compact` → corre sobre **SQLite en memoria** (`phpunit.xml`), no necesita MySQL. Un archivo: `php artisan test --compact tests/Feature/XTest.php`; un caso: `--filter='...'` (o `vendor/bin/pest <path>`).
+- `vendor/bin/pint --dirty --format agent` tras tocar cualquier PHP (no hay `pint.json` → preset `laravel`).
+  - **Ojo mientras el repo no tenga commits**: sin `HEAD`, `--dirty` evalúa todo el codebase y reformatea los ~31 PHP que no cumplen el preset. Para limitarlo a lo tuyo: `vendor/bin/pint <ruta>`.
+- Setup desde cero: `composer run setup`. Seed: `php artisan db:seed` (roles + `gerente@restaurant.com` / `123456` + 4 mesas).
+
+## Entorno
+
+- `.env` apunta a MySQL `gastro_app` (root, sin password) y **MySQL no siempre está corriendo**: `SQLSTATE[HY000] [2002] connection refused` es el server caído, no un bug de la app.
+- `storage/logs/laravel.log` (gitignored) guarda los stack traces reales de los 500 locales.
+- `CLAUDE.md` es el stub de bootstrap de Boost (`composer require laravel/boost`…): Boost ya está instalado y `AGENTS.md` es el archivo vivo de instrucciones.
+- El bloque de guidelines de Boost que sigue más abajo se **regenera en cada `composer update`** (`boost:update` corre en `post-update-cmd`) y solo se reemplaza lo que está entre sus etiquetas. No editar ese bloque: las notas del repo van fuera de él.
+- Skills del proyecto en `.agents/skills/` (`laravel-best-practices`, `testing-best-practices`, `tailwindcss-development`, `infer-conventions`).
+- El MCP de Boost **no está cableado para OpenCode** en este repo (no hay `opencode.json` ni `mcp.json`; `boost.json` solo lista al agente `codex`): usá `php artisan` y lectura de archivos en su lugar.
+
+## Arquitectura
+
+- Flujo: `routes/api.php` → Controller (valida con `$request->validate` y arma el JSON) → `app/Services/*` → `app/Models/*`. **No hay** FormRequests, Policies ni API Resources: no introducirlos sin preguntar.
+- `$request->user()` puede ser **dos cosas**: `Usuario` (empleados, `POST /api/login`) o `Sesion` (grupo de clientes, `POST /api/login-cliente`). Un método tipado `Usuario $x` revienta si lo llama un token de cliente (pasó en `AuthService::logout`).
+- Los aliases de middleware `gerente` / `mozo` / `cliente` están en `bootstrap/app.php` y comparan el rol por el string literal `Gerente` / `Mozo` (ver `database/seeders/RolSeeder.php`).
+- Leer `routes/api.php` antes de agregar rutas: `MesaController` y `RolController` no están ruteados.
+
+## Convenciones que difieren de Laravel
+
+- Columnas en **camelCase**: `mozoID`, `codigoGrupal`, `precioAdicional`, y el pivot `mesa_sesion` con `mesaID` / `sesionID`. No "normalizarlas" a snake_case.
+- Tablas mixtas: `rol` (singular), `usuarios`, `sesiones`, `productos`, `categorias`.
+- El case del namespace debe coincidir con la ruta: `App\Http\Controllers`, `App\Models\...`. PSR-4 es case-sensitive: `app\Models\Sesion` o `App\http\Controllers\...` anda en Windows pero falla en Linux.
+- Mensajes al usuario en español (voseo: "No tenes permisos…"); los identificadores quedan como están.
+- Los "no encontrado" suelen devolver 200 + `{"message": ...}` en vez de 404: seguir al controller hermano (`IngredienteController` es el único que 404ea).
+
+## Trampas verificadas (no copiar estos patrones)
+
+- **El binding implícito matchea por nombre de parámetro**: la ruta declara `{id}` y el método tipa `$sesion` → `SubstituteBindings` saltea y el container inyecta un modelo vacío (`MozoController@cerrarSesion` y `@verDetalles`). Renombrar la ruta o el parámetro (`sesion`) al tocarlos.
+- `EsMozo` / `EsGerente` hacen `$usuario->rol->nombre` sin chequear el tipo → un token de cliente devuelve 500 en vez de 403.
+- `SesionService::obtenerDetalles()` selecciona `mesas.numero_mesa`, columna que ninguna migración crea.
+- `MesaController` valida `'estado' => 'required|enum'`, regla inexistente → `BadMethodCallException`.
+- `codigoGrupal` es `unique` en todas las filas pero `generarCodigoGrupal()` solo evita códigos de sesiones *activas* → reusar el código de una sesión cerrada tira QueryException.
+- Borrar una `categoria` con productos falla con FK 1451 (no hay cascade en `productos.categoria_id`).
+
+## Testing
+
+- Solo existen los tests de ejemplo. `tests/Pest.php` tiene `RefreshDatabase` **comentado**: un feature test que toque la DB falla con "no such table" hasta habilitarlo (`->use(RefreshDatabase::class)` o `$this->migrate()` en el test).
+- La única factory es `UserFactory` (del modelo `User`, que no se usa): crear factories de `Usuario`, `Producto`, etc. con `php artisan make:factory` antes de testear contra la DB.
+- Ignorar `App\Models\User`, la migración `users` y el provider de `config/auth.php`: son defaults de Laravel; la app autentica `Usuario` (tabla `usuarios`) y `Sesion` con tokens Sanctum.
+
+---
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

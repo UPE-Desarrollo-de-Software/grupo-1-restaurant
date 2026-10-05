@@ -13,6 +13,7 @@ class Pedido extends Model
         'estado',
         'total',
         'fecha',
+        'cliente_id',
     ];
 
     public function sesion(): BelongsTo
@@ -25,4 +26,8 @@ class Pedido extends Model
         return $this->hasMany(DetallePedido::class);
     }
 
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class);
+    }
 }
