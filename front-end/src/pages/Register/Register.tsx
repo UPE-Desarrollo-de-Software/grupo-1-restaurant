@@ -2,7 +2,8 @@ import { Card, Container, Form, Button, Spinner, Alert } from 'react-bootstrap'
 import s from '../Login/login.module.css'
 import { useState, useEffect, useRef } from 'react'
 import { registerSchema } from '../../schemas/auth'
-import { register, ROLES_LISTA } from '../../api/auth'
+import { register } from '../../api/auth'
+import { useRoles } from '../../context/RolesContext/useRoles'
 
 export function RegisterPage(){
     const [nombre, setNombre] = useState("")
@@ -15,6 +16,8 @@ export function RegisterPage(){
     const [tocado, setTocado] = useState(false)
     const [registroExitoso, setRegistroExitoso] = useState<string | null>(null)
     const timerRef = useRef<number|null>(null)
+
+    const { roles } = useRoles()
 
     const resultados = registerSchema.safeParse({nombre, rol_id, email, password})  
     
@@ -102,7 +105,7 @@ export function RegisterPage(){
                                 </Form.Label>
                                 <Form.Select value={rol_id} onChange={(e)=>setRol(e.target.value)} isInvalid={tocado && !!errores.rol_id}>
                                     <option value="" disabled={true}>Seleccioná un rol</option>
-                                    {ROLES_LISTA.map(r=>(
+                                    {roles.filter(r => r.nombre !== 'Cliente').map(r=>(
                                         <option value={r.id} key={r.id}>{r.nombre}</option>
                                     ))}
                                 </Form.Select>

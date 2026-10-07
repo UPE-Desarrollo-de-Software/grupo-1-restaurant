@@ -5,26 +5,32 @@ import { AuthLayout } from './layouts/AuthLayout'
 import { LoginPage } from './pages/Login/Login'
 import { RegisterPage } from './pages/Register/Register'
 import { RequireAuth } from './components/RequireAuth'
-import { ROLES } from './api/auth'
+import { LandingPage } from './pages/Landing/Landing'
+import { ABMProductosPage } from './pages/ABMProductos/ABMProductos'
+import { RolesProvider } from './context/RolesContext/RolesContext'
 
 function App() {
 
   return (
+    <RolesProvider>
       <BrowserRouter>
         <Routes>
             <Route element={<MainLayout/>}>
+              <Route path='/' element={<LandingPage/>}/>
               <Route path='/menu' element={<MenuPage/>}/>
+              <Route path='/abm-productos' element={<ABMProductosPage/>}/>
             </Route>
             <Route element={<AuthLayout/>}>
               <Route path='/login' element={<LoginPage/>}/>
               <Route path='/register' element={
-                <RequireAuth rolesPermitidos={[ROLES.GERENTE]}>
+                <RequireAuth rolesPermitidos={['Gerente']}>
                   <RegisterPage/>
                 </RequireAuth>
                 }/>
             </Route>
         </Routes>
       </BrowserRouter>
+    </RolesProvider>
   )
 }
 

@@ -14,6 +14,25 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
 - **Notificaciones/alertas internas**: nuevos pedidos, pedidos listos, cambios de estado, llamar al mozo; mejoran la comunicación entre cliente, mozo, cocina y encargados.
 - **Dashboard**: estadísticas e historial (cantidad de pedidos, ventas, productos más solicitados, reservas), historial de comandas (extravíos) y trazabilidad de acciones de usuarios.
 
+## Flujo QR / PIN (cliente en mesa)
+
+- El QR de cada mesa es estático y secuencial: `${origin}/mesa/{id}`. El QR identifica
+  la mesa, NO es credencial; la seguridad es el PIN.
+- PIN = `codigoGrupal` del backend (4 dígitos), lo genera el mozo al abrir la sesión
+  (`POST /mesas/{mesa}/sesion`); muere al cerrar la sesión. Solo gerente crea mesas.
+- `/mesa/:id` es pública. Sin PIN: carta (lectura), reserva, ingresar PIN. Con PIN:
+  `POST /login-cliente` → guarda `token_cliente` + `sesion_cliente` en localStorage
+  (claves separadas de las del empleado `token`/`usuario`; RequireAuth usa esas).
+- BottomNavbar doble menú: sin sesión [Inicio, Reservar, Mi mesa];
+  con sesión [Mi pedido, Reservar, Mi mesa] (reacciona al contexto, no a localStorage directo).
+- No existe rol CLIENTE en el front. Los roles son dinámicos: se cargan con
+  `GET /roles` vía `RolesContext` (`src/context/RolesContext/`) y se consumen
+  con el helper `useRoles()`. `RequireAuth` recibe `rolesPermitidos` como
+  **nombres** (`['Gerente']`) y resuelve `usuario.rol_id` → nombre contra la
+  API. Si el fetch falla, se usa un fallback hardcodeado (Gerente/Cocina/Mozo).
+  Cualquier sesión logueada = staff.
+- Sin PIN no hay datos de sesión/carrito/consumo. Rate-limit en intentos de PIN.
+
 ## Comandos
 
 - `npm run dev` — servidor de desarrollo Vite
@@ -31,6 +50,6 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
 - Los datos reales vienen de la API del backend. `src/data/productos.json` es solo un mock de diseño con otro schema (`restaurante/categorias/platos`); no tomarlo como contrato de la API. La forma real es `src/types/Producto.ts` (campos snake_case, `disponible: number`).
 - Estilos: Bootstrap + CSS Modules por componente (`*.module.css`, importados como `s`). Los design tokens viven en `src/styles/tokens.css`, importados DESPUÉS de `bootstrap.min.css` en `src/main.tsx` — preservar ese orden. Clases utilitarias como `text-headline-lg`, `text-body-md`, `text-price-display`, `elevation-1` son tokens propios, no de Bootstrap; preferirlas sobre colores/fuentes hardcodeadas.
 - Fetch de datos: hooks en `src/hooks` (ver `useProductos`) consultan `API_BASE_URL` con `AbortController`; seguir este patrón en fetches nuevos (abortar al desmontar, mensaje de error en español si el status no es 2xx).
-- Las rutas se declaran centralmente en `src/App.tsx`. Solo existe `/carta`; `ProductCard` ya enlaza a `/productos/:id` pero no tiene ruta definida aún. Páginas en `src/pages`, layouts en `src/layouts`.
+- Las rutas se declaran centralmente en `src/App.tsx`. Hoy existen: `/` (landing), `/menu`, `/login`, `/register`; `ProductCard` enlaza a `/producto/:id` pero no tiene ruta definida aún; `/mesa/:id`, `/pedido` y `/reservas` están pendientes de crear. Páginas en `src/pages`, layouts en `src/layouts`.
 - TypeScript estricto con `verbatimModuleSyntax` y `erasableSyntaxOnly`: usar `import type` para imports solo de tipos; sin enums/namespaces ni parámetros-de-propiedad de clase.
 - Los precios se formatean con `Intl.NumberFormat('es-AR', { currency: 'ARS' })`.

@@ -17,3 +17,8 @@ export interface LoginResponse{
     token: string
 }
 export type RegisterResponse = Omit<LoginResponse, 'token'>
+
+export interface Rol{
+    id: number,
+    nombre: string
+}

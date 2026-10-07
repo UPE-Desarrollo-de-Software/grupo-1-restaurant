@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../config/env";
-import type { LoginInput, RegisterInput, UsuarioSesion } from "../types/Auth";
+import type { LoginInput, RegisterInput, Rol, UsuarioSesion } from "../types/Auth";
 import type { LoginResponse, RegisterResponse } from "../types/Auth";
 
 
@@ -76,19 +76,14 @@ export async function logoutSesion(): Promise<void>{
     }
 }
 
-//despues pedirlo al back
-export function getRoles(){
+export async function getRoles(signal?: AbortSignal):Promise<Rol[]>{
+    const response = await fetch(`${API_BASE_URL}/roles`, {signal})
+    
+    const data =  await response.json().catch(() => null)
+    
+    if(!response.ok) {
+        throw new Error(data?.message ?? `Error ${response.status} al obtener roles`)
+    }
+
+    return data as Rol[]
 }
-
-export const ROLES = {
-  GERENTE: 1,
-  COCINA: 2,
-  MOZO: 3,
-} as const
-
-// Forma 2: lista con id + nombre → para selects y UI (Register.tsx)
-export const ROLES_LISTA = [
-  { id: ROLES.GERENTE, nombre: 'Gerente' },
-  { id: ROLES.COCINA,  nombre: 'Cocina'  },
-  { id: ROLES.MOZO,    nombre: 'Mozo'    },
-]

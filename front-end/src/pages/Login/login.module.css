@@ -54,6 +54,42 @@
   box-shadow: 0 0 0 0.2rem rgba(159, 60, 22, 0.15);
 }
 
+.passwordWrap {
+  position: relative;
+}
+
+.passwordWrap .input {
+  padding-right: var(--space-3xl);
+}
+
+/* el icono de validación de Bootstrap chocaría con el ojo: dejamos borde + mensaje */
+.passwordWrap .input:global(.is-invalid) {
+  background-image: none;
+  padding-right: var(--space-3xl);
+}
+
+.ojo {
+  position: absolute;
+  top: 50%;
+  right: var(--space-sm);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xs);
+  border: none;
+  background-color: transparent;
+  color: var(--color-outline);
+  font-size: 1.125rem;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.ojo:hover,
+.ojo:focus-visible {
+  color: var(--color-primary);
+}
+
 .button {
   width: 100%;
   margin-top: var(--space-sm);

@@ -8,10 +8,10 @@ interface NavOption {
 }
 
 const OPCIONES: NavOption[] = [
-  { to: '/menu', label: 'Menu', icon: 'bi-journal-text' },
+  { to: '/menu', label: 'Carta', icon: 'bi-journal-text' },
   { to: '/pedido', label: 'Mi pedido', icon: 'bi-basket' },
   { to: '/reservas', label: 'Reservas', icon: 'bi-calendar-check' },
-  { to: '/unir-mesa', label: 'Unir Mesa', icon: 'bi-people' },
+  { to: '/unir-mesa', label: 'Mesa', icon: 'bi-box-arrow-in-right' },
 ];
 
 export function BottomNavbar() {

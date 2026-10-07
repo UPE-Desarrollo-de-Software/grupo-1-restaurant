@@ -9,6 +9,7 @@ export function LoginPage(){
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [tocado, setTocado] = useState(false)
+  const [verPassword, setVerPassword] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [errorApi, setErrorApi] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -78,15 +79,26 @@ export function LoginPage(){
                 <Form.Label className={`text-label-md ${s.label}`}>
                   Contraseña
                 </Form.Label>
-                <Form.Control
-                  className={s.input}
-                  type="password"
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  isInvalid={tocado && !!errores.password}
-                />
+                <div className={s.passwordWrap}>
+                  <Form.Control
+                    className={s.input}
+                    type={verPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    isInvalid={tocado && !!errores.password}
+                  />
+                  <button
+                    type="button"
+                    className={s.ojo}
+                    onClick={() => setVerPassword(v => !v)}
+                    aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    aria-pressed={verPassword}
+                  >
+                    <i className={`bi ${verPassword ? "bi-eye-slash" : "bi-eye"}`} aria-hidden="true" />
+                  </button>
+                </div>
               <Form.Control.Feedback type="invalid">
                   {errores.password}
               </Form.Control.Feedback>

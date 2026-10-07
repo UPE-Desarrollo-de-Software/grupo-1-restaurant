@@ -2,7 +2,7 @@ import { Navbar, Container, Modal, Button, CloseButton } from "react-bootstrap"
 import { Link } from 'react-router-dom'
 import logo from '../../assets/logo/gastroapp-logo-256x256.png'
 import s from './navbar.module.css'
-import { getUsuario, logoutLocal } from "../../api/auth"
+import { getUsuario, logoutSesion } from "../../api/auth"
 import { useNavigate } from "react-router-dom"
 import { useState } from "react"
 
@@ -12,8 +12,8 @@ export function NavbarComponent(){
   const usuario = getUsuario()
   const esStaff = usuario !== null
 
-  function handleLogout(){
-    logoutLocal()
+  async function handleLogout(){
+    await logoutSesion()
     setShowPerfil(false)
     navigate('/login', {replace: true})
   }
@@ -21,7 +21,7 @@ export function NavbarComponent(){
     return(
     <Navbar className={s.barra}>
       <Container className="d-flex justify-content-between align-items-center">
-        <Navbar.Brand as={Link} to="/menu" className="d-flex align-items-center">
+        <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
           <img
             alt="Logo GastroApp"
             src={logo}
