@@ -1,3 +1,8 @@
+export interface Ingrediente {
+  id: number;
+  nombre: string;
+}
+
 export interface Producto {
   id: number;
   categoria_nombre: string;
