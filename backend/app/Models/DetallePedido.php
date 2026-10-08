@@ -13,7 +13,14 @@ class DetallePedido extends Model
         'pedido_id',
         'producto_id',
         'cantidad',
-        'precio',
+        'precio_lista',
+        'precio_final',
+        'promocion_id'
+    ];
+
+    protected $casts = [
+        'precio_lista' => 'decimal:2',
+        'precio_final' => 'decimal:2',
     ];
 
     public function pedido(): BelongsTo
@@ -29,5 +36,10 @@ class DetallePedido extends Model
     public function ingredientes(): HasMany
     {
         return $this->hasMany(DetallePedidoIngrediente::class);
+    }
+
+    public function promocion(): BelongsTo
+    {
+        return $this->belongsTo(Promocion::class);
     }
 }

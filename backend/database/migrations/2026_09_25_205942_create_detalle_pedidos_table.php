@@ -15,14 +15,22 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('pedido_id')
-                    ->constrained('pedidos')
-                    ->cascadeOnDelete();
+                ->constrained('pedidos')
+                ->cascadeOnDelete();
 
             $table->foreignId('producto_id')
-                    ->constrained('productos');
+                ->constrained('productos');
 
             $table->integer('cantidad');
-            $table->decimal('precio', 10, 2);
+            $table->decimal('precio_lista', 10, 2); // precio base sin promocion agregada
+            $table->decimal('precio_final', 10, 2); // precio final con promocion agregada (suerte de subtotal)
+
+            $table->foreignId('promocion_id') // nueva relacion con promocion, puede ser nula si no se aplica ninguna promocion
+                ->nullable()
+                ->nullOnDelete()
+                ->constrained('promociones');
+
+
 
             $table->timestamps();
         });

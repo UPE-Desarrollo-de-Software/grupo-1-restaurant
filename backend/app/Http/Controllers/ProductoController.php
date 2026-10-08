@@ -27,7 +27,7 @@ class ProductoController extends Controller
         return response()->json($productos, 200);
     }
 
-    public function show($id)
+    public function show(int $id)
     {
         $producto = $this->service->obtenerConIngredientes($id);
 
@@ -63,7 +63,7 @@ class ProductoController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         $datos = $request->validate([
             'categoria_id' => 'required|exists:categorias,id',
@@ -84,7 +84,7 @@ class ProductoController extends Controller
         ], 200);
     }
 
-    public function destroy($id)
+    public function destroy(int $id)
     {
         $this->service->eliminar($id);
 

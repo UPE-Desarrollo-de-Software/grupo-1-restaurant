@@ -20,7 +20,23 @@ class CategoriaController extends Controller
         return response()->json($categorias);
     }
 
-    public function show($id)
+    public function create(Request $request)
+    {
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'descripcion' => 'nullable|string',
+            'activo' => 'required|boolean',
+        ]);
+
+        $categoria = $this->service->crear($datos);
+
+        return response()->json([
+            'message' => 'Categoria creada exitosamente',
+            'categoria' => $categoria
+        ], 201);
+    }
+
+    public function show(int $id)
     {
         $categoria = $this->service->obtenerPorId($id);
 
@@ -50,7 +66,7 @@ class CategoriaController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         $datos = $request->validate([
             'nombre' => 'required|string|max:255',
@@ -66,7 +82,7 @@ class CategoriaController extends Controller
         ], 200);
     }
 
-    public function destroy($id)
+    public function destroy(int $id)
     {
         $this->service->eliminar($id);
 

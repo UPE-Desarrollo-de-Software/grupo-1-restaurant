@@ -25,7 +25,7 @@ class IngredienteController extends Controller
         return response()->json($ingredientes, 200);
     }
 
-    public function show($id)
+    public function show(int $id)
     {
         $ingrediente = $this->service->obtenerPorId($id);
 
@@ -55,7 +55,7 @@ class IngredienteController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         $datos = $request->validate([
             'nombre' => 'required|string|max:255',
@@ -71,7 +71,7 @@ class IngredienteController extends Controller
         ], 200);
     }
 
-    public function destroy($id)
+    public function destroy(int $id)
     {
         $this->service->eliminar($id);
 

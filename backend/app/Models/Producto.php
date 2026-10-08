@@ -38,4 +38,10 @@ class Producto extends Model
     {
         return $this->hasMany(DetallePedido::class);
     }
+
+    public function AlterDisponibilidad()
+    {
+        $this->disponible = !$this->disponible;
+        $this->save();
+    }
 }

@@ -18,12 +18,17 @@ class MesaService
         return Mesa::all();
     }
 
+    public function obtenerPorId(int $id)
+    {
+        return Mesa::findOrFail($id);
+    }
+
     public function crearMesa(array $datos)
     {
         return Mesa::create($datos);
     }
 
-    public function actualizar($id, array $datos)
+    public function actualizar(int $id, array $datos)
     {
         $mesas = Mesa::findOrFail($id);
 
@@ -32,7 +37,7 @@ class MesaService
         return $mesas;
     }
 
-    public function eliminar($id)
+    public function eliminar(int $id)
     {
         $mesas = Mesa::findOrFail($id);
         $mesas->delete();
