@@ -1,0 +1,150 @@
+.page {
+  padding: var(--space-xl) var(--gutter-mobile);
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+.title {
+  color: var(--color-on-surface);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.subtitle {
+  color: var(--color-on-surface-variant);
+  margin: 0 0 var(--space-xl) 0;
+}
+
+.section {
+  margin-bottom: var(--space-2xl);
+}
+
+.sectionTitle {
+  color: var(--color-on-surface);
+  margin: 0 0 var(--space-md) 0;
+}
+
+/* ============ GRID DE CARDS (hubs y accesos) ============ */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-lg);
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-level-1);
+  color: var(--color-on-surface);
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-level-2);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.icon {
+  font-size: 1.75rem;
+  color: var(--color-primary);
+  margin-bottom: var(--space-2xs);
+}
+
+.cardTitle {
+  color: inherit;
+  margin: 0;
+}
+
+.cardDesc {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+/* ============ CARDS DE ESTADÍSTICAS (dashboard) ============ */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-md);
+  background-color: var(--color-surface-container-low);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.statValue {
+  font-size: var(--text-headline-lg-size);
+  font-weight: var(--text-headline-lg-weight);
+  line-height: var(--text-headline-lg-line);
+  color: var(--color-primary);
+}
+
+.statLabel {
+  font-size: var(--text-label-md-size);
+  font-weight: var(--text-label-md-weight);
+  line-height: var(--text-label-md-line);
+  letter-spacing: var(--text-label-md-tracking);
+  color: var(--color-on-surface-variant);
+}
+
+.note {
+  color: var(--color-on-surface-variant);
+  margin: var(--space-sm) 0 0 0;
+}
+
+/* ============ PLACEHOLDER "EN CONSTRUCCIÓN" ============ */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-3xl) var(--space-lg);
+  background-color: var(--color-surface-container-lowest);
+  border: 1px dashed var(--color-outline-variant);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  color: var(--color-on-surface-variant);
+}
+
+.emptyIcon {
+  font-size: 2.5rem;
+  color: var(--color-outline);
+}
+
+.backLink {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--color-primary-container);
+  text-decoration: none;
+}
+
+@media (min-width: 576px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .statGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 992px) {
+  .grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}

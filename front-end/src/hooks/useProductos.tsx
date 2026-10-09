@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import type { Producto } from "../types/Producto";
+import type { ProductoListar } from "../types/Menu";
 import { getProductos } from "../api/productos";
 
 export function useProductos() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [productos, setProductos] = useState<Producto[]>([])
+    const [productos, setProductos] = useState<ProductoListar[]>([])
 
     useEffect(()=>{
         const controller = new AbortController()

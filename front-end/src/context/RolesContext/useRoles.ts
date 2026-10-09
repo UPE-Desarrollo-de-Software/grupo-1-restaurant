@@ -17,6 +17,6 @@ export const RolesContext = createContext<RolesCtx| null>(null)
 
 export function useRoles(){
     const ctx = useContext(RolesContext)
-    if (!ctx) throw new Error('useRoles debe  usarse dentro de <RolesProvider>')
+    if (!ctx) throw new Error('useRoles debe usarse dentro de <RolesProvider>')
     return ctx
 }

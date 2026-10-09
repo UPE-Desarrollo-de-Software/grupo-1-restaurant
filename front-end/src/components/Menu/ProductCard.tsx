@@ -1,10 +1,10 @@
 import { Card } from "react-bootstrap"
-import type {Producto} from  '../../types/Producto'
+import type {ProductoListar} from  '../../types/Menu'
 import s from './ProductCard.module.css'
 import { Link } from "react-router-dom";
 
 interface ProductoCardProps{
-  producto: Producto
+  producto: ProductoListar
 }
 
 const formatearPrecio = (precio: number): string =>
@@ -32,7 +32,7 @@ export function ProductoCard({producto}: ProductoCardProps){
         </div>
       </Card.Body>
       <div className={s.media}>
-        <Card.Img className={s.imagen} src={producto.imagen} alt={producto.nombre} loading="lazy"/>
+        <Card.Img className={s.imagen} src={producto.imagen ?? undefined} alt={producto.nombre} loading="lazy"/>
         <Link className={s.link} to={`/producto/${producto.id}`}>
           <p className="text-body-sm">Ver detalles</p>
         </Link>

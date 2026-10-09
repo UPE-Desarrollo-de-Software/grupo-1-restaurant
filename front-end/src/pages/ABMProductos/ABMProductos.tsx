@@ -1,21 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './ABMProductos.module.css'
-import { API_BASE_URL } from '../../config/env'
-import { getToken } from '../../api/auth'
-
-interface Categoria {
-    id: number
-    nombre: string
-}
-
-interface Ingrediente {
-    id: number
-    nombre: string
-}
+import { useCategorias } from '../../hooks/useCategorias'
+import { useIngredientes } from '../../hooks/useIngredientes'
+import { productoSchema } from '../../schemas/menu'
+import { createProductos } from '../../api/productos'
 
 export function ABMProductosPage() {
-    const [categoriaId, setCategoriaId] = useState('')
+    const [categoria_id, setCategoriaId] = useState('')
     const [nombre, setNombre] = useState('')
     const [descripcion, setDescripcion] = useState('')
     const [precio, setPrecio] = useState('')
@@ -23,8 +15,8 @@ export function ABMProductosPage() {
     const [disponible, setDisponible] = useState(true)
     const [ingredientes, setIngredientes] = useState<number[]>([])
 
-    const [categorias, setCategorias] = useState<Categoria[]>([])
-    const [listaIngredientes, setListaIngredientes] = useState<Ingrediente[]>([])
+    const {categorias, loadingCategorias, errorCategorias} = useCategorias()
+    const {listaIngredientes, loadingIngredientes, errorIngredientes} = useIngredientes()
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
@@ -32,40 +24,15 @@ export function ABMProductosPage() {
     const [tocado, setTocado] = useState(false)
 
     const errores: Record<string, string> = {}
-    if (tocado) {
-        if (!categoriaId) errores.categoria_id = 'Seleccioná una categoría'
-        if (!nombre.trim()) errores.nombre = 'Ingresá el nombre'
-        if (precio === '' || Number(precio) < 0) errores.precio = 'Ingresá un precio válido'
-    }
-
-    useEffect(() => {
-        const controller = new AbortController()
-
-        async function cargarOpciones() {
-            try {
-                const [resCategorias, resIngredientes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/categorias`, { signal: controller.signal }),
-                    fetch(`${API_BASE_URL}/ingredientes`, { signal: controller.signal }),
-                ])
-
-                const dataCategorias = await resCategorias.json().catch(() => null)
-                const dataIngredientes = await resIngredientes.json().catch(() => null)
-
-                if (!resCategorias.ok || !resIngredientes.ok) {
-                    throw new Error('Error al cargar las categorías o ingredientes')
-                }
-
-                if (Array.isArray(dataCategorias)) setCategorias(dataCategorias)
-                if (Array.isArray(dataIngredientes)) setListaIngredientes(dataIngredientes)
-            } catch (err) {
-                if (err instanceof DOMException && err.name === 'AbortError') return
-                setErrorApi(err instanceof Error ? err.message : 'Error desconocido al cargar las opciones')
-            }
+    const resultados = productoSchema.safeParse({categoria_id,nombre,descripcion,precio,imagen,disponible,ingredientes})
+    if (!resultados.success) {
+        for (const issue of resultados.error.issues) {
+        const campo = issue.path[0]
+        if (typeof campo === "string" && !errores[campo]) {
+            errores[campo] = issue.message
         }
-
-        cargarOpciones()
-        return () => controller.abort()
-    }, [])
+        }
+    }
 
     function toggleIngrediente(id: number) {
         setIngredientes(prev =>
@@ -79,34 +46,12 @@ export function ABMProductosPage() {
         setExito(null)
         setErrorApi(null)
 
-        if (!categoriaId || !nombre.trim() || precio === '' || Number(precio) < 0) return
+        if (!resultados.success) return
 
         setEnviando(true)
         try {
-            const response = await fetch(`${API_BASE_URL}/productos`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${getToken()}`,
-                },
-                body: JSON.stringify({
-                    categoria_id: Number(categoriaId),
-                    nombre: nombre.trim(),
-                    descripcion: descripcion.trim() === '' ? null : descripcion.trim(),
-                    precio: Number(precio),
-                    imagen: imagen.trim() === '' ? null : imagen.trim(),
-                    disponible,
-                    ingredientes,
-                }),
-            })
-
-            const data = await response.json().catch(() => null)
-            if (!response.ok) {
-                throw new Error(data?.message ?? `Error ${response.status} al crear el producto`)
-            }
-
-            setExito(data?.message ?? 'Producto creado exitosamente')
+            const producto = await createProductos(resultados.data)
+            setExito(producto.message)
             setCategoriaId('')
             setNombre('')
             setDescripcion('')
@@ -128,6 +73,10 @@ export function ABMProductosPage() {
                 <h1 className={`text-headline-md ${s.title}`}>ABM de productos</h1>
                 <p className={`text-body-sm ${s.subtitle}`}>Alta de productos de la carta</p>
 
+                {(errorCategorias || errorIngredientes) && 
+                    <Alert variant='danger' className='text-body-md'>
+                        No se pudieron cargar las categorías o los ingredientes. Verificá que el servidor esté activo
+                    </Alert>}
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
                 {exito && <Alert variant='success' className='text-body-md'>{exito}</Alert>}
 
@@ -141,7 +90,7 @@ export function ABMProductosPage() {
                                 placeholder='Milanesa napolitana'
                                 value={nombre}
                                 onChange={(e) => setNombre(e.target.value)}
-                                isInvalid={!!errores.nombre}
+                                isInvalid={tocado && !!errores.nombre}
                             />
                             <Form.Control.Feedback type='invalid'>{errores.nombre}</Form.Control.Feedback>
                         </Form.Group>
@@ -150,9 +99,10 @@ export function ABMProductosPage() {
                             <Form.Label className={`text-label-md ${s.label}`}>Categoría</Form.Label>
                             <Form.Select
                                 className={s.input}
-                                value={categoriaId}
+                                value={categoria_id}
                                 onChange={(e) => setCategoriaId(e.target.value)}
-                                isInvalid={!!errores.categoria_id}
+                                isInvalid={tocado && !!errores.categoria_id}
+                                disabled={loadingCategorias}
                             >
                                 <option value='' disabled={true}>Seleccioná una categoría</option>
                                 {categorias.map(c => (
@@ -172,7 +122,9 @@ export function ABMProductosPage() {
                             placeholder='Descripción del plato (opcional)'
                             value={descripcion}
                             onChange={(e) => setDescripcion(e.target.value)}
+                            isInvalid={tocado &&  !!errores.descripcion}
                         />
+                        <Form.Control.Feedback type='invalid'>{errores.descripcion}</Form.Control.Feedback>
                     </Form.Group>
 
                     <div className={s.row}>
@@ -186,7 +138,7 @@ export function ABMProductosPage() {
                                 placeholder='1500'
                                 value={precio}
                                 onChange={(e) => setPrecio(e.target.value)}
-                                isInvalid={!!errores.precio}
+                                isInvalid={tocado &&  !!errores.precio}
                             />
                             <Form.Control.Feedback type='invalid'>{errores.precio}</Form.Control.Feedback>
                         </Form.Group>
@@ -199,15 +151,20 @@ export function ABMProductosPage() {
                                 placeholder='https://...'
                                 value={imagen}
                                 onChange={(e) => setImagen(e.target.value)}
+                                isInvalid={tocado &&  !!errores.imagen}
                             />
+                            <Form.Control.Feedback type='invalid'>{errores.imagen}</Form.Control.Feedback>
                         </Form.Group>
                     </div>
 
-                    <Form.Group className={s.field}>
+                    <Form.Group className={s.field} controlId='abm-producto-ingredientes'>
                         <Form.Label className={`text-label-md ${s.label}`}>Ingredientes</Form.Label>
                         <div className={s.ingredientsBox}>
-                            {listaIngredientes.length === 0 ? (
-                                <p className={`text-body-sm ${s.empty}`}>No hay ingredientes cargados</p>
+                            {loadingIngredientes ? (
+                                    <p className={`text-body-sm ${s.empty}`}>Cargando ingredientes...</p>
+                                ) :
+                            listaIngredientes.length === 0 ? (
+                                <p className={`text-body-sm ${s.empty}`}>No tiene ingredientes cargados</p>
                             ) : (
                                 listaIngredientes.map(ing => (
                                     <Form.Check
@@ -218,10 +175,12 @@ export function ABMProductosPage() {
                                         label={ing.nombre}
                                         checked={ingredientes.includes(ing.id)}
                                         onChange={() => toggleIngrediente(ing.id)}
+                                        isInvalid={tocado &&  !!errores.ingredientes}
                                     />
                                 ))
                             )}
                         </div>
+                        <Form.Control.Feedback type='invalid'>{errores.ingredientes}</Form.Control.Feedback>
                     </Form.Group>
 
                     <Form.Group className={s.field} controlId='abm-producto-disponible'>
