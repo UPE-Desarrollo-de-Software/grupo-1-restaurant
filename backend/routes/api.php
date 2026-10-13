@@ -6,6 +6,7 @@ use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\MozoController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SesionController;
 use App\Http\Controllers\UsuarioController;
@@ -46,6 +47,11 @@ Route::middleware(['auth:sanctum', 'cliente'])->group(function () {
     // ruta para enviar pedido
     Route::post('/sesion/pedidos/enviar-pedido', [PedidoController::class, 'enviarPedido']);
 });
+//ruta para crear reserva pero por un cliente desde la web
+Route::post('/cliente/reservas', [ReservaController::class, 'crear']);
+// Ruta para cancelar reserva por un cliente desde la web
+Route::patch('/cliente/reservas/{id}/cancelar', [ReservaController::class, 'cancelar']);
+
 
 // MOZO
 Route::middleware(['auth:sanctum', 'mozo'])->group(function () {
@@ -70,6 +76,12 @@ Route::middleware(['auth:sanctum', 'gerente'])->group(function () {
     Route::put('/usuarios/{id}', [UsuarioController::class, 'update'])->whereNumber('id');
     Route::delete('/usuarios/{id}', [UsuarioController::class, 'destroy'])->whereNumber('id');
     Route::post('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar'])->whereNumber('id');
+
+    //RESERVAS
+    //ruta para crear reservas desde el lado del restaurante por parte del gerente
+    Route::post('/reservas', [ReservaController::class, 'crear']);
+    //ruta para cancelar reservas
+    Route::patch('/reservas/{id}/cancelar', [ReservaController::class, 'cancelar']);
 
     // nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front
     Route::get('/roles', [RolController::class, 'index']);

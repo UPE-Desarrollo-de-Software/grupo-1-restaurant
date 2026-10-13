@@ -23,17 +23,13 @@ return new class extends Migration
                     ->constrained('usuarios')
                     ->nullOnDelete();
 
-            $table->foreignId('sesion_id')
-                    ->nullable()
-                    ->constrained('sesiones')
-                    ->nullOnDelete();
-
+            
             $table->string('nombre_cliente');
             $table->string('telefono_cliente');
             $table->date('fecha');
             $table->time('hora');
             $table->unsignedInteger('cant_personas');
-            $table->enum('estado', ['pendiente', 'confirmada', 'cancelada', 'finalizada'])->default('pendiente');
+            $table->enum('estado', ['pendiente', 'cancelada', 'finalizada'])->default('pendiente');
 
             $table->timestamps();
         });
