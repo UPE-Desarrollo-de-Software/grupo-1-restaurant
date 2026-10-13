@@ -12,7 +12,7 @@ class CategoriaService
         return Categoria::all();
     }
 
-    public function obtenerPorId($id)
+    public function obtenerPorId(int $id)
     {
         return Categoria::findOrFail($id);
     }
@@ -22,14 +22,14 @@ class CategoriaService
         return Categoria::create($datos);
     }
 
-    public function actualizar($id, array $datos)
+    public function actualizar(int $id, array $datos)
     {
         $categoria = Categoria::findOrFail($id);
         $categoria->update($datos);
         return $categoria;
     }
 
-    public function eliminar($id)
+    public function eliminar(int $id)
     {
         $categoria = Categoria::findOrFail($id);
         $categoria->delete();

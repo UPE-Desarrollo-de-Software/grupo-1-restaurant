@@ -43,9 +43,12 @@ class MesaController extends Controller
     }
 
 
-    public function store(Request $request)
+    public function store()
     {
-        //
+        $mesas = $this->service->obtenerMesas();
+        return response()->json([
+            'mesas' => $mesas
+        ]);
     }
 
     /**
@@ -53,10 +56,14 @@ class MesaController extends Controller
      */
     public function show(string $id)
     {
-        $mesas = $this->service->obtenerMesas();
-        return response()->json([
-            'mesas' => $mesas
-        ]);
+
+        $mesa = $this->service->obtenerPorId($id);
+
+        if (! $mesa) {
+            return response()->json(['message' => 'Mesa no encontrada'], 200);
+        }
+
+        return response()->json($mesa, 200);
     }
 
     /**
