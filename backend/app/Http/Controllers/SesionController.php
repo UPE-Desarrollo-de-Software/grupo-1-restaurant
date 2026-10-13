@@ -5,6 +5,12 @@ namespace App\Http\Controllers;
 use App\Services\SesionService;
 use Illuminate\Http\Request;
 
+/**
+ * CONTROLADOR CONGELADO (fuera del DER v2.1): sus rutas
+ * (/api/login-cliente, /api/logout-cliente, /api/sesion) fueron
+ * desconectadas. Se conserva el código por si el flujo de sesiones
+ * vuelve en otra entidad. Ver documentacion/DER-v2.1-backend.md.
+ */
 class SesionController extends Controller
 {
     public function __construct(private SesionService $sesionService) {}

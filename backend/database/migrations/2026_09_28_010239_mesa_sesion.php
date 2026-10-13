@@ -7,7 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * MESA_SESION — ENTIDAD CONGELADA (fuera del DER v2.1, junto con
+     * SESION). La relación mesa ↔ sesión ya no participa en el flujo de
+     * pedidos: eso lo maneja PEDIDO.mesa_id. Tabla conservada por si la
+     * funcionalidad de sesiones vuelve. Ver documentacion/DER-v2.1-backend.md.
      */
     public function up(): void
     {

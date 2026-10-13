@@ -4,10 +4,8 @@ namespace App\Services;
 
 use App\Models\Ingrediente;
 
-
 class IngredienteService
 {
-
     public function obtenerTodos()
     {
         return Ingrediente::all();
@@ -27,13 +25,14 @@ class IngredienteService
     {
         $ingrediente = Ingrediente::findOrFail($id);
         $ingrediente->update($datos);
+
         return $ingrediente;
     }
 
     public function eliminar($id)
     {
         $ingrediente = Ingrediente::findOrFail($id);
-        $ingrediente->productos()->detach(); // Eliminar relaciones con productos
+        $ingrediente->platos()->detach(); // Eliminar relaciones con platos (pivot plato_ingrediente)
         $ingrediente->delete();
     }
 }

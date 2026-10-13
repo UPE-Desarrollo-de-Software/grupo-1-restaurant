@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Usuario;
 use App\Models\Rol;
+use App\Models\Usuario;
 use Illuminate\Support\Facades\Hash;
 
 class UsuarioService
@@ -18,13 +18,12 @@ class UsuarioService
             'activo' => $activo,
         ]);
 
-
-
         return response()->json([
             'message' => 'Registro exitoso',
-            'usuario' => $usuario
+            'usuario' => $usuario,
         ]);
     }
+
     public function listar()
     {
         return Usuario::with('rol')->get();
@@ -34,7 +33,6 @@ class UsuarioService
     {
         return Usuario::with('rol')->find($id);
     }
-
 
     public function actualizar(int $id, array $datos)
     {
@@ -54,7 +52,7 @@ class UsuarioService
 
         $usuario->update($datos);
 
-        if (array_key_exists('rol_id', $datos) && (int)$datos['rol_id'] !== (int)$rolAnterior) {
+        if (array_key_exists('rol_id', $datos) && (int) $datos['rol_id'] !== (int) $rolAnterior) {
             $usuario->tokens()->delete();   // cambió de rol → sesiones abiertas invalidadas
         }
 
@@ -72,7 +70,6 @@ class UsuarioService
         if (! $usuario) {
             return null;
         }
-
 
         $usuario->activo = false;
         $usuario->tokens()->delete(); // Revocar tokens de acceso

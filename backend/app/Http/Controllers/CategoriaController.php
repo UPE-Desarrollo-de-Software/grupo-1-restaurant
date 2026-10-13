@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Categoria;
 use App\Services\CategoriaService;
-
+use Illuminate\Http\Request;
 
 class CategoriaController extends Controller
 {
@@ -13,10 +12,10 @@ class CategoriaController extends Controller
 
     public function index()
     {
-        //ler pido a laravel que busque todas las categorias activas
+        // ler pido a laravel que busque todas las categorias activas
         $categorias = Categoria::where('activo', true)->get();
 
-        //yyy retorno la respuesta en json para que la reciban en react
+        // yyy retorno la respuesta en json para que la reciban en react
         return response()->json($categorias);
     }
 
@@ -32,7 +31,7 @@ class CategoriaController extends Controller
 
         return response()->json([
             'message' => 'Categoria creada exitosamente',
-            'categoria' => $categoria
+            'categoria' => $categoria,
         ], 201);
     }
 
@@ -40,10 +39,11 @@ class CategoriaController extends Controller
     {
         $categoria = $this->service->obtenerPorId($id);
 
-        if (!$categoria) {
+        if (! $categoria) {
             $data = [
-                'message' => 'No se encontraron categorias'
+                'message' => 'No se encontraron categorias',
             ];
+
             return response()->json($data, 200);
         }
 
@@ -62,7 +62,7 @@ class CategoriaController extends Controller
 
         return response()->json([
             'message' => 'Categoria creada exitosamente',
-            'categoria' => $categoria
+            'categoria' => $categoria,
         ], 201);
     }
 
@@ -78,7 +78,7 @@ class CategoriaController extends Controller
 
         return response()->json([
             'message' => 'Categoria actualizada exitosamente',
-            'categoria' => $categoria
+            'categoria' => $categoria,
         ], 200);
     }
 
@@ -87,7 +87,7 @@ class CategoriaController extends Controller
         $this->service->eliminar($id);
 
         return response()->json([
-            'message' => 'Categoria eliminada exitosamente'
+            'message' => 'Categoria eliminada exitosamente',
         ], 200);
     }
 }

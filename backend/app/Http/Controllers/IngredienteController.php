@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Services\IngredienteService;
+use Illuminate\Http\Request;
 
 class IngredienteController extends Controller
 {
-
     public function __construct(private IngredienteService $service) {}
 
     public function index()
@@ -17,8 +16,9 @@ class IngredienteController extends Controller
 
         if ($ingredientes->isEmpty()) {
             $data = [
-                'message' => 'No se encontraron ingredientes'
+                'message' => 'No se encontraron ingredientes',
             ];
+
             return response()->json($data, 200);
         }
 
@@ -29,10 +29,11 @@ class IngredienteController extends Controller
     {
         $ingrediente = $this->service->obtenerPorId($id);
 
-        if (!$ingrediente) {
+        if (! $ingrediente) {
             $data = [
-                'message' => 'Ingrediente no encontrado'
+                'message' => 'Ingrediente no encontrado',
             ];
+
             return response()->json($data, 404);
         }
 
@@ -41,9 +42,10 @@ class IngredienteController extends Controller
 
     public function store(Request $request)
     {
+        // Sin `opcional`: ese flag vive ahora en plato_ingrediente
+        // (DER v2.1). Acá solo queda el recargo de catálogo.
         $datos = $request->validate([
             'nombre' => 'required|string|max:255',
-            'opcional' => 'required|boolean',
             'precioAdicional' => 'required|numeric|min:0',
         ]);
 
@@ -51,7 +53,7 @@ class IngredienteController extends Controller
 
         return response()->json([
             'message' => 'Ingrediente creado exitosamente',
-            'ingrediente' => $ingrediente
+            'ingrediente' => $ingrediente,
         ], 201);
     }
 
@@ -59,7 +61,6 @@ class IngredienteController extends Controller
     {
         $datos = $request->validate([
             'nombre' => 'required|string|max:255',
-            'opcional' => 'required|boolean',
             'precioAdicional' => 'required|numeric|min:0',
         ]);
 
@@ -67,7 +68,7 @@ class IngredienteController extends Controller
 
         return response()->json([
             'message' => 'Ingrediente actualizado exitosamente',
-            'ingrediente' => $ingrediente
+            'ingrediente' => $ingrediente,
         ], 200);
     }
 
@@ -76,7 +77,7 @@ class IngredienteController extends Controller
         $this->service->eliminar($id);
 
         return response()->json([
-            'message' => 'Ingrediente eliminado exitosamente'
+            'message' => 'Ingrediente eliminado exitosamente',
         ], 200);
     }
 }

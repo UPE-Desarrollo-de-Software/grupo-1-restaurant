@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-//para que expresemos que una categoria tiene muchos productos
+
+// para que expresemos que una categoria tiene muchos platos
 
 class Categoria extends Model
 {
+    use HasFactory;
 
     protected $fillable = [
         'nombre',
@@ -15,8 +17,8 @@ class Categoria extends Model
         'activo',
     ];
 
-    public function productos()
+    public function platos()
     {
-        return $this->hasMany(Producto::class);
+        return $this->hasMany(Plato::class);
     }
 }

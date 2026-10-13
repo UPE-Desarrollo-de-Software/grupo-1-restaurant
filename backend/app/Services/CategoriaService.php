@@ -6,7 +6,6 @@ use App\Models\Categoria;
 
 class CategoriaService
 {
-
     public function obtenerTodos()
     {
         return Categoria::all();
@@ -26,6 +25,7 @@ class CategoriaService
     {
         $categoria = Categoria::findOrFail($id);
         $categoria->update($datos);
+
         return $categoria;
     }
 

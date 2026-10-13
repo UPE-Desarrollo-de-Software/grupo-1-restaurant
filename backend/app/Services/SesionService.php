@@ -6,6 +6,15 @@ use App\Models\Cliente;
 use App\Models\Sesion;
 use App\Models\Usuario;
 
+/**
+ * SERVICIO CONGELADO (fuera del DER v2.1).
+ *
+ * El DER eliminó SESION / MESA_SESION / CLIENTES: este servicio ya no
+ * se usa desde las rutas (el login por código grupal quedó
+ * desconectado). Se conserva por decisión del equipo por si la
+ * funcionalidad vuelve en otra entidad. Ver
+ * documentacion/DER-v2.1-backend.md.
+ */
 class SesionService
 {
     /**
@@ -26,7 +35,7 @@ class SesionService
         ]);
 
         // Filtrar y asociar mesas
-        $mesasIds = array_filter($mesasIds, fn($id) => $id !== null);
+        $mesasIds = array_filter($mesasIds, fn ($id) => $id !== null);
 
         if (! empty($mesasIds)) {
             $sesion->mesas()->attach($mesasIds);
@@ -107,9 +116,9 @@ class SesionService
     public function cerrarSesion(Sesion $sesion)
     {
         $sesion->cerrar();
-        $sesion->mesas()->update(['estado' => 'disponible']);
+        $sesion->mesas()->update(['estado' => 'libre']);
         $sesion->mesas()->detach();
-        $sesion->clientes()->get()->each(fn(Cliente $c) => $c->tokens()->delete());
+        $sesion->clientes()->get()->each(fn (Cliente $c) => $c->tokens()->delete());
 
         return response()->json([
             'message' => 'Cierre de sesión exitoso',

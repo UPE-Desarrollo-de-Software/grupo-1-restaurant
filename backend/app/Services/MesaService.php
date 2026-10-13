@@ -6,11 +6,10 @@ use App\Models\Mesa;
 
 class MesaService
 {
-
-
     public function obtenerDisponibles()
     {
-        return Mesa::where('estado', 'disponible')->get();
+        // Estado 'libre' = sin pedido activo ni reserva (DER v2.1).
+        return Mesa::where('estado', 'libre')->get();
     }
 
     public function obtenerMesas()

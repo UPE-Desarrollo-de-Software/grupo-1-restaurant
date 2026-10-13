@@ -13,15 +13,15 @@ class AuthService
             ->where('email', $email)
             ->first();
 
-        if (!$usuario || !Hash::check($password, $usuario->password)) {
+        if (! $usuario || ! Hash::check($password, $usuario->password)) {
             return response()->json([
-                'message' => 'Credenciales inválidas'
+                'message' => 'Credenciales inválidas',
             ], 401);
         }
 
-        if (!$usuario->activo) {
+        if (! $usuario->activo) {
             return response()->json([
-                'message' => 'Usuario inactivo. Contacte al administrador.'
+                'message' => 'Usuario inactivo. Contacte al administrador.',
             ], 403);
         }
 
@@ -32,7 +32,7 @@ class AuthService
         return response()->json([
             'message' => 'Inicio de sesión exitoso',
             'usuario' => $usuario,
-            'token' => $token
+            'token' => $token,
         ]);
     }
 
@@ -41,7 +41,7 @@ class AuthService
         $usuario->tokens()->delete();
 
         return response()->json([
-            'message' => 'Cierre de sesión exitoso'
+            'message' => 'Cierre de sesión exitoso',
         ]);
     }
 }

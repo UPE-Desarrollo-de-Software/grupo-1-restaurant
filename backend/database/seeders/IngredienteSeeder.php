@@ -5,12 +5,15 @@ namespace Database\Seeders;
 use App\Models\Ingrediente;
 use Illuminate\Database\Seeder;
 
+/**
+ * Ingredientes del catálogo (DER v2.1).
+ *
+ * Ya no tienen el flag `opcional`: eso vive en `plato_ingrediente`
+ * (por plato). Acá solo queda `precioAdicional` (recargo de catálogo).
+ * Idempotente por nombre.
+ */
 class IngredienteSeeder extends Seeder
 {
-    /**
-     * Crea los ingredientes base (no opcionales, sin costo) y los extras
-     * opcionales (con precioAdicional). Idempotente por nombre.
-     */
     public function run(): void
     {
         $base = [
@@ -35,6 +38,7 @@ class IngredienteSeeder extends Seeder
             'Helado de crema',
         ];
 
+        // Extras: solo se AGREGAN a un plato y tienen recargo.
         $extras = [
             'Panceta' => 900,
             'Queso cheddar' => 600,
@@ -46,14 +50,14 @@ class IngredienteSeeder extends Seeder
         foreach ($base as $nombre) {
             Ingrediente::updateOrCreate(
                 ['nombre' => $nombre],
-                ['opcional' => false, 'precioAdicional' => 0]
+                ['precioAdicional' => 0]
             );
         }
 
         foreach ($extras as $nombre => $precio) {
             Ingrediente::updateOrCreate(
                 ['nombre' => $nombre],
-                ['opcional' => true, 'precioAdicional' => $precio]
+                ['precioAdicional' => $precio]
             );
         }
     }

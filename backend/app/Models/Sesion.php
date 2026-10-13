@@ -4,8 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * SESION — ENTIDAD CONGELADA (fuera del DER v2.1).
+ *
+ * El DER v2.1 eliminó SESION / MESA_SESION / CLIENTES. El modelo se
+ * conserva por decisión del equipo (la funcionalidad podría volver en
+ * otra entidad), pero está desconectado del flujo activo: no tiene
+ * rutas ni participa en Pedidos (PEDIDO cuelga de MESA.mesa_id).
+ * Ver documentacion/DER-v2.1-backend.md.
+ */
 class Sesion extends Model
 {
     use HasFactory;
@@ -42,10 +50,8 @@ class Sesion extends Model
         return $this->hasMany(Cliente::class, 'sesionID');
     }
 
-    public function pedidos(): HasMany
-    {
-        return $this->hasMany(Pedido::class);
-    }
+    // Nota: la relación pedidos() se eliminó porque PEDIDO ya no tiene
+    // sesion_id (ahora cuelga de mesa_id, fiel al DER v2.1).
 
     // ==================== MÉTODOS ÚTILES ====================
 

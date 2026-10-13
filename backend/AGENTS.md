@@ -8,7 +8,7 @@ API REST de un restaurante (proyecto final). Laravel 13 + Sanctum. Este repo es 
 - `php artisan test --compact` → corre sobre **SQLite en memoria** (`phpunit.xml`), no necesita MySQL. Un archivo: `php artisan test --compact tests/Feature/XTest.php`; un caso: `--filter='...'` (o `vendor/bin/pest <path>`).
 - `vendor/bin/pint --dirty --format agent` tras tocar cualquier PHP (no hay `pint.json` → preset `laravel`).
   - **Ojo mientras el repo no tenga commits**: sin `HEAD`, `--dirty` evalúa todo el codebase y reformatea los ~31 PHP que no cumplen el preset. Para limitarlo a lo tuyo: `vendor/bin/pint <ruta>`.
-- Setup desde cero: `composer run setup`. Seed: `php artisan db:seed` (roles + `gerente@restaurant.com` / `123456` + 4 mesas).
+- Setup desde cero: `composer run setup`. Seed: `php artisan db:seed` (permisos + roles + usuarios `gerente@restaurant.com` y un mozo, password `123456`, + 4 mesas).
 
 ## Entorno
 
@@ -22,32 +22,32 @@ API REST de un restaurante (proyecto final). Laravel 13 + Sanctum. Este repo es 
 ## Arquitectura
 
 - Flujo: `routes/api.php` → Controller (valida con `$request->validate` y arma el JSON) → `app/Services/*` → `app/Models/*`. **No hay** FormRequests, Policies ni API Resources: no introducirlos sin preguntar.
-- `$request->user()` puede ser **dos cosas**: `Usuario` (empleados, `POST /api/login`) o `Sesion` (grupo de clientes, `POST /api/login-cliente`). Un método tipado `Usuario $x` revienta si lo llama un token de cliente (pasó en `AuthService::logout`).
-- Los aliases de middleware `gerente` / `mozo` / `cliente` están en `bootstrap/app.php` y comparan el rol por el string literal `Gerente` / `Mozo` (ver `database/seeders/RolSeeder.php`).
-- Leer `routes/api.php` antes de agregar rutas: `MesaController` y `RolController` no están ruteados.
+- `$request->user()` devuelve **`Usuario`** (empleados, `POST /api/login`). El login de clientes por código grupal (`Sesion`) quedó **congelado**: sus rutas fueron desconectadas, pero las tablas `sesiones` / `mesa_sesion` / `clientes` y sus modelos siguen en el codebase por si vuelven.
+- Autorización por **permisos**, no por string del rol: el middleware alias `permiso` (`app/Http/Middleware/TienePermiso.php`) consulta `ROL_PERMISO` (`permiso:tomar_pedidos`, `permiso:gestionar_mesas`, etc.). Los aliases viejos `gerente` / `mozo` **no existen más**. El alias `cliente` sigue registrado en `bootstrap/app.php` pero ninguna ruta lo usa.
+- El modelo sigue el **DER v2.1** (`../documentacion/DER-v2.1.dio`, dibujo = fuente de verdad; mapeo en `../documentacion/DER-v2.1-backend.md`): 14 entidades, pedidos por mesa (1 pedido no-finalizado por mesa), platos con ingredientes `opcional` / `por_defecto` en el pivot `plato_ingrediente`.
+- Leer `routes/api.php` antes de agregar rutas.
 
 ## Convenciones que difieren de Laravel
 
-- Columnas en **camelCase**: `mozoID`, `codigoGrupal`, `precioAdicional`, y el pivot `mesa_sesion` con `mesaID` / `sesionID`. No "normalizarlas" a snake_case.
-- Tablas mixtas: `rol` (singular), `usuarios`, `sesiones`, `productos`, `categorias`.
+- Columnas en **camelCase** (nombre exacto del DER, no normalizar): `precioAdicional` (ingredientes) y en las tablas congeladas `mozoID`, `codigoGrupal`, `mesaID` / `sesionID` (pivot `mesa_sesion`). Todo lo demás es snake_case.
+- Tablas mixtas: `rol` y `rol_permiso` (singulares), `usuarios`, `platos`, `categorias`, `mesas`, `pedidos`, `detalle_pedidos`, `detalle_pedido_ingrediente` (la entidad DER `DETALLE_INGREDIENTE`).
+- Estados como strings: `mesas.estado = libre|ocupada|reservada`, `pedidos.estado = en_curso|enviado|en_preparacion|entregado|cerrado|cancelado` (el flujo vive en `PedidoService::cambiarEstado`).
 - El case del namespace debe coincidir con la ruta: `App\Http\Controllers`, `App\Models\...`. PSR-4 es case-sensitive: `app\Models\Sesion` o `App\http\Controllers\...` anda en Windows pero falla en Linux.
 - Mensajes al usuario en español (voseo: "No tenes permisos…"); los identificadores quedan como están.
 - Los "no encontrado" suelen devolver 200 + `{"message": ...}` en vez de 404: seguir al controller hermano (`IngredienteController` es el único que 404ea).
 
 ## Trampas verificadas (no copiar estos patrones)
 
-- **El binding implícito matchea por nombre de parámetro**: la ruta declara `{id}` y el método tipa `$sesion` → `SubstituteBindings` saltea y el container inyecta un modelo vacío (`MozoController@cerrarSesion` y `@verDetalles`). Renombrar la ruta o el parámetro (`sesion`) al tocarlos.
-- `EsMozo` / `EsGerente` hacen `$usuario->rol->nombre` sin chequear el tipo → un token de cliente devuelve 500 en vez de 403.
-- `SesionService::obtenerDetalles()` selecciona `mesas.numero_mesa`, columna que ninguna migración crea.
-- `MesaController` valida `'estado' => 'required|enum'`, regla inexistente → `BadMethodCallException`.
-- `codigoGrupal` es `unique` en todas las filas pero `generarCodigoGrupal()` solo evita códigos de sesiones *activas* → reusar el código de una sesión cerrada tira QueryException.
-- Borrar una `categoria` con productos falla con FK 1451 (no hay cascade en `productos.categoria_id`).
+- El binding implícito matchea por nombre de parámetro: la ruta declara `{id}` y el método tipa `$sesion` → `SubstituteBindings` saltea y el container inyecta un modelo vacío (pasó en `MozoController`, hoy congelado). Al tocar rutas, renombrar la ruta o el parámetro juntos.
+- `SesionService::obtenerDetalles()` (congelado) selecciona `mesas.numero_mesa`, columna que ninguna migración crea; la columna real es `codigo_mesa`.
+- `codigoGrupal` es `unique` en todas las filas pero `generarCodigoGrupal()` (congelado) solo evita códigos de sesiones *activas* → reusar el código de una sesión cerrada tira QueryException.
+- Borrar una `categoria` con platos falla con FK 1451 (no hay cascade en `platos.categoria_id`).
 
 ## Testing
 
-- Solo existen los tests de ejemplo. `tests/Pest.php` tiene `RefreshDatabase` **comentado**: un feature test que toque la DB falla con "no such table" hasta habilitarlo (`->use(RefreshDatabase::class)` o `$this->migrate()` en el test).
-- La única factory es `UserFactory` (del modelo `User`, que no se usa): crear factories de `Usuario`, `Producto`, etc. con `php artisan make:factory` antes de testear contra la DB.
-- Ignorar `App\Models\User`, la migración `users` y el provider de `config/auth.php`: son defaults de Laravel; la app autentica `Usuario` (tabla `usuarios`) y `Sesion` con tokens Sanctum.
+- Tests feature con Pest sobre **SQLite en memoria**. `tests/Pest.php` no habilita `RefreshDatabase` globalmente: cada test que toca la DB lo pide con `uses(RefreshDatabase::class);` arriba del archivo (ver `tests/Feature/PedidoMesaTest.php`).
+- Factories para `Usuario`, `Rol`, `Mesa`, `Categoria`, `Plato` e `Ingrediente` (`database/factories/`). Para pedidos no hay factory: crear el pedido por API o por `PedidoService`.
+- Ignorar `App\Models\User`, la migración `users` y el provider de `config/auth.php`: son defaults de Laravel; la app autentica `Usuario` (tabla `usuarios`) con tokens Sanctum.
 
 ---
 

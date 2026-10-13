@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\AuthService;;
-
 use App\Models\Usuario;
-
+use App\Services\AuthService;
 use Illuminate\Http\Request;
 
 class AuthController extends Controller
@@ -18,20 +16,20 @@ class AuthController extends Controller
             'email' => 'required|email',
             'password' => 'required',
         ]);
+
         return $this->usuarioService->login(
             $request->email,
             $request->password
         );
     }
 
-
     public function logout(Request $request)
     {
         $usuario = $request->user();
-        if (!$usuario instanceof Usuario) {
+        if (! $usuario instanceof Usuario) {
 
             return response()->json([
-                'message' => 'Usuario no autenticado'
+                'message' => 'Usuario no autenticado',
             ], 401);
         }
 

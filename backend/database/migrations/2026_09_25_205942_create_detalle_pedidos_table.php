@@ -7,7 +7,21 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * DETALLE_PEDIDO (DER v2.1): una línea del pedido.
+     *
+     * Cambios vs la versión vieja:
+     *  - `producto_id` → `plato_id` (rename de la entidad PRODUCTO a PLATO).
+     *  - `precio_final` → `subtotal` (nombre exacto del DER dibujado;
+     *    es el total de la línea ya con descuento y agregados).
+     *  - Se quitó el comentario que decía "suerte de subtotal": ahora el
+     *    nombre es el del DER.
+     *
+     * Fórmula (documentada en DER-v2.1-backend.md):
+     *   subtotal = cantidad × (precio_lista + Σ precio_adicional de
+     *              agregados) − descuento
+     * Hoy `descuento` es 0 porque la integración del motor de
+     * promociones en los pedidos está pendiente (PLAN-promociones.md);
+     * `promocion_id` ya existe para congelar la promo aplicada.
      */
     public function up(): void
     {
@@ -18,19 +32,19 @@ return new class extends Migration
                 ->constrained('pedidos')
                 ->cascadeOnDelete();
 
-            $table->foreignId('producto_id')
-                ->constrained('productos');
+            $table->foreignId('plato_id')
+                ->constrained('platos');
 
-            $table->integer('cantidad');
-            $table->decimal('precio_lista', 10, 2); // precio base sin promocion agregada
-            $table->decimal('precio_final', 10, 2); // precio final con promocion agregada (suerte de subtotal)
-
-            $table->foreignId('promocion_id') // nueva relacion con promocion, puede ser nula si no se aplica ninguna promocion
+            // Promo aplicada a la línea (histórico inmutable, nullable):
+            // la oferta vigente en la carta vive en platos.promocion_id.
+            $table->foreignId('promocion_id')
                 ->nullable()
                 ->nullOnDelete()
                 ->constrained('promociones');
 
-
+            $table->integer('cantidad');
+            $table->decimal('precio_lista', 10, 2); // precio unitario de catálogo
+            $table->decimal('subtotal', 10, 2);      // total de la línea
 
             $table->timestamps();
         });

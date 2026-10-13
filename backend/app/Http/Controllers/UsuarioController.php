@@ -16,7 +16,7 @@ class UsuarioController extends Controller
             'email' => 'required|string|email|max:255|unique:usuarios',
             'password' => 'required|string|min:6',
             'rol_id' => 'required|exists:rol,id',
-            'activo' => 'sometimes|boolean'
+            'activo' => 'sometimes|boolean',
         ]);
 
         return $this->usuarioService->register(
@@ -27,18 +27,22 @@ class UsuarioController extends Controller
             $request->boolean('activo', true),
         );
     }
+
     public function index()
     {
         return $this->usuarioService->listar();
     }
+
     public function show(int $id)
     {
         $usuario = $this->usuarioService->obtenerPorId($id);
         if (! $usuario) {
             return response()->json(['message' => 'Usuario no encontrado'], 200);
         }
+
         return $usuario;
     }
+
     public function update(Request $request, int $id)
     {
         $usuario = $this->usuarioService->obtenerPorId($id);
@@ -49,7 +53,7 @@ class UsuarioController extends Controller
 
         $datos = $request->validate([
             'nombre' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|string|email|max:255|unique:usuarios,email,' . $id,
+            'email' => 'sometimes|required|string|email|max:255|unique:usuarios,email,'.$id,
             'password' => 'sometimes|nullable|string|min:6',
             'rol_id' => 'sometimes|required|exists:rol,id',
             'activo' => 'sometimes|boolean',
@@ -84,6 +88,7 @@ class UsuarioController extends Controller
 
         return $this->usuarioService->actualizar($id, $datos);
     }
+
     public function destroy(Request $request, int $id)
     {
         $usuario = $this->usuarioService->obtenerPorId($id);
@@ -99,8 +104,10 @@ class UsuarioController extends Controller
         }
 
         $this->usuarioService->eliminar($usuario->id);
+
         return response()->json(['message' => 'Usuario dado de baja exitosamente'], 200);
     }
+
     public function reactivar(Request $request, int $id)
     {
         $usuario = $this->usuarioService->obtenerPorId($id);
@@ -110,6 +117,7 @@ class UsuarioController extends Controller
         }
 
         $this->usuarioService->reactivar($usuario->id);
+
         return response()->json(['message' => 'Usuario reactivado exitosamente'], 200);
     }
 }

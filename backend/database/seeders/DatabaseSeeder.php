@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,15 +14,17 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
+        // Orden importa: permisos antes de roles (RolSeeder los
+        // asigna), y usuarios antes de mesas (MesaSeeder asigna el
+        // mozo responsable).
         $this->call([
+            PermisoSeeder::class,
             RolSeeder::class,
             UsuarioSeeder::class,
             MesaSeeder::class,
             CategoriaSeeder::class,
             IngredienteSeeder::class,
-            ProductoSeeder::class,
+            PlatoSeeder::class,
         ]);
     }
 }

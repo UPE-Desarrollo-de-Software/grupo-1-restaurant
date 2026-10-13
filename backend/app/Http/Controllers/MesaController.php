@@ -2,61 +2,69 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Mesa;
 use App\Services\MesaService;
+use Illuminate\Http\Request;
 
+/**
+ * CRUD de MESAS (DER v2.1).
+ *
+ * La mesa pasó a ser la unidad central del modelo: los pedidos cuelgan
+ * de `pedidos.mesa_id` y el estado de la mesa se sincroniza con ellos
+ * (libre ↔ ocupada, ver PedidoService).
+ */
 class MesaController extends Controller
 {
     public function __construct(private MesaService $service) {}
 
-
+    /**
+     * Listado de todas las mesas.
+     */
     public function index()
     {
-        $mesa = $this->service->obtenerDisponibles();
+        $mesas = $this->service->obtenerMesas();
 
-        if ($mesa->isEmpty()) {
-            $data = [
-                'message' => 'No se encontraron Mesas disponibles'
-            ];
-            return response()->json($data, 200);
+        if ($mesas->isEmpty()) {
+            return response()->json([
+                'message' => 'No se encontraron mesas',
+            ], 200);
         }
 
-        return response()->json($mesa, 200);
+        return response()->json($mesas, 200);
     }
 
+    /**
+     * Listado de mesas libres (para asignar/comenzar servicio).
+     */
+    public function disponibles()
+    {
+        return response()->json($this->service->obtenerDisponibles(), 200);
+    }
 
-    public function create(Request $request)
+    /**
+     * Crear una mesa. `estado` arranca en 'libre' salvo que se pida
+     * otro (valores del DER: libre | ocupada | reservada).
+     */
+    public function store(Request $request)
     {
         $datos = $request->validate([
-            'capacidad' => 'required|integer',
-            'estado' => ['required', 'in:disponible,ocupada,reservada'],
-            'qr' => 'string',
+            'codigo_mesa' => 'required|integer',
+            'capacidad' => 'required|integer|min:1',
+            'estado' => 'nullable|in:libre,ocupada,reservada',
+            'qr' => 'nullable|string',
+            // Mozo responsable de la mesa (DER: USUARIO "atiende" MESA).
+            'usuario_id' => 'nullable|exists:usuarios,id',
         ]);
 
         $mesa = $this->service->crearMesa($datos);
 
         return response()->json([
-            'message' => 'Mesa Creada exitosamente',
-            'mesa' => $mesa
+            'message' => 'Mesa creada exitosamente',
+            'mesa' => $mesa,
         ], 201);
     }
 
-
-    public function store()
-    {
-        $mesas = $this->service->obtenerMesas();
-        return response()->json([
-            'mesas' => $mesas
-        ]);
-    }
-
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-
         $mesa = $this->service->obtenerPorId($id);
 
         if (! $mesa) {
@@ -66,40 +74,30 @@ class MesaController extends Controller
         return response()->json($mesa, 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         $datos = $request->validate([
-            'capacidad' => 'required|integer',
-            'estado' => 'required|enum',
-            'qr' => 'string',
+            'codigo_mesa' => 'required|integer',
+            'capacidad' => 'required|integer|min:1',
+            'estado' => 'required|in:libre,ocupada,reservada',
+            'qr' => 'nullable|string',
+            'usuario_id' => 'nullable|exists:usuarios,id',
         ]);
 
         $mesa = $this->service->actualizar($id, $datos);
 
         return response()->json([
-            'message' => 'Mesa Actualizada correctamente',
-            'Mesa' => $mesa,
+            'message' => 'Mesa actualizada correctamente',
+            'mesa' => $mesa,
         ], 200);
     }
-
 
     public function destroy(string $id)
     {
         $this->service->eliminar($id);
 
         return response()->json([
-            'message' => 'Mesa eliminada exitosamente'
+            'message' => 'Mesa eliminada exitosamente',
         ], 200);
     }
 }

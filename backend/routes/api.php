@@ -3,105 +3,139 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\IngredienteController;
-use App\Http\Controllers\MozoController;
+use App\Http\Controllers\MesaController;
 use App\Http\Controllers\PedidoController;
-use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\PlatoController;
 use App\Http\Controllers\RolController;
-use App\Http\Controllers\SesionController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| API — alineada al DER v2.1
+|--------------------------------------------------------------------------
+| Modelo activo: USUARIO (con permisos ROL_PERMISO), MESA (mozo
+| responsable), PEDIDO cuelga de MESA, PLATO, INGREDIENTE con flags en
+| PLATO_INGREDIENTE, PROMOCION (catálogo vía platos.promocion_id) y
+| RESERVA.
+|
+| El flujo de SESION / CLIENTES (login por código grupal) quedó
+| DESCONECTADO: sus rutas no existen más y el código quedó congelado
+| (SesionController, MozoController, SesionService, ClienteMiddleware).
+| Ver documentacion/DER-v2.1-backend.md.
+|
+| La autorización usa el middleware con parámetro `permiso:` (tabla
+| ROL_PERMISO), que reemplazó a los viejos aliases gerente/mozo.
+*/
+
+// ==================== PÚBLICOS ====================
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// MENU
+// CARTA
 
 Route::get('/categorias', [CategoriaController::class, 'index']);
 
 Route::get('/categorias/{id}', [CategoriaController::class, 'show']);
-Route::get('/productos', [ProductoController::class, 'index']);
 
-// con esta producto por id para mostrar uno en especifico
-Route::get('/productos/{id}', [ProductoController::class, 'show']);
+Route::get('/platos', [PlatoController::class, 'index']);
+
+// plato por id para mostrar uno en específico (con sus ingredientes)
+Route::get('/platos/{id}', [PlatoController::class, 'show']);
+
 Route::get('/ingredientes', [IngredienteController::class, 'index']);
 
 Route::get('/ingredientes/{id}', [IngredienteController::class, 'show']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
-//  CLIENTE
+// ==================== CUALQUIER EMPLEADO AUTENTICADO ====================
 
-Route::post('/login-cliente', [SesionController::class, 'loginConCodigoGrupal']);
-// limitar la cantidad de logins a la capacidad de la mesa
+Route::middleware('auth:sanctum')->group(function () {
 
-Route::middleware(['auth:sanctum', 'cliente'])->group(function () {
-    // Funciones con la sesion del cliente abierta
+    Route::post('/logout', [AuthController::class, 'logout']);
 
-    Route::post('/logout-cliente', [SesionController::class, 'logout']);
-    Route::get('/sesion', [SesionController::class, 'detalles']);
-    // Ruta para agregar productos a pedido
-    Route::post('/sesion/pedidos/agregar-producto', [PedidoController::class, 'agregarProducto']);
-    // ruta para enviar pedido
-    Route::post('/sesion/pedidos/enviar-pedido', [PedidoController::class, 'enviarPedido']);
+    // Mesas: cualquier empleado puede verlas (el mozo las necesita para
+    // tomar pedidos); el CRUD es del gerente (permiso gestionar_mesas).
+    Route::get('/mesas', [MesaController::class, 'index']);
+    Route::get('/mesas/disponibles', [MesaController::class, 'disponibles']);
+    Route::get('/mesas/{mesa}', [MesaController::class, 'show']);
 });
 
-// MOZO
-Route::middleware(['auth:sanctum', 'mozo'])->group(function () {
+// ==================== TOMA DE PEDIDOS (mozo / gerente) ====================
+// Permiso tomar_pedidos: Mozo y Gerente (ver RolSeeder).
 
-    // crear sesion con pin de 4 digitos para el cliente
-    Route::post('/mesas/{mesa}/sesion', [MozoController::class, 'crearSesion']);
+Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () {
 
-    Route::post('/sesiones/{sesion}/cerrar', [MozoController::class, 'cerrarSesion']);
+    // Pedido no finalizado de una mesa.
+    Route::get('/mesas/{mesa}/pedido-activo', [PedidoController::class, 'pedidoActivo']);
 
-    Route::get('/sesiones/{sesion}', [MozoController::class, 'verDetalles']);
+    // Agrega líneas al pedido en curso de la mesa (lo crea si no existe).
+    // Regla del DER: a lo sumo 1 pedido no-finalizado por mesa.
+    Route::post('/mesas/{mesa}/pedidos', [PedidoController::class, 'agregarProducto']);
+
+    // Envia el pedido a cocina (estado "enviado").
+    Route::post('/pedidos/{pedido}/enviar', [PedidoController::class, 'enviarPedido']);
+
+    // Avanza el flujo del DER o cancela; los estados finales liberan la mesa.
+    Route::put('/pedidos/{pedido}/estado', [PedidoController::class, 'cambiarEstado']);
 });
 
-// GERENTE
-Route::middleware(['auth:sanctum', 'gerente'])->group(function () {
+// ==================== GESTIÓN (permisos por módulo) ====================
 
-    // USUARIOS
+// USUARIOS
 
-    // aca agregar todas la funciones que requieran inicio de sesion y rol de gerente
+Route::middleware(['auth:sanctum', 'permiso:gestionar_usuarios'])->group(function () {
+
     Route::post('/usuarios/registrar', [UsuarioController::class, 'register']);
     Route::get('/usuarios', [UsuarioController::class, 'index']);
     Route::get('/usuarios/{id}', [UsuarioController::class, 'show'])->whereNumber('id');
     Route::put('/usuarios/{id}', [UsuarioController::class, 'update'])->whereNumber('id');
     Route::delete('/usuarios/{id}', [UsuarioController::class, 'destroy'])->whereNumber('id');
     Route::post('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar'])->whereNumber('id');
+});
 
-    // nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front
+// ROLES
+
+Route::middleware(['auth:sanctum', 'permiso:gestionar_roles'])->group(function () {
+
+    // para mostrar los roles en el front al crear/editar usuarios
     Route::get('/roles', [RolController::class, 'index']);
+});
 
-    // CATEGORIAS
-    // con esta ruta traemos las categorias que despues se muestran en el front
+// CARTA: categorías y platos
+
+Route::middleware(['auth:sanctum', 'permiso:gestionar_categorias'])->group(function () {
 
     Route::post('/categorias', [CategoriaController::class, 'store']);
-
     Route::put('/categorias/{id}', [CategoriaController::class, 'update']);
-
     Route::delete('/categorias/{id}', [CategoriaController::class, 'destroy']);
+});
 
-    // PRODUCTOS
-    // con esta traemos los productos
+Route::middleware(['auth:sanctum', 'permiso:gestionar_platos'])->group(function () {
 
-    Route::post('/productos', [ProductoController::class, 'store']);
+    Route::post('/platos', [PlatoController::class, 'store']);
+    Route::put('/platos/{id}', [PlatoController::class, 'update']);
+    Route::delete('/platos/{id}', [PlatoController::class, 'destroy']);
+});
 
-    Route::put('/productos/{id}', [ProductoController::class, 'update']);
+// INGREDIENTES
 
-    Route::delete('/productos/{id}', [ProductoController::class, 'destroy']);
-
-    // INGREDIENTES
+Route::middleware(['auth:sanctum', 'permiso:gestionar_ingredientes'])->group(function () {
 
     Route::post('/ingredientes', [IngredienteController::class, 'store']);
-
     Route::put('/ingredientes/{id}', [IngredienteController::class, 'update']);
-
     Route::delete('/ingredientes/{id}', [IngredienteController::class, 'destroy']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+// MESAS: alta, edición y baja (el listado es público para empleados arriba)
 
-    Route::post('/logout', [AuthController::class, 'logout']);
+Route::middleware(['auth:sanctum', 'permiso:gestionar_mesas'])->group(function () {
+
+    Route::post('/mesas', [MesaController::class, 'store']);
+    Route::put('/mesas/{mesa}', [MesaController::class, 'update']);
+    Route::delete('/mesas/{mesa}', [MesaController::class, 'destroy']);
 });

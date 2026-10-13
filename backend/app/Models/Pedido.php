@@ -6,19 +6,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * PEDIDO (DER v2.1): cuenta de una mesa.
+ *
+ * Cuelga de MESA (no de sesión ni de cliente: esas entidades se
+ * eliminaron del DER). El mozo responsable se deriva por
+ * PEDIDO → MESA → USUARIO. Regla del DER: a lo sumo 1 pedido
+ * no-finalizado por mesa (la valida PedidoService).
+ */
 class Pedido extends Model
 {
     protected $fillable = [
-        'sesion_id',
+        'mesa_id',
         'estado',
         'total',
         'fecha',
-        'cliente_id',
     ];
 
-    public function sesion(): BelongsTo
+    public function mesa(): BelongsTo
     {
-        return $this->belongsTo(Sesion::class);
+        return $this->belongsTo(Mesa::class);
     }
 
     public function detalles(): HasMany
@@ -26,8 +33,11 @@ class Pedido extends Model
         return $this->hasMany(DetallePedido::class);
     }
 
-    public function cliente()
+    /**
+     * Estados finales: liberan la mesa y no admiten cambios.
+     */
+    public function estaFinalizado(): bool
     {
-        return $this->belongsTo(Cliente::class);
+        return in_array($this->estado, ['cerrado', 'cancelado'], true);
     }
 }

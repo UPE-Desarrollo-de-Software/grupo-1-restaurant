@@ -7,7 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * CLIENTES — ENTIDAD CONGELADA (fuera del DER v2.1: "dividir la
+     * cuenta" y los clientes recurrentes quedaron fuera del MVP).
+     * Se conserva la tabla por si la funcionalidad vuelve; no tiene
+     * rutas ni middleware activos. Ver documentacion/DER-v2.1-backend.md.
      */
     public function up(): void
     {

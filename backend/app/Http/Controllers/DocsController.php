@@ -18,11 +18,10 @@ class DocsController extends Controller
         'Autenticación',
         'Usuarios y roles',
         'Categorías',
-        'Productos',
+        'Platos',
         'Ingredientes',
-        'Sesiones de clientes',
+        'Mesas',
         'Pedidos',
-        'Operación de mesa (mozo)',
         'Otras',
     ];
 
@@ -37,12 +36,10 @@ class DocsController extends Controller
         'UsuarioController' => 'Usuarios y roles',
         'RolController' => 'Usuarios y roles',
         'CategoriaController' => 'Categorías',
-        'ProductoController' => 'Productos',
+        'PlatoController' => 'Platos',
         'IngredienteController' => 'Ingredientes',
-        'SesionController' => 'Sesiones de clientes',
+        'MesaController' => 'Mesas',
         'PedidoController' => 'Pedidos',
-        'MozoController' => 'Operación de mesa (mozo)',
-        'MesaController' => 'Operación de mesa (mozo)',
         'Closure' => 'Autenticación',
     ];
 
@@ -69,24 +66,26 @@ class DocsController extends Controller
         'CategoriaController@store' => 'Crear una categoría.',
         'CategoriaController@update' => 'Actualizar una categoría.',
         'CategoriaController@destroy' => 'Eliminar una categoría.',
-        'ProductoController@index' => 'Listar todos los productos.',
-        'ProductoController@show' => 'Obtener un producto por ID, con sus ingredientes.',
-        'ProductoController@store' => 'Crear un producto.',
-        'ProductoController@update' => 'Actualizar un producto.',
-        'ProductoController@destroy' => 'Eliminar un producto.',
+        'PlatoController@index' => 'Listar todos los platos disponibles, con su categoría.',
+        'PlatoController@show' => 'Obtener un plato por ID, con sus ingredientes y flags opcional/por_defecto.',
+        'PlatoController@store' => 'Crear un plato con su categoría, promo de catálogo (opcional) e ingredientes.',
+        'PlatoController@update' => 'Actualizar un plato (incluye los flags de sus ingredientes).',
+        'PlatoController@destroy' => 'Eliminar un plato.',
         'IngredienteController@index' => 'Listar todos los ingredientes.',
         'IngredienteController@show' => 'Obtener un ingrediente por ID.',
-        'IngredienteController@store' => 'Crear un ingrediente.',
+        'IngredienteController@store' => 'Crear un ingrediente con su precio adicional de catálogo.',
         'IngredienteController@update' => 'Actualizar un ingrediente.',
         'IngredienteController@destroy' => 'Eliminar un ingrediente.',
-        'SesionController@loginConCodigoGrupal' => 'Entrar a la sesión del grupo con el código grupal de 4 dígitos y obtener un token de cliente.',
-        'SesionController@detalles' => 'Ver la sesión actual: mesas, mozo, estado y horarios.',
-        'SesionController@logout' => 'Salir de la sesión como cliente: borra sus tokens.',
-        'PedidoController@agregarProducto' => 'Agregar uno o varios productos al pedido en selección de la sesión, con ingredientes opcionales y su precio adicional.',
-        'PedidoController@enviarPedido' => 'Enviar el pedido en selección de la sesión: lo pasa a "recibido" para que llegue a cocina.',
-        'MozoController@crearSesion' => 'Crear una sesión en una o más mesas y generar el código grupal.',
-        'MozoController@cerrarSesion' => 'Cerrar una sesión propia: la marca como cerrada y saca a los clientes.',
-        'MozoController@verDetalles' => 'Ver el detalle de una sesión: mesas, clientes activos y estado.',
+        'MesaController@index' => 'Listar todas las mesas, con su mozo responsable y estado.',
+        'MesaController@disponibles' => 'Listar las mesas libres (sin pedido activo ni reserva).',
+        'MesaController@show' => 'Obtener una mesa por ID.',
+        'MesaController@store' => 'Crear una mesa con su código, capacidad y mozo responsable.',
+        'MesaController@update' => 'Actualizar una mesa (código, capacidad, estado, QR y mozo).',
+        'MesaController@destroy' => 'Eliminar una mesa.',
+        'PedidoController@pedidoActivo' => 'Ver el pedido no finalizado de una mesa, con sus líneas e ingredientes.',
+        'PedidoController@agregarProducto' => 'Agregar líneas al pedido en curso de la mesa (lo crea si no existe). Soporta agregar y excluir ingredientes según los flags del plato. Regla del DER: 1 pedido activo por mesa.',
+        'PedidoController@enviarPedido' => 'Enviar el pedido en curso a cocina: pasa a estado "enviado".',
+        'PedidoController@cambiarEstado' => 'Avanzar el pedido por el flujo del DER (enviado → en_preparacion → entregado → cerrado) o cancelarlo. Cerrar/cancelar libera la mesa.',
 
     ];
 
@@ -162,17 +161,47 @@ class DocsController extends Controller
     /**
      * Etiqueta de acceso según los middlewares de la ruta.
      *
+     * La autorización es por permiso (`permiso:nombre`, tabla
+     * ROL_PERMISO, DER v2.1). El badge muestra el rol mínimo que tiene
+     * ese permiso según RolSeeder.
+     *
      * @param  array<int, mixed>  $middleware
      * @return array{texto: string, clase: string}
      */
     private function acceso(array $middleware): array
     {
         $etiquetas = [
-            'gerente' => ['texto' => 'Gerente', 'clase' => 'gerente'],
-            'mozo' => ['texto' => 'Mozo', 'clase' => 'mozo'],
-            'cliente' => ['texto' => 'Cliente', 'clase' => 'cliente'],
             'auth:sanctum' => ['texto' => 'Empleado', 'clase' => 'empleado'],
         ];
+
+        // Permisos exclusivos del gerente.
+        $gerente = [
+            'permiso:gestionar_usuarios',
+            'permiso:gestionar_roles',
+            'permiso:gestionar_categorias',
+            'permiso:gestionar_platos',
+            'permiso:gestionar_ingredientes',
+            'permiso:gestionar_promociones',
+            'permiso:gestionar_mesas',
+        ];
+
+        // Permisos que también tiene el mozo.
+        $mozo = [
+            'permiso:tomar_pedidos',
+            'permiso:gestionar_reservas',
+        ];
+
+        foreach ($gerente as $permiso) {
+            if (in_array($permiso, $middleware, true)) {
+                return ['texto' => 'Gerente', 'clase' => 'gerente'];
+            }
+        }
+
+        foreach ($mozo as $permiso) {
+            if (in_array($permiso, $middleware, true)) {
+                return ['texto' => 'Mozo', 'clase' => 'mozo'];
+            }
+        }
 
         foreach ($etiquetas as $alias => $etiqueta) {
             if (in_array($alias, $middleware, true)) {

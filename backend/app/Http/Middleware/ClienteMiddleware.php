@@ -7,8 +7,12 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-// el mozo no tiene permiso ya que debera tener sus propias funciones para tomar pedidos
-
+/**
+ * MIDDLEWARE CONGELADO (fuera del DER v2.1): validaba tokens de
+ * cliente de una sesión activa. Ya no se usa en ninguna ruta (el alias
+ * 'cliente' sigue registrado en bootstrap/app.php por si el flujo
+ * vuelve). Ver documentacion/DER-v2.1-backend.md.
+ */
 class ClienteMiddleware
 {
     public function handle(Request $request, Closure $next): Response

@@ -7,6 +7,13 @@ use App\Models\Sesion;
 use App\Services\SesionService;
 use Illuminate\Http\Request;
 
+/**
+ * CONTROLADOR CONGELADO (fuera del DER v2.1): manejaba las sesiones
+ * del mozo (crear/cerrar/ver), un flujo eliminado del DER. Las rutas
+ * de operación del mozo ahora son las de PedidoController sobre
+ * mesas. Se conserva el código por si vuelve. Ver
+ * documentacion/DER-v2.1-backend.md.
+ */
 class MozoController extends Controller
 {
     public function __construct(private SesionService $sesionService) {}
