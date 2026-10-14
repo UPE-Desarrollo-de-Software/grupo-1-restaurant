@@ -6,7 +6,7 @@ import { LoginPage } from './pages/Login/Login'
 import { RegisterPage } from './pages/Register/Register'
 import { RequireAuth } from './components/RequireAuth'
 import { LandingPage } from './pages/Landing/Landing'
-import { ABMProductosPage } from './pages/ABMProductos/ABMProductos'
+import { CrearPlatoPage } from './pages/Gerente/Carta/Platos/CrearPlato'
 import { RolesProvider } from './context/RolesContext/RolesContext'
 import { DashboardPage } from './pages/Gerente/Dashboard/Dashboard'
 import { CartaHubPage } from './pages/Gerente/Carta/CartaHub'
@@ -19,6 +19,11 @@ import { ComandasPage } from './pages/Gerente/Mesas/Comandas'
 import { ReservasPage } from './pages/Gerente/Reservas/Reservas'
 import { UsuariosPage } from './pages/Gerente/Usuarios/Usuarios'
 import { HistorialAccionesPage } from './pages/Gerente/HistorialAcciones/HistorialAcciones'
+import { CocinaPage } from './pages/Cocina/Cocina'
+import { MozoPage } from './pages/Mozo/Mozo'
+import { MozoReservasPage } from './pages/Mozo/MozoReservas'
+import { PlatosHubPage } from './pages/Gerente/Carta/Platos/PlatosHub'
+import { EditarPlatoPage } from './pages/Gerente/Carta/Platos/EditarPlato'
 
 function App() {
 
@@ -34,7 +39,9 @@ function App() {
               <Route element={<RequireAuth rolesPermitidos={['Gerente']}><Outlet/></RequireAuth>}>
                 <Route path='/gerente' element={<DashboardPage/>}/>
                 <Route path='/gerente/carta' element={<CartaHubPage/>}/>
-                <Route path='/gerente/carta/productos' element={<ABMProductosPage/>}/>
+                <Route path='/gerente/carta/productos' element={<PlatosHubPage/>}/>
+                <Route path='/gerente/carta/productos/crear' element={<CrearPlatoPage/>}/>
+                <Route path='/gerente/carta/productos/:id/editar' element={<EditarPlatoPage/>}/>
                 <Route path='/gerente/carta/disponibilidad' element={<DisponibilidadPage/>}/>
                 <Route path='/gerente/carta/promociones' element={<PromocionesPage/>}/>
                 <Route path='/gerente/mesas' element={<MesasHubPage/>}/>
@@ -44,6 +51,16 @@ function App() {
                 <Route path='/gerente/reservas' element={<ReservasPage/>}/>
                 <Route path='/gerente/usuarios' element={<UsuariosPage/>}/>
                 <Route path='/gerente/historial-acciones' element={<HistorialAccionesPage/>}/>
+              </Route>
+
+
+              <Route element={<RequireAuth rolesPermitidos={['Cocina']}><Outlet/></RequireAuth>}>
+                <Route path='/cocina' element={<CocinaPage/>}/>
+              </Route>
+
+              <Route element={<RequireAuth rolesPermitidos={['Mozo']}><Outlet/></RequireAuth>}>
+                <Route path='/mozo' element={<MozoPage/>}/>
+                <Route path='/mozo/reservas' element={<MozoReservasPage/>}/>
               </Route>
 
 

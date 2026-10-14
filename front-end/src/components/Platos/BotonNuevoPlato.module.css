@@ -1,0 +1,27 @@
+.boton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+  border-radius: var(--radius-default);
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.boton:hover {
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary);
+}
+
+.boton:active {
+  background-color: var(--color-primary-container);
+}
+
+.icono {
+  font-size: 1.15rem;
+}

@@ -4,6 +4,6 @@ import { useRoles } from "./useRoles"
 export function useRol() {
     const { roles, loading } = useRoles()
     const usuario = getUsuario()
-    const nombre = roles.find(r => r.id === usuario?.rol_id)?.nombre
-    return { nombre, esGerente: nombre === 'Gerente', loading, usuario }
+    const nombreRol = roles.find(r => r.id === usuario?.rol_id)?.nombre
+    return { nombreRol, esGerente: nombreRol === 'Gerente', loading, usuario }
 }

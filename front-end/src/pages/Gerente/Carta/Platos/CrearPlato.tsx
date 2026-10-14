@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
-import s from './ABMProductos.module.css'
-import { useCategorias } from '../../hooks/useCategorias'
-import { useIngredientes } from '../../hooks/useIngredientes'
-import { productoSchema } from '../../schemas/menu'
-import { createProductos } from '../../api/productos'
+import s from './Platos.module.css'
+import { useCategorias } from '../../../../hooks/useCategorias'
+import { useIngredientes } from '../../../../hooks/useIngredientes'
+import { productoSchema } from '../../../../schemas/menu'
+import { createProductos } from '../../../../api/productos'
 
-export function ABMProductosPage() {
+export function CrearPlatoPage() {
     const [categoria_id, setCategoriaId] = useState('')
     const [nombre, setNombre] = useState('')
     const [descripcion, setDescripcion] = useState('')

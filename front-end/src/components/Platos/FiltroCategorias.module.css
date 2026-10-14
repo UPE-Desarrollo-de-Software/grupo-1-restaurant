@@ -1,0 +1,39 @@
+.wrapper {
+  display: flex;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: var(--space-2xs);
+}
+
+.wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: var(--space-xs) var(--space-sm);
+  background-color: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.chip:hover {
+  background-color: var(--color-surface-container-high);
+}
+
+.chipActivo {
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.chipActivo:hover {
+  background-color: var(--color-primary-container);
+}
