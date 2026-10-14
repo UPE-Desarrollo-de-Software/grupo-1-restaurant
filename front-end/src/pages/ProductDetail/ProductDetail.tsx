@@ -27,6 +27,17 @@ const PRODUCTO_DEMO: Producto & { ingredientes: Ingrediente[] } = {
   ],
 }
 
+const GUARNICIONES_SUGERIDAS = [
+  { nombre: 'Papas fritas', descripcion: 'Bastón rústicas', icono: 'bi-basket2' },
+  { nombre: 'Ensalada', descripcion: 'Mixta de huerta', icono: 'bi-flower1' },
+  { nombre: 'Puré de papas', descripcion: 'Cremoso manteca', icono: 'bi-egg-fried' },
+]
+
+const MARIDAJES_SUGERIDOS = [
+  'Cerveza Rubia Artesanal',
+  'Copa de Malbec Roble de la casa',
+]
+
 const formatearPrecio = (precio: number): string =>
   new Intl.NumberFormat('es-AR', {
     style: 'currency',
@@ -214,6 +225,54 @@ function ProductDetailView({
             )}
           </section>
         )}
+
+        <section className={s.recommendations} aria-labelledby="sides-title">
+          <div className={s.sectionHeading}>
+            <h2 id="sides-title" className={s.sectionTitle}>
+              <i className="bi bi-basket" aria-hidden="true" />
+              Guarnición sugerida
+            </h2>
+            <span className={s.sectionHint}>A elección al pedir</span>
+          </div>
+          <p className={s.recommendationNotice}>
+            Sugerencias de referencia; todavía no provienen de la API.
+          </p>
+          <ul className={s.sidesList}>
+            {GUARNICIONES_SUGERIDAS.map((guarnicion) => (
+              <li key={guarnicion.nombre} className={s.sideCard}>
+                <span className={s.sideIllustration} aria-hidden="true">
+                  <i className={`bi ${guarnicion.icono}`} />
+                </span>
+                <span className={s.sideName}>{guarnicion.nombre}</span>
+                <span className={s.sideDescription}>{guarnicion.descripcion}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className={s.recommendations} aria-labelledby="pairing-title">
+          <h2 id="pairing-title" className={s.sectionTitle}>
+            <i className="bi bi-cup-straw" aria-hidden="true" />
+            Maridaje recomendado
+          </h2>
+          <div className={s.pairingCard}>
+            <span className={s.pairingIllustration} aria-hidden="true">
+              <i className="bi bi-cup-straw" />
+            </span>
+            <div className={s.pairingInfo}>
+              {MARIDAJES_SUGERIDOS.map((maridaje, index) => (
+                <span key={maridaje}>
+                  {index > 0 && <span className={s.pairingAlternative}>o </span>}
+                  <span className={s.pairingName}>{maridaje}</span>
+                </span>
+              ))}
+              <span className={s.sommelierNote}>
+                <i className="bi bi-hand-thumbs-up" aria-hidden="true" />
+                Recomendación del sommelier
+              </span>
+            </div>
+          </div>
+        </section>
 
         <Button
           variant="primary"

@@ -5,6 +5,7 @@ import { AuthLayout } from './layouts/AuthLayout'
 import { LoginPage } from './pages/Login/Login'
 import { RegisterPage } from './pages/Register/Register'
 import { ProductDetailPage } from './pages/ProductDetail/ProductDetail'
+import { ReservasPage } from './pages/Reservas/Reservas'
 import { RequireAuth } from './components/RequireAuth'
 import { ROLES } from './api/auth'
 
@@ -16,6 +17,7 @@ function App() {
             <Route element={<MainLayout/>}>
               <Route path='/menu' element={<MenuPage/>}/>
               <Route path='/producto/:id' element={<ProductDetailPage/>}/>
+              <Route path='/reservas' element={<ReservasPage/>}/>
             </Route>
             <Route element={<AuthLayout/>}>
               <Route path='/login' element={<LoginPage/>}/>
