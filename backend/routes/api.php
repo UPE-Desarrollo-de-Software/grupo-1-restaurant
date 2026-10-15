@@ -7,9 +7,9 @@ use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\MesaController;
 use App\Http\Controllers\PedidoController;
-use App\Http\Controllers\ProductoController;
-use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\PlatoController;
+use App\Http\Controllers\PromocionController;
+use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Http\Request;
@@ -54,6 +54,10 @@ Route::get('/ingredientes', [IngredienteController::class, 'index']);
 
 Route::get('/ingredientes/{id}', [IngredienteController::class, 'show']);
 
+Route::get('/promociones', [PromocionController::class, 'index']);
+
+Route::get('/promociones/{id}', [PromocionController::class, 'show']);
+
 Route::post('/login', [AuthController::class, 'login']);
 
 // ACCESO DEL COMENSAL (auto-pedido): público y con throttle. Body:
@@ -82,11 +86,10 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
     // Cuenta dividida en partes por pedido raíz.
     Route::get('/cuenta', [ClienteController::class, 'cuenta']);
 });
-//ruta para crear reserva pero por un cliente desde la web
+// ruta para crear reserva pero por un cliente desde la web
 Route::post('/cliente/reservas', [ReservaController::class, 'crear']);
 // Ruta para cancelar reserva por un cliente desde la web
 Route::patch('/cliente/reservas/{id}/cancelar', [ReservaController::class, 'cancelar']);
-
 
 // ==================== CUALQUIER EMPLEADO AUTENTICADO ====================
 
@@ -158,13 +161,13 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_usuarios'])->group(functio
     Route::post('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar'])->whereNumber('id');
 });
 
-    //RESERVAS
-    //ruta para crear reservas desde el lado del restaurante por parte del gerente
-    Route::post('/reservas', [ReservaController::class, 'crear']);
-    //ruta para cancelar reservas
-    Route::patch('/reservas/{id}/cancelar', [ReservaController::class, 'cancelar']);
+// RESERVAS
+// ruta para crear reservas desde el lado del restaurante por parte del gerente
+Route::post('/reservas', [ReservaController::class, 'crear']);
+// ruta para cancelar reservas
+Route::patch('/reservas/{id}/cancelar', [ReservaController::class, 'cancelar']);
 
-    // nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front
+// nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front
 // ROLES
 
 Route::middleware(['auth:sanctum', 'permiso:gestionar_roles'])->group(function () {
@@ -208,4 +211,12 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_mesas'])->group(function (
 
     // Aforo del lugar (PARAMETRO.capacidad_total).
     Route::put('/configuracion', [ConfiguracionController::class, 'update']);
+});
+
+Route::middleware(['auth:sanctum', 'permiso:gestionar_promociones'])->group(function () {
+    Route::get('/promociones', [PromocionController::class, 'index']);
+    Route::get('/promociones/{id}', [PromocionController::class, 'show'])->whereNumber('id');
+    Route::post('/promociones', [PromocionController::class, 'store']);
+    Route::put('/promociones/{id}', [PromocionController::class, 'update'])->whereNumber('id');
+    Route::delete('/promociones/{id}', [PromocionController::class, 'destroy'])->whereNumber('id');
 });
