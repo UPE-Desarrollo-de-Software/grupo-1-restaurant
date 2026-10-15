@@ -3,37 +3,57 @@
 namespace App\Services;
 
 use App\Models\Ingrediente;
+use App\Repositories\IngredienteRepository;
+use Illuminate\Support\Collection;
 
-
+/**
+ * Ingredientes del catálogo (capa de dominio sobre el Repository).
+ *
+ * Los flags `opcional` / `por_defecto` ya no viven acá: están en el
+ * pivot PLATO_INGREDIENTE (DER v2.2+).
+ */
 class IngredienteService
 {
+    public function __construct(private IngredienteRepository $ingredientes) {}
 
+    /**
+     * @return Collection<int, Ingrediente>
+     */
     public function obtenerTodos()
     {
-        return Ingrediente::all();
+        return $this->ingredientes->todos();
     }
 
-    public function obtenerPorId($id)
+    public function obtenerPorId($id): Ingrediente
     {
-        return Ingrediente::findOrFail($id);
+        return $this->ingredientes->porIdOrFail((int) $id);
     }
 
-    public function crear(array $datos)
+    /**
+     * @param  array<string, mixed>  $datos
+     */
+    public function crear(array $datos): Ingrediente
     {
-        return Ingrediente::create($datos);
+        return $this->ingredientes->crear($datos);
     }
 
-    public function actualizar($id, array $datos)
+    /**
+     * @param  array<string, mixed>  $datos
+     */
+    public function actualizar($id, array $datos): Ingrediente
     {
-        $ingrediente = Ingrediente::findOrFail($id);
-        $ingrediente->update($datos);
-        return $ingrediente;
+        $ingrediente = $this->ingredientes->porIdOrFail((int) $id);
+
+        return $this->ingredientes->actualizar($ingrediente, $datos);
     }
 
-    public function eliminar($id)
+    public function eliminar($id): void
     {
-        $ingrediente = Ingrediente::findOrFail($id);
-        $ingrediente->productos()->detach(); // Eliminar relaciones con productos
-        $ingrediente->delete();
+        $ingrediente = $this->ingredientes->porIdOrFail((int) $id);
+
+        // Primero lo saca de todos los platos (pivot plato_ingrediente),
+        // y recién ahí lo da de baja.
+        $this->ingredientes->desprenderDePlatos($ingrediente);
+        $this->ingredientes->eliminar($ingrediente);
     }
 }

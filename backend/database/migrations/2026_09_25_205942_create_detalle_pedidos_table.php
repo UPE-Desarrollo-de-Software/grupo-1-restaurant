@@ -7,7 +7,25 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * DETALLE_PEDIDO (DER v2.2): una línea del pedido.
+     *
+     * Cambios del rebote 2 (oct-2026):
+     *  - **`confirmado`**: la confirmación por línea se mudó de la tabla
+     *    (ya inexistente) `cliente_detalle_pedido` a la propia línea.
+     *    Líneas que arma el cliente nacen en `false`; las del mozo en
+     *    `true` (pasan el gate de envío sin trámite). El gate de
+     *    confirmarResumen cuenta `confirmado = false` acá.
+     *  - **Se eliminó el pivot `cliente_detalle_pedido`**: la entidad
+     *    CLIENTE salió del DER; la atribución por comensal la resuelve
+     *    PEDIDO→PEDIDO (cada quien su pedido).
+     *
+     * Sin cambios:
+     *  - `producto_id` → `plato_id` (rename PRODUCTO a PLATO).
+     *  - Fórmula documentada en DER-v2.1-backend.md:
+     *      subtotal = cantidad × (precio_lista + Σ precio_adicional de
+     *                 agregados) − descuento
+     *    `descuento` hoy es 0 (motor de promociones pendiente,
+     *    PLAN-promociones.md); `promocion_id` congela la promo aplicada.
      */
     public function up(): void
     {
@@ -18,19 +36,23 @@ return new class extends Migration
                 ->constrained('pedidos')
                 ->cascadeOnDelete();
 
-            $table->foreignId('producto_id')
-                ->constrained('productos');
+            $table->foreignId('plato_id')
+                ->constrained('platos');
 
-            $table->integer('cantidad');
-            $table->decimal('precio_lista', 10, 2); // precio base sin promocion agregada
-            $table->decimal('precio_final', 10, 2); // precio final con promocion agregada (suerte de subtotal)
-
-            $table->foreignId('promocion_id') // nueva relacion con promocion, puede ser nula si no se aplica ninguna promocion
+            // Promo aplicada a la línea (histórico inmutable, nullable):
+            // la oferta vigente en la carta vive en platos.promocion_id.
+            $table->foreignId('promocion_id')
                 ->nullable()
                 ->nullOnDelete()
                 ->constrained('promociones');
 
+            $table->integer('cantidad');
+            $table->decimal('precio_lista', 10, 2); // precio unitario de catálogo
+            $table->decimal('subtotal', 10, 2);      // total de la línea
 
+            // Gate de envío por línea (antes en el pivot cliente_...):
+            // cliente → false, mozo → true.
+            $table->boolean('confirmado')->default(false);
 
             $table->timestamps();
         });

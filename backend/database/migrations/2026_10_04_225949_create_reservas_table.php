@@ -7,7 +7,17 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * RESERVA (DER v2.1).
+     *
+     * Cambios vs la versión vieja:
+     *  - se quitó `sesion_id` (la entidad SESION fue eliminada del DER).
+     *  - `nombre_cliente` → `nombre_solicitante` y `telefono_cliente` →
+     *    `contacto_solicitante`: nombres exactos del DER dibujado.
+     *  - `estado`: valores del cuadro de notas del DER
+     *    (pendiente | cancelada | finalizada | no_asistio). Se quitó
+     *    `confirmada`, que no estaba en el diagrama.
+     *  - se conserva `usuario_id` (mozo que toma la reserva): figura en
+     *    el DER dibujado aunque sin línea de relación dibujada.
      */
     public function up(): void
     {
@@ -15,21 +25,21 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('mesa_id')
-                    ->constrained('mesas')
-                    ->cascadeOnDelete();
+                ->constrained('mesas')
+                ->cascadeOnDelete();
 
             $table->foreignId('usuario_id')
-                    ->nullable()
-                    ->constrained('usuarios')
-                    ->nullOnDelete();
+                ->nullable()
+                ->constrained('usuarios')
+                ->nullOnDelete();
 
-            
-            $table->string('nombre_cliente');
-            $table->string('telefono_cliente');
+            $table->string('nombre_solicitante');
+            $table->string('contacto_solicitante');
             $table->date('fecha');
             $table->time('hora');
             $table->unsignedInteger('cant_personas');
-            $table->enum('estado', ['pendiente', 'cancelada', 'finalizada'])->default('pendiente');
+            $table->enum('estado', ['pendiente', 'cancelada', 'finalizada', 'no_asistio'])
+                ->default('pendiente');
 
             $table->timestamps();
         });

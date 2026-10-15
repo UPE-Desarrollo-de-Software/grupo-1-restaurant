@@ -279,11 +279,6 @@
                 color: #1d4ed8;
             }
 
-            .acceso-cliente {
-                background: #ede9fe;
-                color: #6d28d9;
-            }
-
             .acceso-mozo {
                 background: #fef3c7;
                 color: #b45309;
@@ -292,6 +287,11 @@
             .acceso-gerente {
                 background: #fee2e2;
                 color: #b91c1c;
+            }
+
+            .acceso-cliente {
+                background: #ede9fe;
+                color: #6d28d9;
             }
 
             /* ---------- pie ---------- */
@@ -352,17 +352,21 @@
                 <h2>Autenticación</h2>
                 <p>
                     Las rutas protegidas se llaman enviando el header
-                    <code>Authorization: Bearer {token}</code>. Hay dos tipos de token:
+                    <code>Authorization: Bearer {token}</code>. El token se obtiene como empleado:
                 </p>
                 <p>
                     <strong>Empleado</strong>: <code>POST /api/login</code> con <code>email</code> y
-                    <code>password</code> → responde un token de <code>Usuario</code> (roles
-                    Gerente / Mozo).
+                    <code>password</code> → responde un token de <code>Usuario</code>. Cada rol tiene
+                    permisos (tabla <code>ROL_PERMISO</code>, DER v2.2) que definen qué endpoints puede
+                    usar.
                 </p>
                 <p>
-                    <strong>Cliente</strong>: <code>POST /api/login-cliente</code> con el
-                    <code>codigoGrupal</code> de 4 dígitos que reparte el mozo → responde un token de
-                    <code>Cliente</code>, válido mientras la sesión esté activa.
+                    <strong>Comensal</strong> (auto-pedido, sin registro): <code>POST /api/acceso</code>
+                    con <code>codigo</code> (el código de 6 dígitos de la mesa) → responde la mesa. El
+                    front guarda ese código y lo envía en cada llamada como
+                    <code>Authorization: Bearer {codigo_acceso}</code> contra las rutas bajo
+                    <code>/api/cliente</code>. No existe token de cliente: su identidad en la visita es
+                    el <code>pedido_id</code> que guarda en su dispositivo.
                 </p>
                 <div class="leyenda">
                     <span class="acceso acceso-publico">Público</span>

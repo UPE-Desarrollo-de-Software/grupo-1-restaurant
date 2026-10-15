@@ -2,12 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\UsuarioService;
+use App\UseCases\Usuarios\ActualizarUsuarioUseCase;
+use App\UseCases\Usuarios\DarBajaUsuarioUseCase;
+use App\UseCases\Usuarios\ListarUsuariosUseCase;
+use App\UseCases\Usuarios\ObtenerUsuarioUseCase;
+use App\UseCases\Usuarios\ReactivarUsuarioUseCase;
+use App\UseCases\Usuarios\RegistrarUsuarioUseCase;
 use Illuminate\Http\Request;
 
+/**
+ * Usuarios empleados. Las protecciones (nadie se baja a sí mismo, no
+ * dejar al sistema sin gerentes) viven en los Use Cases, no acá.
+ */
 class UsuarioController extends Controller
 {
-    public function __construct(private UsuarioService $usuarioService) {}
+    public function __construct(
+        private RegistrarUsuarioUseCase $registrar,
+        private ListarUsuariosUseCase $listar,
+        private ObtenerUsuarioUseCase $obtener,
+        private ActualizarUsuarioUseCase $actualizar,
+        private DarBajaUsuarioUseCase $darBaja,
+        private ReactivarUsuarioUseCase $reactivar,
+    ) {}
 
     public function register(Request $request)
     {
@@ -16,10 +32,10 @@ class UsuarioController extends Controller
             'email' => 'required|string|email|max:255|unique:usuarios',
             'password' => 'required|string|min:6',
             'rol_id' => 'required|exists:rol,id',
-            'activo' => 'sometimes|boolean'
+            'activo' => 'sometimes|boolean',
         ]);
 
-        return $this->usuarioService->register(
+        return ($this->registrar)(
             $request->nombre,
             $request->email,
             $request->password,
@@ -27,89 +43,61 @@ class UsuarioController extends Controller
             $request->boolean('activo', true),
         );
     }
+
     public function index()
     {
-        return $this->usuarioService->listar();
+        return ($this->listar)();
     }
+
     public function show(int $id)
     {
-        $usuario = $this->usuarioService->obtenerPorId($id);
+        $usuario = ($this->obtener)($id);
+
         if (! $usuario) {
             return response()->json(['message' => 'Usuario no encontrado'], 200);
         }
+
         return $usuario;
     }
+
     public function update(Request $request, int $id)
     {
-        $usuario = $this->usuarioService->obtenerPorId($id);
-
-        if (! $usuario) {
-            return response()->json(['message' => 'Usuario no encontrado'], 200);
-        }
-
         $datos = $request->validate([
             'nombre' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|string|email|max:255|unique:usuarios,email,' . $id,
+            'email' => 'sometimes|required|string|email|max:255|unique:usuarios,email,'.$id,
             'password' => 'sometimes|nullable|string|min:6',
             'rol_id' => 'sometimes|required|exists:rol,id',
             'activo' => 'sometimes|boolean',
         ]);
 
-        if (empty($datos)) {
-            return response()->json(['message' => 'No se proporcionaron datos para actualizar'], 400);
+        $usuario = ($this->actualizar)($id, $datos, $request->user()->id);
+
+        if (! $usuario) {
+            return response()->json(['message' => 'Usuario no encontrado'], 200);
         }
 
-        // --- protecciones sobre lo que quedaría después del update ---
-        $esBaja = array_key_exists('activo', $datos) && ! (bool) $datos['activo'];
-        $esCambioDeRol = isset($datos['rol_id'])
-            && (int) $datos['rol_id'] !== $this->usuarioService->rolGerenteId();
-
-        // 1) nadie se baja ni se cambia de rol a sí mismo
-        if ($request->user()->id === $id) {
-            if ($esCambioDeRol) {
-                return response()->json(['message' => 'No podés cambiar tu propio rol.'], 403);
-            }
-            if ($esBaja) {
-                return response()->json(['message' => 'No podés darte de baja a vos mismo desde la edición.'], 403);
-            }
-        }
-
-        // 2) no dejar al sistema sin gerentes
-        if (($esBaja || $esCambioDeRol)
-            && $usuario->rol->nombre === 'Gerente'
-            && ! $this->usuarioService->quedaOtroGerenteActivo($usuario->id)
-        ) {
-            return response()->json(['message' => 'No se puede dar de baja o cambiar el rol del último gerente activo.'], 403);
-        }
-
-        return $this->usuarioService->actualizar($id, $datos);
+        return $usuario;
     }
+
     public function destroy(Request $request, int $id)
     {
-        $usuario = $this->usuarioService->obtenerPorId($id);
+        $usuario = ($this->darBaja)($id, $request->user()->id);
 
         if (! $usuario) {
             return response()->json(['message' => 'Usuario no encontrado'], 200);
         }
-        if ($usuario->id === $request->user()->id) {
-            return response()->json(['message' => 'No podés dar de baja tu propio usuario.'], 403);
-        }
-        if ($usuario->rol->nombre === 'Gerente' && ! $this->usuarioService->quedaOtroGerenteActivo($usuario->id)) {
-            return response()->json(['message' => 'No se puede dar de baja al último gerente activo.'], 403);
-        }
 
-        $this->usuarioService->eliminar($usuario->id);
         return response()->json(['message' => 'Usuario dado de baja exitosamente'], 200);
     }
+
     public function reactivar(Request $request, int $id)
     {
-        $usuario = $this->usuarioService->obtenerPorId($id);
+        $usuario = ($this->reactivar)($id);
 
         if (! $usuario) {
             return response()->json(['message' => 'Usuario no encontrado'], 200);
         }
 
-        $this->usuarioService->reactivar($usuario->id);
         return response()->json(['message' => 'Usuario reactivado exitosamente'], 200);
     }
 }

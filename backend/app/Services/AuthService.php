@@ -2,46 +2,53 @@
 
 namespace App\Services;
 
+use App\Exceptions\ApiException;
 use App\Models\Usuario;
+use App\Repositories\UsuarioRepository;
 use Illuminate\Support\Facades\Hash;
 
+/**
+ * Sesión de empleados (login/logout por token Sanctum).
+ *
+ * Capa de dominio de la arquitectura hexagonal: NO arma respuestas
+ * (antes devolvía response()->json desde acá). Los errores de
+ * autenticación salen como ApiException con su estado HTTP, que
+ * bootstrap/app.php convierte en JSON {message}.
+ */
 class AuthService
 {
-    public function login(string $email, string $password)
+    public function __construct(private UsuarioRepository $usuarios) {}
+
+    /**
+     * Valida credenciales y emite el token.
+     *
+     * @return array{usuario: Usuario, token: string}
+     *
+     * @throws ApiException 401 credenciales inválidas / 403 usuario inactivo
+     */
+    public function login(string $email, string $password): array
     {
-        $usuario = Usuario::with('rol')
-            ->where('email', $email)
-            ->first();
+        $usuario = $this->usuarios->buscarPorEmail($email);
 
-        if (!$usuario || !Hash::check($password, $usuario->password)) {
-            return response()->json([
-                'message' => 'Credenciales inválidas'
-            ], 401);
+        if (! $usuario || ! Hash::check($password, $usuario->password)) {
+            throw new ApiException(401, 'Credenciales inválidas');
         }
 
-        if (!$usuario->activo) {
-            return response()->json([
-                'message' => 'Usuario inactivo. Contacte al administrador.'
-            ], 403);
+        if (! $usuario->activo) {
+            throw new ApiException(403, 'Usuario inactivo. Contacte al administrador.');
         }
 
-        // generar token (sanctum)
-
-        $token = $usuario->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Inicio de sesión exitoso',
+        return [
             'usuario' => $usuario,
-            'token' => $token
-        ]);
+            'token' => $this->usuarios->emitirToken($usuario, 'auth_token'),
+        ];
     }
 
-    public function logout(Usuario $usuario)
+    /**
+     * Cierra la sesión: revoca todos los tokens del usuario.
+     */
+    public function logout(Usuario $usuario): void
     {
-        $usuario->tokens()->delete();
-
-        return response()->json([
-            'message' => 'Cierre de sesión exitoso'
-        ]);
+        $this->usuarios->revocarTokens($usuario);
     }
 }
