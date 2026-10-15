@@ -1,0 +1,207 @@
+<?php
+
+use App\Models\Ingrediente;
+use App\Models\Mesa;
+use App\Models\Plato;
+use App\Models\Rol;
+use App\Models\Usuario;
+use Database\Seeders\PermisoSeeder;
+use Database\Seeders\RolSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\Sanctum;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    // Permisos (ROL_PERMISO) y roles, como en producción.
+    $this->seed([PermisoSeeder::class, RolSeeder::class]);
+});
+
+/**
+ * Autentica un mozo (rol con el permiso tomar_pedidos).
+ */
+function autenticarMozo(): void
+{
+    $mozo = Usuario::factory()->create([
+        'rol_id' => Rol::where('nombre', 'Mozo')->first()->id,
+    ]);
+
+    Sanctum::actingAs($mozo);
+}
+
+/**
+ * Crea un plato con tres ingredientes: uno excluible, uno estructural
+ * (opcional=false) y un extra que se agrega con recargo.
+ *
+ * @return array{plato: Plato, excluible: Ingrediente, estructural: Ingrediente, extra: Ingrediente}
+ */
+function platoDePrueba(): array
+{
+    $plato = Plato::factory()->create(['precio' => 1000]);
+
+    $excluible = Ingrediente::factory()->create(['precioAdicional' => 0]);
+    $estructural = Ingrediente::factory()->create(['precioAdicional' => 0]);
+    $extra = Ingrediente::factory()->create(['precioAdicional' => 500]);
+
+    $plato->ingredientes()->attach($excluible->id, ['opcional' => true, 'por_defecto' => true]);
+    $plato->ingredientes()->attach($estructural->id, ['opcional' => false, 'por_defecto' => true]);
+    $plato->ingredientes()->attach($extra->id, ['opcional' => true, 'por_defecto' => false]);
+
+    return compact('plato', 'excluible', 'estructural', 'extra');
+}
+
+test('el mozo abre un pedido en una mesa y la mesa queda ocupada', function () {
+    autenticarMozo();
+
+    $mesa = Mesa::factory()->create();
+    ['plato' => $plato, 'extra' => $extra] = platoDePrueba();
+
+    $response = $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [
+            ['plato_id' => $plato->id, 'cantidad' => 2, 'ingredientes' => [$extra->id]],
+        ],
+    ]);
+
+    $response->assertStatus(201);
+
+    // La mesa pasa a 'ocupada' con el primer pedido no finalizado.
+    expect($mesa->fresh()->estado)->toBe('ocupada');
+
+    // subtotal = 2 × (1000 de lista + 500 del extra) = 3000.
+    $pedido = $response->json('pedido');
+    expect((float) $pedido['total'])->toBe(3000.0);
+
+    // El agregado se registra en DETALLE_INGREDIENTE con su recargo.
+    expect(DB::table('detalle_pedido_ingrediente')->where('tipo', 'agregado')->count())->toBe(1);
+});
+
+test('varios pedidos activos por mesa: cada orden nueva crea su raiz', function () {
+    autenticarMozo();
+
+    $mesa = Mesa::factory()->create();
+    ['plato' => $plato] = platoDePrueba();
+
+    $crear = fn (?int $pedidoId = null) => $this->postJson(
+        "/api/mesas/{$mesa->id}/pedidos",
+        array_filter([
+            'platos' => [['plato_id' => $plato->id, 'cantidad' => 1]],
+            'pedido_id' => $pedidoId,
+        ], fn ($v) => $v !== null)
+    );
+
+    // Sin pedido_id: cada orden es una RAÍZ nueva (una por comensal).
+    $crear()->assertStatus(201);
+    $crear()->assertStatus(201);
+    expect($mesa->pedidos()->count())->toBe(2)
+        ->and($mesa->pedidos()->whereNotNull('pedido_padre_id')->count())->toBe(0);
+
+    // Con pedido_id agrega a ese pedido si está en curso.
+    $primero = $mesa->pedidos()->orderBy('id')->first();
+    $crear($primero->id)->assertStatus(201);
+    expect($mesa->pedidos()->count())->toBe(2)
+        ->and($primero->fresh()->detalles()->count())->toBe(2);
+
+    // Confirmado + enviado: el pedido dejó de estar en curso y no
+    // admite más líneas...
+    $this->postJson("/api/pedidos/{$primero->id}/confirmar")->assertStatus(200);
+    $this->postJson("/api/pedidos/{$primero->id}/enviar")->assertStatus(200);
+    $crear($primero->id)->assertStatus(422);
+
+    // ...pero la mesa sigue abierta para nuevas órdenes.
+    $crear()->assertStatus(201);
+});
+
+test('respeta los flags opcional y por_defecto al personalizar ingredientes', function () {
+    autenticarMozo();
+
+    $mesa = Mesa::factory()->create();
+    ['plato' => $plato, 'excluible' => $excluible, 'estructural' => $estructural, 'extra' => $extra] = platoDePrueba();
+
+    // Excluir un ingrediente opcional que viene por defecto: OK, sin cargo.
+    $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [
+            ['plato_id' => $plato->id, 'cantidad' => 1, 'excluir' => [$excluible->id]],
+        ],
+    ])->assertStatus(201);
+
+    expect(DB::table('detalle_pedido_ingrediente')->where('tipo', 'excluido')->count())->toBe(1);
+    expect(DB::table('detalle_pedido_ingrediente')->where('tipo', 'excluido')->value('precio_adicional'))->toBeNull();
+
+    // Excluir algo que no es opcional: rechazado.
+    $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [
+            ['plato_id' => $plato->id, 'cantidad' => 1, 'excluir' => [$estructural->id]],
+        ],
+    ])->assertStatus(422);
+
+    // Agregar algo que ya viene por defecto: rechazado.
+    $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [
+            ['plato_id' => $plato->id, 'cantidad' => 1, 'ingredientes' => [$excluible->id]],
+        ],
+    ])->assertStatus(422);
+
+    // Agregar un extra al MISMO pedido (pedido_id): cobra su precio.
+    $primero = $mesa->pedidos()->orderBy('id')->first();
+    $response = $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [
+            ['plato_id' => $plato->id, 'cantidad' => 1, 'ingredientes' => [$extra->id]],
+        ],
+        'pedido_id' => $primero->id,
+    ])->assertStatus(201);
+
+    expect((float) $response->json('pedido.total'))->toBe(2500.0);
+});
+
+test('el flujo de estados del pedido libera la mesa al cerrar', function () {
+    autenticarMozo();
+
+    $mesa = Mesa::factory()->create();
+    ['plato' => $plato] = platoDePrueba();
+
+    $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [['plato_id' => $plato->id, 'cantidad' => 1]],
+    ])->assertStatus(201);
+
+    $pedido = $mesa->pedidos()->first();
+
+    // Envío en 2 pasos: confirmar (gate) y recién después enviar.
+    $this->postJson("/api/pedidos/{$pedido->id}/enviar")->assertStatus(422);
+    $this->postJson("/api/pedidos/{$pedido->id}/confirmar")->assertStatus(200);
+    $this->postJson("/api/pedidos/{$pedido->id}/enviar")->assertStatus(200);
+    foreach (['en_preparacion', 'entregado', 'cerrado'] as $estado) {
+        $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => $estado])
+            ->assertStatus(200);
+    }
+
+    expect($pedido->fresh()->estado)->toBe('cerrado');
+
+    // Cerrado el último pedido activo, la mesa queda DESTRUIDA
+    // (borrado lógico): para la app dejó de existir.
+    expect(Mesa::find($mesa->id))->toBeNull()
+        ->and(Mesa::withTrashed()->find($mesa->id))->not->toBeNull();
+
+    // Un pedido finalizado no admite cambios.
+    $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => 'en_preparacion'])
+        ->assertStatus(422);
+});
+
+test('cancelar el pedido tambien destruye la mesa', function () {
+    autenticarMozo();
+
+    $mesa = Mesa::factory()->create();
+    ['plato' => $plato] = platoDePrueba();
+
+    $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [['plato_id' => $plato->id, 'cantidad' => 1]],
+    ])->assertStatus(201);
+
+    $pedido = $mesa->pedidos()->first();
+
+    $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => 'cancelado'])
+        ->assertStatus(200);
+
+    expect($pedido->fresh()->estado)->toBe('cancelado')
+        ->and(Mesa::find($mesa->id))->toBeNull();
+});
