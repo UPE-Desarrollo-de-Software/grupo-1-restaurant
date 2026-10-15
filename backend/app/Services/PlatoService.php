@@ -3,72 +3,70 @@
 namespace App\Services;
 
 use App\Models\Plato;
+use App\Repositories\PlatoRepository;
 
 /**
- * CRUD de platos (DER v2.1: entidad PLATO; antes "Producto").
+ * CRUD de platos (DER v2.2: entidad PLATO; antes "Producto").
  *
  * El plato se asocia a sus ingredientes por `plato_ingrediente`, que
- * además lleva los flags `opcional` / `por_defecto` del DER.
+ * además lleva los flags `opcional` / `por_defecto` del DER. La
+ * normalización de esa lista es lógica de dominio (queda acá); el
+ * sync sobre el pivot es persistencia (PlatoRepository).
  */
 class PlatoService
 {
+    public function __construct(private PlatoRepository $platos) {}
+
     public function obtenerDisponibles()
     {
-        return Plato::join('categorias', 'platos.categoria_id', '=', 'categorias.id')
-            ->where('platos.disponible', true)
-            ->select(
-                'categorias.nombre as categoria_nombre',
-                'platos.id',
-                'platos.categoria_id',
-                'platos.promocion_id',
-                'platos.nombre',
-                'platos.descripcion',
-                'platos.precio',
-                'platos.imagen',
-                'platos.disponible'
-            )
-            ->get();
+        return $this->platos->disponiblesConCategoria();
     }
 
-    public function obtenerConIngredientes($id)
+    public function obtenerConIngredientes($id): Plato
     {
-        return Plato::with('ingredientes:id,nombre,precioAdicional')
-            ->findOrFail($id);
+        return $this->platos->conIngredientesOrFail((int) $id);
     }
 
-    public function crear(array $datos)
+    /**
+     * @param  array<string, mixed>  $datos
+     */
+    public function crear(array $datos): Plato
     {
         $ingredientes = $this->normalizarIngredientes($datos['ingredientes'] ?? []);
 
         unset($datos['ingredientes']);
 
-        $plato = Plato::create($datos);
+        $plato = $this->platos->crear($datos);
 
-        $plato->ingredientes()->sync($ingredientes);
+        $this->platos->sincronizarIngredientes($plato, $ingredientes);
 
         return $plato->load('ingredientes:id,nombre,precioAdicional');
     }
 
-    public function actualizar($id, array $datos)
+    /**
+     * @param  array<string, mixed>  $datos
+     */
+    public function actualizar($id, array $datos): Plato
     {
-        $plato = Plato::findOrFail($id);
+        $plato = $this->platos->conIngredientesOrFail((int) $id);
 
         $ingredientes = $this->normalizarIngredientes($datos['ingredientes'] ?? []);
 
         unset($datos['ingredientes']);
 
-        $plato->update($datos);
+        $plato = $this->platos->actualizar($plato, $datos);
 
-        $plato->ingredientes()->sync($ingredientes);
+        $this->platos->sincronizarIngredientes($plato, $ingredientes);
 
         return $plato->load('ingredientes:id,nombre,precioAdicional');
     }
 
-    public function eliminar($id)
+    public function eliminar($id): void
     {
-        $plato = Plato::findOrFail($id);
-        $plato->ingredientes()->detach(); // Eliminar relaciones con ingredientes
-        $plato->delete();
+        $plato = $this->platos->conIngredientesOrFail((int) $id);
+
+        $this->platos->desprenderIngredientes($plato); // Eliminar relaciones con ingredientes
+        $this->platos->eliminar($plato);
     }
 
     /**
@@ -78,6 +76,7 @@ class PlatoService
      * Sin flags, los defaults del pivot son opcional=true y
      * por_defecto=true.
      *
+     * @param  array<mixed>  $ingredientes
      * @return array<int, array{opcional: bool, por_defecto: bool}>
      */
     private function normalizarIngredientes(array $ingredientes): array

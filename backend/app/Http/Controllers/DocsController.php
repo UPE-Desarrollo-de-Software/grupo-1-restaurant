@@ -22,6 +22,7 @@ class DocsController extends Controller
         'Ingredientes',
         'Mesas',
         'Pedidos',
+        'Clientes',
         'Otras',
     ];
 
@@ -39,7 +40,9 @@ class DocsController extends Controller
         'PlatoController' => 'Platos',
         'IngredienteController' => 'Ingredientes',
         'MesaController' => 'Mesas',
+        'ConfiguracionController' => 'Mesas',
         'PedidoController' => 'Pedidos',
+        'ClienteController' => 'Clientes',
         'Closure' => 'Autenticación',
     ];
 
@@ -76,17 +79,30 @@ class DocsController extends Controller
         'IngredienteController@store' => 'Crear un ingrediente con su precio adicional de catálogo.',
         'IngredienteController@update' => 'Actualizar un ingrediente.',
         'IngredienteController@destroy' => 'Eliminar un ingrediente.',
-        'MesaController@index' => 'Listar todas las mesas, con su mozo responsable y estado.',
+        'MesaController@index' => 'Listar todas las mesas vivas, con su mozo responsable y estado.',
         'MesaController@disponibles' => 'Listar las mesas libres (sin pedido activo ni reserva).',
-        'MesaController@show' => 'Obtener una mesa por ID.',
-        'MesaController@store' => 'Crear una mesa con su código, capacidad y mozo responsable.',
-        'MesaController@update' => 'Actualizar una mesa (código, capacidad, estado, QR y mozo).',
-        'MesaController@destroy' => 'Eliminar una mesa.',
-        'PedidoController@pedidoActivo' => 'Ver el pedido no finalizado de una mesa, con sus líneas e ingredientes.',
-        'PedidoController@agregarProducto' => 'Agregar líneas al pedido en curso de la mesa (lo crea si no existe). Soporta agregar y excluir ingredientes según los flags del plato. Regla del DER: 1 pedido activo por mesa.',
-        'PedidoController@enviarPedido' => 'Enviar el pedido en curso a cocina: pasa a estado "enviado".',
-        'PedidoController@cambiarEstado' => 'Avanzar el pedido por el flujo del DER (enviado → en_preparacion → entregado → cerrado) o cancelarlo. Cerrar/cancelar libera la mesa.',
-
+        'MesaController@show' => 'Obtener una mesa por ID (las destruidas responden "no encontrada").',
+        'MesaController@store' => 'Crear una mesa dinámica con su código de acceso (6 dígitos) y capacidad. Valida el AFORO del lugar (PARAMETRO.capacidad_total); la crea el mozo o la reserva.',
+        'MesaController@update' => 'Actualizar capacidad, estado y mozo de la mesa. El código de acceso nunca cambia y la capacidad nueva vuelve a validar el aforo.',
+        'MesaController@destroy' => 'Destruir la mesa (borrado lógico): para la app deja de existir y su código deja de valer; los pedidos históricos conservan su FK.',
+        'PedidoController@pedidoActivo' => 'Pedidos NO finalizados de la mesa con sus líneas: { pedidos: [...] } (vacío si no hay; hoy hay varios por mesa, uno por comensal).',
+        'PedidoController@agregarProducto' => 'Alta de líneas del mozo. Sin pedido_id crea una RAÍZ nueva (la orden nueva de esa persona); con pedido_id agrega a ese pedido si está en curso. Las líneas del mozo nacen confirmadas. Soporta agregar y excluir ingredientes según los flags del plato.',
+        'PedidoController@confirmar' => '1er paso del envío: gate de que ninguna línea siga sin confirmar (o forzar: true) y deja el pedido en estado "confirmado".',
+        'PedidoController@enviarPedido' => '2do paso del envío: pasa el pedido "confirmado" a "enviado" (hacia cocina).',
+        'PedidoController@cambiarEstado' => 'Avanzar el pedido por el flujo del DER (confirmado → enviado → en_preparacion → entregado → cerrado), reabrirlo (confirmado → en_curso) o cancelarlo. Al llegar a un estado final, si es el último pedido activo la mesa queda destruida (borrado lógico).',
+        'ConfiguracionController@show' => 'Leer la configuración del restaurante: el aforo capacidad_total de la tabla PARAMETRO.',
+        'ConfiguracionController@update' => 'Actualizar el aforo del lugar. No puede quedar por debajo de la capacidad que ya ocupan las mesas vivas (solo gerente).',
+        'MesaController@ocupar' => 'Marcar la mesa como ocupada. NO regenera el código de acceso: el código es estable desde el alta hasta que la mesa se destruya.',
+        'MesaController@agrupar' => 'Agrupar mesas para el resumen conjunto de lectura (no fusiona pedidos). Los códigos NO cambian: nadie tiene que re-entrar.',
+        'MesaController@desagrupar' => 'Sacar las mesas del grupo de lectura.',
+        'MesaController@resumen' => 'Resumen de lectura de la mesa: TODOS sus pedidos activos con sus líneas y su confirmado por línea (incluye el grupo si la mesa tiene).',
+        'MesaController@cuenta' => 'Cuenta dividida de la mesa en PARTES por pedido raíz (raíz + sus hijos = lo que paga cada quien), cortada por ocupada_desde. Sirve aunque la mesa ya se haya destruido.',
+        'ClienteController@acceder' => 'Acceso del comensal (público): valida el codigo_acceso de la mesa y la devuelve. El front guarda el código y lo manda en cada request como Bearer; no hay token de cliente.',
+        'ClienteController@pedidos' => 'Resumen de la mesa (todos sus pedidos activos con sus líneas), entrando con Bearer codigo_acceso.',
+        'ClienteController@agregar' => 'Agregar SUS líneas: crea su pedido RAÍZ, sigue uno en curso (pedido_id) o crea un HIJO de su primer pedido (pedido_padre_id). Las líneas nacen sin confirmar.',
+        'ClienteController@confirmar' => 'Confirmar las líneas de SU pedido: { pedido_id, detalle_ids? } (sin detalle_ids, todas las del pedido). El pedido debe ser de la mesa del código.',
+        'ClienteController@desconfirmar' => 'Deshacer la confirmación de las líneas de SU pedido mientras siga en curso.',
+        'ClienteController@cuenta' => 'Cuenta dividida de la mesa en partes por pedido raíz: el comensal identifica SU parte con el pedido raíz que guardó en su dispositivo.',
     ];
 
     /**
@@ -162,7 +178,7 @@ class DocsController extends Controller
      * Etiqueta de acceso según los middlewares de la ruta.
      *
      * La autorización es por permiso (`permiso:nombre`, tabla
-     * ROL_PERMISO, DER v2.1). El badge muestra el rol mínimo que tiene
+     * ROL_PERMISO, DER v2.2). El badge muestra el rol mínimo que tiene
      * ese permiso según RolSeeder.
      *
      * @param  array<int, mixed>  $middleware
@@ -171,6 +187,9 @@ class DocsController extends Controller
     private function acceso(array $middleware): array
     {
         $etiquetas = [
+            // Alias `cliente`: rutas del comensal con Bearer
+            // codigo_acceso (sin Sanctum); prioridad sobre "Empleado".
+            'cliente' => ['texto' => 'Cliente', 'clase' => 'cliente'],
             'auth:sanctum' => ['texto' => 'Empleado', 'clase' => 'empleado'],
         ];
 

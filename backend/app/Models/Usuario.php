@@ -37,7 +37,7 @@ class Usuario extends Authenticatable
     /**
      * Chequea si el usuario (vía su rol) tiene el permiso indicado.
      * Es la forma en que los middlewares resuelven la autorización
-     * según el DER v2.1 (ROL_PERMISO), sin strings literales del rol.
+     * según el DER v2.2 (ROL_PERMISO), sin strings literales del rol.
      */
     public function tienePermiso(string $permiso): bool
     {

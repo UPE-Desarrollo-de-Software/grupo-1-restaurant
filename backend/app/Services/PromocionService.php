@@ -7,7 +7,7 @@ use App\Models\Promocion;
 use Carbon\CarbonInterface;
 
 /**
- * Motor de promociones fiel al DER v2.1.
+ * Motor de promociones fiel al DER v2.2.
  *
  * Se eliminaron `ambito` y `condiciones` (JSON con hora/días/cantidad
  * mínima) para ser fieles al diagrama: el alcance de una promo lo dan

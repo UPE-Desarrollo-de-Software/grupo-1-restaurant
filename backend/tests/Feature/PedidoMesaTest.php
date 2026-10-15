@@ -76,27 +76,40 @@ test('el mozo abre un pedido en una mesa y la mesa queda ocupada', function () {
     expect(DB::table('detalle_pedido_ingrediente')->where('tipo', 'agregado')->count())->toBe(1);
 });
 
-test('no se pueden abrir dos pedidos activos en la misma mesa', function () {
+test('varios pedidos activos por mesa: cada orden nueva crea su raiz', function () {
     autenticarMozo();
 
     $mesa = Mesa::factory()->create();
     ['plato' => $plato] = platoDePrueba();
 
-    $crear = fn () => $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
-        'platos' => [['plato_id' => $plato->id, 'cantidad' => 1]],
-    ]);
+    $crear = fn (?int $pedidoId = null) => $this->postJson(
+        "/api/mesas/{$mesa->id}/pedidos",
+        array_filter([
+            'platos' => [['plato_id' => $plato->id, 'cantidad' => 1]],
+            'pedido_id' => $pedidoId,
+        ], fn ($v) => $v !== null)
+    );
 
+    // Sin pedido_id: cada orden es una RAÍZ nueva (una por comensal).
     $crear()->assertStatus(201);
-
-    // Mientras siga "en curso", agregar líneas va al MISMO pedido.
     $crear()->assertStatus(201);
-    expect($mesa->pedidos()->count())->toBe(1);
+    expect($mesa->pedidos()->count())->toBe(2)
+        ->and($mesa->pedidos()->whereNotNull('pedido_padre_id')->count())->toBe(0);
 
-    // Enviado a cocina: ya no admite más líneas (1 pedido activo).
-    $pedido = $mesa->pedidos()->first();
-    $this->postJson("/api/pedidos/{$pedido->id}/enviar")->assertStatus(200);
+    // Con pedido_id agrega a ese pedido si está en curso.
+    $primero = $mesa->pedidos()->orderBy('id')->first();
+    $crear($primero->id)->assertStatus(201);
+    expect($mesa->pedidos()->count())->toBe(2)
+        ->and($primero->fresh()->detalles()->count())->toBe(2);
 
-    $crear()->assertStatus(422);
+    // Confirmado + enviado: el pedido dejó de estar en curso y no
+    // admite más líneas...
+    $this->postJson("/api/pedidos/{$primero->id}/confirmar")->assertStatus(200);
+    $this->postJson("/api/pedidos/{$primero->id}/enviar")->assertStatus(200);
+    $crear($primero->id)->assertStatus(422);
+
+    // ...pero la mesa sigue abierta para nuevas órdenes.
+    $crear()->assertStatus(201);
 });
 
 test('respeta los flags opcional y por_defecto al personalizar ingredientes', function () {
@@ -129,11 +142,13 @@ test('respeta los flags opcional y por_defecto al personalizar ingredientes', fu
         ],
     ])->assertStatus(422);
 
-    // Agregar un extra: cobra su precio adicional.
+    // Agregar un extra al MISMO pedido (pedido_id): cobra su precio.
+    $primero = $mesa->pedidos()->orderBy('id')->first();
     $response = $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
         'platos' => [
             ['plato_id' => $plato->id, 'cantidad' => 1, 'ingredientes' => [$extra->id]],
         ],
+        'pedido_id' => $primero->id,
     ])->assertStatus(201);
 
     expect((float) $response->json('pedido.total'))->toBe(2500.0);
@@ -151,23 +166,28 @@ test('el flujo de estados del pedido libera la mesa al cerrar', function () {
 
     $pedido = $mesa->pedidos()->first();
 
+    // Envío en 2 pasos: confirmar (gate) y recién después enviar.
+    $this->postJson("/api/pedidos/{$pedido->id}/enviar")->assertStatus(422);
+    $this->postJson("/api/pedidos/{$pedido->id}/confirmar")->assertStatus(200);
     $this->postJson("/api/pedidos/{$pedido->id}/enviar")->assertStatus(200);
-
-    // Flujo del DER: enviado → en_preparacion → entregado → cerrado.
     foreach (['en_preparacion', 'entregado', 'cerrado'] as $estado) {
         $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => $estado])
             ->assertStatus(200);
     }
 
     expect($pedido->fresh()->estado)->toBe('cerrado');
-    expect($mesa->fresh()->estado)->toBe('libre');
+
+    // Cerrado el último pedido activo, la mesa queda DESTRUIDA
+    // (borrado lógico): para la app dejó de existir.
+    expect(Mesa::find($mesa->id))->toBeNull()
+        ->and(Mesa::withTrashed()->find($mesa->id))->not->toBeNull();
 
     // Un pedido finalizado no admite cambios.
     $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => 'en_preparacion'])
         ->assertStatus(422);
 });
 
-test('cancelar el pedido tambien libera la mesa', function () {
+test('cancelar el pedido tambien destruye la mesa', function () {
     autenticarMozo();
 
     $mesa = Mesa::factory()->create();
@@ -182,6 +202,6 @@ test('cancelar el pedido tambien libera la mesa', function () {
     $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => 'cancelado'])
         ->assertStatus(200);
 
-    expect($pedido->fresh()->estado)->toBe('cancelado');
-    expect($mesa->fresh()->estado)->toBe('libre');
+    expect($pedido->fresh()->estado)->toBe('cancelado')
+        ->and(Mesa::find($mesa->id))->toBeNull();
 });

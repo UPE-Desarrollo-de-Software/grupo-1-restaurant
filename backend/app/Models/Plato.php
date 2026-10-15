@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * PLATO (DER v2.1). Antes se llamaba Producto (tabla `productos`); el
+ * PLATO (DER v2.2). Antes se llamaba Producto (tabla `productos`); el
  * nombre del diagrama es PLATO, así que el modelo, la tabla
  * (`platos`), el controlador y el servicio siguen esa convención.
  */

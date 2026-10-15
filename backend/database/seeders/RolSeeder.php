@@ -19,9 +19,9 @@ class RolSeeder extends Seeder
      * Permisos asignados a cada rol. 'todos' = todos los permisos
      * sembrados (Gerente).
      *
-     * Nota sobre 'Cliente': el rol se conserva porque la funcionalidad
-     * congelada de clientes (sesiones por código grupal) podría volver;
-     * no tiene ningún permiso mientras esté desconectada del DER.
+     * Nota (rebote 2): se eliminó el rol 'Cliente': la entidad CLIENTE
+     * salió del DER, no hay más login ni tokens de cliente (el acceso
+     * del comensal es el código de la mesa, sin rol).
      *
      * @var array<string, list<string>|'todos'>
      */
@@ -29,7 +29,6 @@ class RolSeeder extends Seeder
         'Gerente' => 'todos',
         'Cocina' => ['ver_carta', 'ver_pedidos'],
         'Mozo' => ['ver_carta', 'ver_pedidos', 'tomar_pedidos', 'gestionar_reservas'],
-        'Cliente' => [],
     ];
 
     public function run(): void

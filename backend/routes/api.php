@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\MesaController;
 use App\Http\Controllers\PedidoController;
@@ -13,20 +15,20 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API — alineada al DER v2.1
+| API — alineada al DER v2.2
 |--------------------------------------------------------------------------
-| Modelo activo: USUARIO (con permisos ROL_PERMISO), MESA (mozo
-| responsable), PEDIDO cuelga de MESA, PLATO, INGREDIENTE con flags en
-| PLATO_INGREDIENTE, PROMOCION (catálogo vía platos.promocion_id) y
-| RESERVA.
-|
-| El flujo de SESION / CLIENTES (login por código grupal) quedó
-| DESCONECTADO: sus rutas no existen más y el código quedó congelado
-| (SesionController, MozoController, SesionService, ClienteMiddleware).
-| Ver documentacion/DER-v2.1-backend.md.
+| Modelo activo: USUARIO (con permisos ROL_PERMISO), MESA dinámica con
+| aforo (PARAMETRO) y borrado lógico, PEDIDO con relación unitaria
+| PEDIDO–PEDIDO (pedido_padre_id) y VARIOS pedidos activos por mesa,
+| PLATO, INGREDIENTE con flags en PLATO_INGREDIENTE, PROMOCION y
+| RESERVA. El auto-pedido NO usa la entidad CLIENTE (borrada): el
+| comensal entra con el codigo_acceso de su mesa (POST /api/acceso) y
+| lo manda como Bearer en /cliente/*. Su identidad en la visita es el
+| pedido que creó (localStorage del front).
 |
 | La autorización usa el middleware con parámetro `permiso:` (tabla
-| ROL_PERMISO), que reemplazó a los viejos aliases gerente/mozo.
+| ROL_PERMISO). Arquitectura hexagonal: Controller → UseCase →
+| Service → Repository.
 */
 
 // ==================== PÚBLICOS ====================
@@ -52,6 +54,33 @@ Route::get('/ingredientes/{id}', [IngredienteController::class, 'show']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
+// ACCESO DEL COMENSAL (auto-pedido): público y con throttle. Body:
+// { codigo } → devuelve la mesa; el front guarda el código y lo manda
+// como Authorization: Bearer <codigo> en /cliente/*. No hay token.
+Route::post('/acceso', [ClienteController::class, 'acceder'])
+    ->middleware('throttle:60,1');
+
+// ==================== COMENSAL (auto-pedido) ====================
+// Sin auth:sanctum: el middleware 'cliente' resuelve la mesa desde el
+// Bearer codigo_acceso (401 si falta o si la mesa fue destruida).
+
+Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(function () {
+
+    // Resumen de lectura: todos los pedidos activos de la mesa.
+    Route::get('/pedidos', [ClienteController::class, 'pedidos']);
+
+    // Agrega SUS líneas: crea su pedido raíz, sigue uno en curso
+    // (pedido_id) o crea un hijo (pedido_padre_id).
+    Route::post('/pedidos', [ClienteController::class, 'agregar']);
+
+    // Confirma / desconfirma las líneas de SU pedido (gate de fila).
+    Route::post('/pedidos/confirmar', [ClienteController::class, 'confirmar']);
+    Route::post('/pedidos/desconfirmar', [ClienteController::class, 'desconfirmar']);
+
+    // Cuenta dividida en partes por pedido raíz.
+    Route::get('/cuenta', [ClienteController::class, 'cuenta']);
+});
+
 // ==================== CUALQUIER EMPLEADO AUTENTICADO ====================
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -63,6 +92,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/mesas', [MesaController::class, 'index']);
     Route::get('/mesas/disponibles', [MesaController::class, 'disponibles']);
     Route::get('/mesas/{mesa}', [MesaController::class, 'show']);
+
+    // Aforo del lugar (PARAMETRO.capacidad_total).
+    Route::get('/configuracion', [ConfiguracionController::class, 'show']);
 });
 
 // ==================== TOMA DE PEDIDOS (mozo / gerente) ====================
@@ -70,18 +102,39 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () {
 
-    // Pedido no finalizado de una mesa.
+    // Pedidos no finalizados de la mesa (varios comensales, varios
+    // pedidos): { pedidos: [...] }.
     Route::get('/mesas/{mesa}/pedido-activo', [PedidoController::class, 'pedidoActivo']);
 
-    // Agrega líneas al pedido en curso de la mesa (lo crea si no existe).
-    // Regla del DER: a lo sumo 1 pedido no-finalizado por mesa.
+    // Alta de líneas del mozo. Sin pedido_id crea una raíz nueva (la
+    // orden nueva de esa persona); con pedido_id agrega a uno en curso.
     Route::post('/mesas/{mesa}/pedidos', [PedidoController::class, 'agregarProducto']);
 
-    // Envia el pedido a cocina (estado "enviado").
+    // Resumen de lectura y cuenta de la mesa (también los ve el
+    // comensal con los mismos datos bajo /cliente).
+    Route::get('/mesas/{mesa}/pedidos', [MesaController::class, 'resumen']);
+    Route::get('/mesas/{mesa}/cuenta', [MesaController::class, 'cuenta']);
+
+    // Ocupa la mesa. NO regenera el código: es estable hasta destruirla.
+    Route::post('/mesas/{mesa}/ocupar', [MesaController::class, 'ocupar']);
+
+    // Agrupación de lectura de varias mesas (no fusiona pedidos; los
+    // códigos tampoco cambian).
+    Route::post('/mesas/agrupar', [MesaController::class, 'agrupar']);
+    Route::post('/mesas/desagrupar', [MesaController::class, 'desagrupar']);
+
+    // Envío en 2 pasos: confirmar (gate de que ninguna línea siga sin
+    // confirmar) y recién después enviar a cocina.
+    Route::post('/pedidos/{pedido}/confirmar', [PedidoController::class, 'confirmar']);
     Route::post('/pedidos/{pedido}/enviar', [PedidoController::class, 'enviarPedido']);
 
-    // Avanza el flujo del DER o cancela; los estados finales liberan la mesa.
+    // Avanza el flujo del DER o cancela; los estados finales DESTRUYEN
+    // la mesa (borrado lógico) si ya no queda ningún pedido activo.
     Route::put('/pedidos/{pedido}/estado', [PedidoController::class, 'cambiarEstado']);
+
+    // Alta de mesas dinámicas: las crea el mozo o la reserva (aforo
+    // contra PARAMETRO.capacidad_total; 422 si se supera).
+    Route::post('/mesas', [MesaController::class, 'store']);
 });
 
 // ==================== GESTIÓN (permisos por módulo) ====================
@@ -131,11 +184,14 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_ingredientes'])->group(fun
     Route::delete('/ingredientes/{id}', [IngredienteController::class, 'destroy']);
 });
 
-// MESAS: alta, edición y baja (el listado es público para empleados arriba)
+// MESAS: edición y baja (el alta es del mozo, arriba). La baja es un
+// borrado lógico: los pedidos históricos conservan su FK.
 
 Route::middleware(['auth:sanctum', 'permiso:gestionar_mesas'])->group(function () {
 
-    Route::post('/mesas', [MesaController::class, 'store']);
     Route::put('/mesas/{mesa}', [MesaController::class, 'update']);
     Route::delete('/mesas/{mesa}', [MesaController::class, 'destroy']);
+
+    // Aforo del lugar (PARAMETRO.capacidad_total).
+    Route::put('/configuracion', [ConfiguracionController::class, 'update']);
 });

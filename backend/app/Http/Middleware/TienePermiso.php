@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Autorización por permiso (DER v2.1: tabla ROL_PERMISO).
+ * Autorización por permiso (DER v2.2: tabla ROL_PERMISO).
  *
  * Reemplaza a los viejos middlewares EsGerente / EsMozo, que comparaban
  * el nombre del rol con un string literal ('Gerente' / 'Mozo'). Se usa

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ROL (DER v2.1): rol del empleado, con sus permisos vía ROL_PERMISO
+ * ROL (DER v2.2): rol del empleado, con sus permisos vía ROL_PERMISO
  * (pivot `rol_permiso`). La autorización de los endpoints se resuelve
  * con estos permisos (ver middleware TienePermiso), no con strings
  * literales del nombre del rol.

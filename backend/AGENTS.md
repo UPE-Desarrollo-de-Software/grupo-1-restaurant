@@ -8,7 +8,7 @@ API REST de un restaurante (proyecto final). Laravel 13 + Sanctum. Este repo es 
 - `php artisan test --compact` → corre sobre **SQLite en memoria** (`phpunit.xml`), no necesita MySQL. Un archivo: `php artisan test --compact tests/Feature/XTest.php`; un caso: `--filter='...'` (o `vendor/bin/pest <path>`).
 - `vendor/bin/pint --dirty --format agent` tras tocar cualquier PHP (no hay `pint.json` → preset `laravel`).
   - **Ojo mientras el repo no tenga commits**: sin `HEAD`, `--dirty` evalúa todo el codebase y reformatea los ~31 PHP que no cumplen el preset. Para limitarlo a lo tuyo: `vendor/bin/pint <ruta>`.
-- Setup desde cero: `composer run setup`. Seed: `php artisan db:seed` (permisos + roles + usuarios `gerente@restaurant.com` y un mozo, password `123456`, + 4 mesas).
+- Setup desde cero: `composer run setup`. Seed: `php artisan db:seed` (permisos + roles + usuarios `gerente@restaurant.com` y un mozo, password `123456`, + el PARAMETRO `capacidad_total` = 100; **no se precrean mesas**: son dinámicas contra el aforo). Si MySQL está caído, validar migraciones+seed con `DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan migrate:fresh --seed`.
 
 ## Entorno
 
@@ -21,33 +21,39 @@ API REST de un restaurante (proyecto final). Laravel 13 + Sanctum. Este repo es 
 
 ## Arquitectura
 
-- Flujo: `routes/api.php` → Controller (valida con `$request->validate` y arma el JSON) → `app/Services/*` → `app/Models/*`. **No hay** FormRequests, Policies ni API Resources: no introducirlos sin preguntar.
-- `$request->user()` devuelve **`Usuario`** (empleados, `POST /api/login`). El login de clientes por código grupal (`Sesion`) quedó **congelado**: sus rutas fueron desconectadas, pero las tablas `sesiones` / `mesa_sesion` / `clientes` y sus modelos siguen en el codebase por si vuelven.
-- Autorización por **permisos**, no por string del rol: el middleware alias `permiso` (`app/Http/Middleware/TienePermiso.php`) consulta `ROL_PERMISO` (`permiso:tomar_pedidos`, `permiso:gestionar_mesas`, etc.). Los aliases viejos `gerente` / `mozo` **no existen más**. El alias `cliente` sigue registrado en `bootstrap/app.php` pero ninguna ruta lo usa.
-- El modelo sigue el **DER v2.1** (`../documentacion/DER-v2.1.dio`, dibujo = fuente de verdad; mapeo en `../documentacion/DER-v2.1-backend.md`): 14 entidades, pedidos por mesa (1 pedido no-finalizado por mesa), platos con ingredientes `opcional` / `por_defecto` en el pivot `plato_ingrediente`.
-- Leer `routes/api.php` antes de agregar rutas.
+- **Hexagonal (rebote 2, oct. 2026)**: `routes/api.php` → Controller (valida con `$request->validate`, arma el JSON y catchea `\Exception` de negocio → 422) → `app/UseCases/<Modulo>/` (~46 casos, uno por endpoint) → `app/Services/*` (reglas de negocio) → `app/Repositories/*` (interfaz puerto + `Eloquent*Repository`, binding en `AppServiceProvider`). Detalle de cada patrón (cómo, cuándo, por qué) en `../documentacion/PATRONES-backend.md`. **No hay** FormRequests, Policies ni API Resources: no introducirlos sin preguntar.
+- El modelo sigue el **DER v2.2** (`../documentacion/DER-v2.2-cambios.md`: 15 entidades / 15 relaciones; el dibujo del grupo está en `DER-v3.0.dio`; mapeo en `../documentacion/DER-v2.2-backend.md`): sin entidad CLIENTE ni SESION (borradas), mesas dinámicas con aforo (`PARAMETRO.capacidad_total`) y borrado lógico (`SoftDeletes`), `codigo_acceso` estable (6 dígitos UNIQUE, no se regenera), pedidos con relación unitaria `PEDIDO–PEDIDO` (`pedido_padre_id`, profundidad 2) y **varios pedidos activos por mesa**. Gate del auto-pedido = `detalle_pedidos.confirmado`.
+- El comensal **no tiene usuario ni token**: `POST /api/acceso {codigo}` (público) y luego `Authorization: Bearer <codigo_acceso>` en `/cliente/*`. `ClienteMiddleware` resuelve la mesa viva y la guarda en `$request->attributes['cliente_mesa']` (401 sin Bearer/mesa destruida; 403 si el Bearer es un token Sanctum, que contiene `|`). La identidad del comensal es el pedido que creó (ids en el localStorage del front). `$request->user()` solo devuelve `Usuario` (empleados).
+- Autorización por **permisos**, no por string del rol: middleware alias `permiso` (`TienePermiso`) consulta `ROL_PERMISO` (`permiso:tomar_pedidos`, `permiso:gestionar_mesas`, etc.). Los aliases `gerente` / `mozo` no existen más.
+- Errores de dominio con estado: `app/Exceptions/ApiException{status}` con renderable en `bootstrap/app.php` (401/403/429 sin try/catch por controller). Reglas de negocio genéricas: `\Exception` catcheada en el controller → 422. Binding/`OrFail` → 404.
+- Leer `routes/api.php` antes de agregar rutas (está comentado por grupos de permiso).
 
 ## Convenciones que difieren de Laravel
 
-- Columnas en **camelCase** (nombre exacto del DER, no normalizar): `precioAdicional` (ingredientes) y en las tablas congeladas `mozoID`, `codigoGrupal`, `mesaID` / `sesionID` (pivot `mesa_sesion`). Todo lo demás es snake_case.
-- Tablas mixtas: `rol` y `rol_permiso` (singulares), `usuarios`, `platos`, `categorias`, `mesas`, `pedidos`, `detalle_pedidos`, `detalle_pedido_ingrediente` (la entidad DER `DETALLE_INGREDIENTE`).
-- Estados como strings: `mesas.estado = libre|ocupada|reservada`, `pedidos.estado = en_curso|enviado|en_preparacion|entregado|cerrado|cancelado` (el flujo vive en `PedidoService::cambiarEstado`).
-- El case del namespace debe coincidir con la ruta: `App\Http\Controllers`, `App\Models\...`. PSR-4 es case-sensitive: `app\Models\Sesion` o `App\http\Controllers\...` anda en Windows pero falla en Linux.
+- Columnas en **camelCase** (nombre exacto del DER, no normalizar): solo queda `precioAdicional` (ingredientes). Todo lo demás es snake_case.
+- Tablas mixtas: `rol` y `rol_permiso` (singulares), `usuarios`, `platos`, `categorias`, `mesas`, `pedidos`, `detalle_pedidos`, `detalle_pedido_ingrediente` (la entidad DER `DETALLE_INGREDIENTE`) y `parametros` (pila clave/valor).
+- Estados como strings: `mesas.estado = libre|ocupada|reservada`, `pedidos.estado = en_curso|confirmado|enviado|en_preparacion|entregado|cerrado|cancelado` (el flujo vive en `PedidoService::cambiarEstado`). `confirmado` (estado de PEDIDO) es el paso previo a `enviar`; `confirmado` (boolean de DETALLE_PEDIDO) es el gate de cada línea.
+- Errores esperados: `throw new ApiException($status, $message)` (renderable en `bootstrap/app.php`); reglas de negocio con `\Exception` → controller catch → 422; "no encontrado" de mesa = `ModelNotFoundException` vía binding/`OrFail`.
+- El case del namespace debe coincidir con la ruta: `App\Http\Controllers`, `App\Models\...`. PSR-4 es case-sensitive: un path mal cased anda en Windows pero falla en Linux.
 - Mensajes al usuario en español (voseo: "No tenes permisos…"); los identificadores quedan como están.
 - Los "no encontrado" suelen devolver 200 + `{"message": ...}` en vez de 404: seguir al controller hermano (`IngredienteController` es el único que 404ea).
 
 ## Trampas verificadas (no copiar estos patrones)
 
-- El binding implícito matchea por nombre de parámetro: la ruta declara `{id}` y el método tipa `$sesion` → `SubstituteBindings` saltea y el container inyecta un modelo vacío (pasó en `MozoController`, hoy congelado). Al tocar rutas, renombrar la ruta o el parámetro juntos.
-- `SesionService::obtenerDetalles()` (congelado) selecciona `mesas.numero_mesa`, columna que ninguna migración crea; la columna real es `codigo_mesa`.
-- `codigoGrupal` es `unique` en todas las filas pero `generarCodigoGrupal()` (congelado) solo evita códigos de sesiones *activas* → reusar el código de una sesión cerrada tira QueryException.
-- Borrar una `categoria` con platos falla con FK 1451 (no hay cascade en `platos.categoria_id`).
+- El binding implícito matchea por nombre de parámetro: la ruta declara `{id}` y el método tipa `$mesa` → `SubstituteBindings` saltea y el container inyecta un modelo vacío. Al tocar rutas, renombrar la ruta o el parámetro juntos. Por eso cuenta/show/destroy de mesa usan `string $id` + `porIdOrFail`/`conTrashedOrFail` en vez de binding implícito (hay que distinguir 404 de soft-delete).
+- Borrar una `categoria` con platos falla con FK 1451 (no hay cascade en `platos.categoria_id`); el controller lo catchea y responde 422.
+- El guard `auth:sanctum` (RequestGuard) **cachea el user resuelto durante todo el test**: para cambiar de identidad entre empleados hay que llamar `auth()->forgetGuards()` antes del siguiente request (los helpers `conMozo`/`conEmpleado` de los tests lo hacen).
+- Los helpers de Pest que usan `$this->withHeader('Authorization', …)` comparten el TestCase: llamar `conMozo`/`conEmpleado` **justo antes** de cada request con identidad distinta, si no el header anterior persiste.
+- Helpers globales de Pest (definidos en un archivo, visibles en todos): `autenticarMozo`/`platoDePrueba` (PedidoMesaTest), `mesaVisita`/`platoAuto`/`tokenMozo`/`conMozo`/`comensal`/`pedirLineaCliente` (ClientePedidoTest), `tokenEmpleado`/`conEmpleado`/`fijarAforo` (MesaDinamicaTest). **No redeclararlos** en otro archivo (fatal error); elegir nombres propios.
+- `MesaFactory::codigo_acceso` debe generar **string**: la validación `size:6` rechaza un int.
+- Las mesas destruidas (SoftDeletes) no se ven en listados ni valen para `/acceso`, pero **sí** en `codigoExiste()` (evita reusar códigos) y en la cuenta histórica (`conTrashedOrFail`). Cualquier consulta nueva debe decidir el alcance a propósito.
+- El Bearer del comensal **no** es un token Sanctum: `ClienteMiddleware` rechaza con 403 cualquier Bearer que contenga `|` (formato de los tokens de empleado). No usar `Sanctum::actingAs` para simular un comensal.
 
 ## Testing
 
-- Tests feature con Pest sobre **SQLite en memoria**. `tests/Pest.php` no habilita `RefreshDatabase` globalmente: cada test que toca la DB lo pide con `uses(RefreshDatabase::class);` arriba del archivo (ver `tests/Feature/PedidoMesaTest.php`).
-- Factories para `Usuario`, `Rol`, `Mesa`, `Categoria`, `Plato` e `Ingrediente` (`database/factories/`). Para pedidos no hay factory: crear el pedido por API o por `PedidoService`.
-- Ignorar `App\Models\User`, la migración `users` y el provider de `config/auth.php`: son defaults de Laravel; la app autentica `Usuario` (tabla `usuarios`) con tokens Sanctum.
+- Suite actual: `php artisan test --compact` → **35 tests / 183 assertions, verde** (SQLite en memoria). `tests/Pest.php` no habilita `RefreshDatabase` globalmente: cada test que toca la DB lo pide con `uses(RefreshDatabase::class);` arriba del archivo (ver `tests/Feature/PedidoMesaTest.php`).
+- Tests feature con Pest. Factories: `Usuario`, `Rol`, `Mesa`, `Categoria`, `Plato`, `Ingrediente` (`database/factories/`). **Sin factory de pedidos ni de parámetros**: crear pedidos por API/`PedidoService` y el aforo con el helper `fijarAforo()`.
+- Ignorar `App\Models\User`, la migración `users` y el provider de `config/auth.php`: son defaults de Laravel; la app autentica `Usuario` con tokens Sanctum (el comensal no autentica: usa el Bearer de `codigo_acceso`).
 
 ---
 

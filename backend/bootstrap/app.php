@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ApiException;
 use App\Http\Middleware\ClienteMiddleware;
 use App\Http\Middleware\TienePermiso;
 use Illuminate\Foundation\Application;
@@ -21,14 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $middleware->alias([
-            // Autorización por permiso (DER v2.1, tabla ROL_PERMISO).
+            // Autorización por permiso (DER: tabla ROL_PERMISO).
             // Uso: Route::middleware('permiso:tomar_pedidos').
             'permiso' => TienePermiso::class,
 
-            // CONGELADO: el alias 'cliente' ya no se usa en ninguna ruta
-            // (el DER v2.1 eliminó SESION/CLIENTES y el login por código
-            // grupal quedó desconectado). Se conserva por si la
-            // funcionalidad vuelve en otra entidad.
+            // Acceso del comensal (rebote 2): resuelve la mesa desde
+            // Authorization: Bearer {codigo_acceso}. Uso: Route::
+            // middleware('cliente') en el grupo /cliente (sin sanctum).
             'cliente' => ClienteMiddleware::class,
         ]);
     })
@@ -36,4 +36,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // Los UseCases/Services lanzan ApiException con su estado HTTP
+        // (p.ej. credenciales inválidas 401, última gerente 403): acá
+        // se convierte en la respuesta JSON {message}.
+        $exceptions->render(function (ApiException $e, Request $request) {
+            return response()->json(['message' => $e->getMessage()], $e->status);
+        });
     })->create();

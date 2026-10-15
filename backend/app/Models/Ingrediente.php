@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
- * INGREDIENTE (DER v2.1): insumo de catálogo.
+ * INGREDIENTE (DER v2.2): insumo de catálogo.
  *
  * Se quitó `opcional`: ese flag ahora vive en el pivot
  * `plato_ingrediente` (por plato). `precioAdicional` es el recargo de

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * DETALLE_INGREDIENTE (DER v2.1) — tabla `detalle_pedido_ingrediente`.
+ * DETALLE_INGREDIENTE (DER v2.2) — tabla `detalle_pedido_ingrediente`.
  *
  * Registra un ingrediente excluido o agregado en una línea del pedido.
  * `precio_adicional` solo se guarda (y cobra) cuando `tipo = 'agregado'`;

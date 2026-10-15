@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
- * PERMISO (DER v2.1): permiso de autorización agrupado por módulo.
+ * PERMISO (DER v2.2): permiso de autorización agrupado por módulo.
  * Los roles reciben permisos a través del pivot ROL_PERMISO
  * (tabla `rol_permiso`).
  */

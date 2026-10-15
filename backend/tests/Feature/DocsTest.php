@@ -22,3 +22,13 @@ test('ya no muestra la portada default de laravel', function () {
         ->assertOk()
         ->assertDontSee("Let's get started");
 });
+
+test('documenta el auto-pedido del comensal', function () {
+    $contenido = $this->get('/')->assertOk()->getContent();
+
+    expect($contenido)
+        ->toContain('/api/acceso')
+        ->toContain('Clientes')
+        ->toContain('/cliente/cuenta')
+        ->toContain('acceso-cliente');
+});

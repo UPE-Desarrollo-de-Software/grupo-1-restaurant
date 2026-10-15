@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * RESERVA (DER v2.1).
+ * RESERVA (DER v2.2).
  *
  * Sin `sesion_id` (la entidad SESION se eliminó del DER).
  * `nombre_solicitante` / `contacto_solicitante` son los nombres del

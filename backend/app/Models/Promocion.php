@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * PROMOCION (DER v2.1).
+ * PROMOCION (DER v2.2).
  *
  * Se eliminaron `ambito` y `condiciones` (y las tablas
  * `promocion_categoria` / `promocion_producto`) para ser fieles al

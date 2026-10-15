@@ -2,28 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\PlatoService;
+use App\UseCases\Platos\ActualizarPlatoUseCase;
+use App\UseCases\Platos\CrearPlatoUseCase;
+use App\UseCases\Platos\EliminarPlatoUseCase;
+use App\UseCases\Platos\ListarPlatosUseCase;
+use App\UseCases\Platos\ObtenerPlatoUseCase;
 use Illuminate\Http\Request;
 
 /**
- * Endpoints de PLATO (DER v2.1). Antes se llamaban "productos"
- * (controlador ProductoController, rutas /api/productos).
+ * PLATO (antes "productos", rutas /api/productos).
  */
 class PlatoController extends Controller
 {
-    public function __construct(private PlatoService $service) {}
+    public function __construct(
+        private ListarPlatosUseCase $listar,
+        private ObtenerPlatoUseCase $obtener,
+        private CrearPlatoUseCase $crear,
+        private ActualizarPlatoUseCase $actualizar,
+        private EliminarPlatoUseCase $eliminar,
+    ) {}
 
     public function index()
     {
-        // Pido aparte del plato su categoría, y solo los disponibles.
-        $platos = $this->service->obtenerDisponibles();
+        $platos = ($this->listar)();
 
         if ($platos->isEmpty()) {
-            $data = [
-                'message' => 'No se encontraron platos',
-            ];
-
-            return response()->json($data, 200);
+            return response()->json(['message' => 'No se encontraron platos'], 200);
         }
 
         return response()->json($platos, 200);
@@ -31,14 +35,10 @@ class PlatoController extends Controller
 
     public function show(int $id)
     {
-        $plato = $this->service->obtenerConIngredientes($id);
+        $plato = ($this->obtener)($id);
 
         if (! $plato) {
-            $data = [
-                'message' => 'No se encontraron platos',
-            ];
-
-            return response()->json($data, 200);
+            return response()->json(['message' => 'No se encontraron platos'], 200);
         }
 
         return response()->json($plato, 200);
@@ -64,7 +64,7 @@ class PlatoController extends Controller
             'ingredientes.*.por_defecto' => 'nullable|boolean',
         ]);
 
-        $plato = $this->service->crear($datos);
+        $plato = ($this->crear)($datos);
 
         return response()->json([
             'message' => 'Plato creado exitosamente',
@@ -89,7 +89,11 @@ class PlatoController extends Controller
             'ingredientes.*.por_defecto' => 'nullable|boolean',
         ]);
 
-        $plato = $this->service->actualizar($id, $datos);
+        $plato = ($this->actualizar)($id, $datos);
+
+        if (! $plato) {
+            return response()->json(['message' => 'No se encontraron platos'], 200);
+        }
 
         return response()->json([
             'message' => 'Plato actualizado exitosamente',
@@ -99,7 +103,11 @@ class PlatoController extends Controller
 
     public function destroy(int $id)
     {
-        $this->service->eliminar($id);
+        $eliminado = ($this->eliminar)($id);
+
+        if (! $eliminado) {
+            return response()->json(['message' => 'No se encontraron platos'], 200);
+        }
 
         return response()->json([
             'message' => 'Plato eliminado exitosamente',

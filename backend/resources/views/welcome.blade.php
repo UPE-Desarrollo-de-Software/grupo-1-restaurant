@@ -289,6 +289,11 @@
                 color: #b91c1c;
             }
 
+            .acceso-cliente {
+                background: #ede9fe;
+                color: #6d28d9;
+            }
+
             /* ---------- pie ---------- */
 
             footer {
@@ -352,12 +357,21 @@
                 <p>
                     <strong>Empleado</strong>: <code>POST /api/login</code> con <code>email</code> y
                     <code>password</code> → responde un token de <code>Usuario</code>. Cada rol tiene
-                    permisos (tabla <code>ROL_PERMISO</code>, DER v2.1) que definen qué endpoints puede
+                    permisos (tabla <code>ROL_PERMISO</code>, DER v2.2) que definen qué endpoints puede
                     usar.
+                </p>
+                <p>
+                    <strong>Comensal</strong> (auto-pedido, sin registro): <code>POST /api/acceso</code>
+                    con <code>codigo</code> (el código de 6 dígitos de la mesa) → responde la mesa. El
+                    front guarda ese código y lo envía en cada llamada como
+                    <code>Authorization: Bearer {codigo_acceso}</code> contra las rutas bajo
+                    <code>/api/cliente</code>. No existe token de cliente: su identidad en la visita es
+                    el <code>pedido_id</code> que guarda en su dispositivo.
                 </p>
                 <div class="leyenda">
                     <span class="acceso acceso-publico">Público</span>
                     <span class="acceso acceso-empleado">Empleado</span>
+                    <span class="acceso acceso-cliente">Cliente</span>
                     <span class="acceso acceso-mozo">Mozo</span>
                     <span class="acceso acceso-gerente">Gerente</span>
                 </div>
