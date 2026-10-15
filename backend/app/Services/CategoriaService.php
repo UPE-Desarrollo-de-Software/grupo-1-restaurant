@@ -3,35 +3,57 @@
 namespace App\Services;
 
 use App\Models\Categoria;
+use App\Repositories\CategoriaRepository;
+use Illuminate\Support\Collection;
 
+/**
+ * Categorías de la carta (capa de dominio sobre el Repository).
+ */
 class CategoriaService
 {
+    public function __construct(private CategoriaRepository $categorias) {}
 
+    /**
+     * @return Collection<int, Categoria>
+     */
+    public function obtenerActivas()
+    {
+        return $this->categorias->activas();
+    }
+
+    /**
+     * @return Collection<int, Categoria>
+     */
     public function obtenerTodos()
     {
-        return Categoria::all();
+        return $this->categorias->todas();
     }
 
-    public function obtenerPorId($id)
+    public function obtenerPorId(int $id): Categoria
     {
-        return Categoria::findOrFail($id);
+        return $this->categorias->porIdOrFail($id);
     }
 
-    public function crear(array $datos)
+    /**
+     * @param  array<string, mixed>  $datos
+     */
+    public function crear(array $datos): Categoria
     {
-        return Categoria::create($datos);
+        return $this->categorias->crear($datos);
     }
 
-    public function actualizar($id, array $datos)
+    /**
+     * @param  array<string, mixed>  $datos
+     */
+    public function actualizar(int $id, array $datos): Categoria
     {
-        $categoria = Categoria::findOrFail($id);
-        $categoria->update($datos);
-        return $categoria;
+        $categoria = $this->categorias->porIdOrFail($id);
+
+        return $this->categorias->actualizar($categoria, $datos);
     }
 
-    public function eliminar($id)
+    public function eliminar(int $id): void
     {
-        $categoria = Categoria::findOrFail($id);
-        $categoria->delete();
+        $this->categorias->eliminar($this->categorias->porIdOrFail($id));
     }
 }
