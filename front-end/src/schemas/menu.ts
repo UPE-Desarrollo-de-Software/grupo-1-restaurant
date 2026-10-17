@@ -1,6 +1,6 @@
 import {z} from "zod";
 
-export const productoSchema = z.object({
+export const platoSchema = z.object({
     categoria_id: z.coerce.number().positive('Seleccioná una categoría'),
     nombre: z.string().trim().min(1, "Ingresá un nombre"),
     descripcion: z.string().trim(),
@@ -8,6 +8,7 @@ export const productoSchema = z.object({
     imagen: z.string().trim(),
     disponible: z.boolean(),
     ingredientes: z.array(z.number().int().min(1, 'ID de ingrediente inválido')).optional()
+        .transform(ids => ids?.map(ingrediente_id => ({ ingrediente_id })))
 })
 
 export const categoriaSchema = z.object({
@@ -18,6 +19,9 @@ export const categoriaSchema = z.object({
 
 export const ingredienteSchema = z.object({
     nombre: z.string().trim().min(1, "Ingresá un nombre"),
-    opcional: z.boolean(),
-    precioAdicional: z.coerce.number().positive("El precio debe ser positivo")
+    precioAdicional: z.preprocess(
+        (valor) => (valor === '' ? undefined : valor),
+        z.coerce.number({ error: "Ingresá un precio" })
+            .min(0, "El precio no puede ser negativo")
+    ),
 })

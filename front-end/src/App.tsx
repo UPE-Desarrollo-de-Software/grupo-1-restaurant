@@ -7,7 +7,6 @@ import { RegisterPage } from './pages/Register/Register'
 import { RequireAuth } from './components/RequireAuth'
 import { LandingPage } from './pages/Landing/Landing'
 import { CrearPlatoPage } from './pages/Gerente/Carta/Platos/CrearPlato'
-import { RolesProvider } from './context/RolesContext/RolesContext'
 import { DashboardPage } from './pages/Gerente/Dashboard/Dashboard'
 import { CartaHubPage } from './pages/Gerente/Carta/CartaHub'
 import { DisponibilidadPage } from './pages/Gerente/Carta/Disponibilidad'
@@ -24,13 +23,17 @@ import { MozoPage } from './pages/Mozo/Mozo'
 import { MozoReservasPage } from './pages/Mozo/MozoReservas'
 import { PlatosHubPage } from './pages/Gerente/Carta/Platos/PlatosHub'
 import { EditarPlatoPage } from './pages/Gerente/Carta/Platos/EditarPlato'
+import { CategoriasPage } from './pages/Gerente/Carta/Categorias/CategoriasHub'
+import { IngredientesHubPage } from './pages/Gerente/Carta/Ingredientes/IngredientesHub'
+import { CrearIngredientePage } from './pages/Gerente/Carta/Ingredientes/CrearIngrediente'
+import { EditarIngredientePage } from './pages/Gerente/Carta/Ingredientes/EditarIngredientes'
+import { CrearCategoriaPage } from './pages/Gerente/Carta/Categorias/CrearCategoria'
 
 function App() {
 
   return (
-    <RolesProvider>
-      <BrowserRouter>
-        <Routes>
+    <BrowserRouter>
+      <Routes>
             <Route element={<MainLayout/>}>
 
               <Route path='/' element={<LandingPage/>}/>
@@ -39,9 +42,14 @@ function App() {
               <Route element={<RequireAuth rolesPermitidos={['Gerente']}><Outlet/></RequireAuth>}>
                 <Route path='/gerente' element={<DashboardPage/>}/>
                 <Route path='/gerente/carta' element={<CartaHubPage/>}/>
-                <Route path='/gerente/carta/productos' element={<PlatosHubPage/>}/>
-                <Route path='/gerente/carta/productos/crear' element={<CrearPlatoPage/>}/>
-                <Route path='/gerente/carta/productos/:id/editar' element={<EditarPlatoPage/>}/>
+                <Route path='/gerente/carta/platos' element={<PlatosHubPage/>}/>
+                <Route path='/gerente/carta/platos/crear' element={<CrearPlatoPage/>}/>
+                <Route path='/gerente/carta/platos/:id/editar' element={<EditarPlatoPage/>}/>
+                <Route path='/gerente/carta/categorias' element={<CategoriasPage/>}/>
+                <Route path='/gerente/carta/categorias/crear' element={<CrearCategoriaPage/>}/>
+                <Route path='/gerente/carta/ingredientes' element={<IngredientesHubPage/>}/>
+                <Route path='/gerente/carta/ingredientes/crear' element={<CrearIngredientePage/>}/>
+                <Route path='/gerente/carta/ingredientes/:id/editar' element={<EditarIngredientePage/>}/>
                 <Route path='/gerente/carta/disponibilidad' element={<DisponibilidadPage/>}/>
                 <Route path='/gerente/carta/promociones' element={<PromocionesPage/>}/>
                 <Route path='/gerente/mesas' element={<MesasHubPage/>}/>
@@ -76,7 +84,6 @@ function App() {
             </Route>
         </Routes>
       </BrowserRouter>
-    </RolesProvider>
   )
 }
 

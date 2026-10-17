@@ -2,8 +2,8 @@ import { Card, Container, Form, Button, Spinner, Alert } from 'react-bootstrap'
 import s from '../Login/login.module.css'
 import { useState, useEffect, useRef } from 'react'
 import { registerSchema } from '../../schemas/auth'
-import { register } from '../../api/auth'
-import { useRoles } from '../../context/RolesContext/useRoles'
+import { getRoles, register } from '../../api/auth'
+import type { Rol } from '../../types/Auth'
 
 export function RegisterPage(){
     const [nombre, setNombre] = useState("")
@@ -17,7 +17,8 @@ export function RegisterPage(){
     const [registroExitoso, setRegistroExitoso] = useState<string | null>(null)
     const timerRef = useRef<number|null>(null)
 
-    const { roles } = useRoles()
+    const [roles, setRoles] = useState<Rol[]>([])
+    const [cargandoRoles, setCargandoRoles] = useState(true)
 
     const resultados = registerSchema.safeParse({nombre, rol_id, email, password})  
     
@@ -30,6 +31,19 @@ export function RegisterPage(){
         }
         }
     }
+
+    useEffect(()=>{
+        const controller = new AbortController()
+        getRoles(controller.signal)
+            .then(setRoles)
+            .catch(() => {
+                if (!controller.signal.aborted) setRoles([])
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) setCargandoRoles(false)
+            })
+        return () => controller.abort()
+    },[])
 
     useEffect(()=>{
         return()=>{
@@ -103,8 +117,8 @@ export function RegisterPage(){
                                 <Form.Label className={`text-label-md ${s.label}`}>
                                     Rol
                                 </Form.Label>
-                                <Form.Select value={rol_id} onChange={(e)=>setRol(e.target.value)} isInvalid={tocado && !!errores.rol_id}>
-                                    <option value="" disabled={true}>Seleccioná un rol</option>
+                                <Form.Select value={rol_id} onChange={(e)=>setRol(e.target.value)} isInvalid={tocado && !!errores.rol_id} disabled={cargandoRoles}>
+                                    <option value="" disabled={true}>{cargandoRoles ? 'Cargando roles...' : 'Seleccioná un rol'}</option>
                                     {roles.filter(r => r.nombre !== 'Cliente').map(r=>(
                                         <option value={r.id} key={r.id}>{r.nombre}</option>
                                     ))}

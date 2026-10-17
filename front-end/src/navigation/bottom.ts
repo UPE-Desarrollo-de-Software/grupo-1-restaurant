@@ -13,6 +13,7 @@ export const BOTTOM_POR_ROL: Record<string, OpcionNav[]> = {
         { to: '/gerente/carta', label: 'Carta', icon: 'bi-journal-text' },
         { to: '/gerente/mesas', label: 'Mesas', icon: 'bi-grid-3x3-gap' },
         { to: '/gerente/reservas', label: 'Reservas', icon: 'bi-calendar-check' },
+        { to: '/gerente/usuarios', label: 'Usuarios', icon: 'bi-people' },
     ],
     Cocina: [
         { to: '/cocina', label: 'Pedidos', icon: 'bi-list-check', end: true },

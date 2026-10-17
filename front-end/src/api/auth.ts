@@ -77,7 +77,10 @@ export async function logoutSesion(): Promise<void>{
 }
 
 export async function getRoles(signal?: AbortSignal):Promise<Rol[]>{
-    const response = await fetch(`${API_BASE_URL}/roles`, {signal})
+    const response = await fetch(`${API_BASE_URL}/roles`, {
+        signal,
+        headers: { "Authorization": `Bearer ${getToken()}` }
+    })
     
     const data =  await response.json().catch(() => null)
     

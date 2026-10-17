@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Platos.module.css'
 import { useCategorias } from '../../../../hooks/useCategorias'
 import { useIngredientes } from '../../../../hooks/useIngredientes'
-import { productoSchema } from '../../../../schemas/menu'
-import { createProductos } from '../../../../api/productos'
+import { platoSchema } from '../../../../schemas/menu'
+import { createPlato } from '../../../../api/platos'
 
 export function CrearPlatoPage() {
+    const navigate = useNavigate()
     const [categoria_id, setCategoriaId] = useState('')
     const [nombre, setNombre] = useState('')
     const [descripcion, setDescripcion] = useState('')
@@ -24,7 +26,7 @@ export function CrearPlatoPage() {
     const [tocado, setTocado] = useState(false)
 
     const errores: Record<string, string> = {}
-    const resultados = productoSchema.safeParse({categoria_id,nombre,descripcion,precio,imagen,disponible,ingredientes})
+    const resultados = platoSchema.safeParse({categoria_id,nombre,descripcion,precio,imagen,disponible,ingredientes})
     if (!resultados.success) {
         for (const issue of resultados.error.issues) {
         const campo = issue.path[0]
@@ -50,8 +52,8 @@ export function CrearPlatoPage() {
 
         setEnviando(true)
         try {
-            const producto = await createProductos(resultados.data)
-            setExito(producto.message)
+            const plato = await createPlato(resultados.data)
+            setExito(plato.message)
             setCategoriaId('')
             setNombre('')
             setDescripcion('')
@@ -61,7 +63,7 @@ export function CrearPlatoPage() {
             setIngredientes([])
             setTocado(false)
         } catch (err) {
-            setErrorApi(err instanceof Error ? err.message : 'Error desconocido al crear el producto')
+            setErrorApi(err instanceof Error ? err.message : 'Error desconocido al crear el plato')
         } finally {
             setEnviando(false)
         }
@@ -70,8 +72,8 @@ export function CrearPlatoPage() {
     return (
         <div className={s.page}>
             <Card className={s.card}>
-                <h1 className={`text-headline-md ${s.title}`}>ABM de productos</h1>
-                <p className={`text-body-sm ${s.subtitle}`}>Alta de productos de la carta</p>
+                <h1 className={`text-headline-md ${s.title}`}>Nuevo plato</h1>
+                <p className={`text-body-sm ${s.subtitle}`}>El plato creado se refleja en la carta.</p>
 
                 {(errorCategorias || errorIngredientes) && 
                     <Alert variant='danger' className='text-body-md'>
@@ -82,7 +84,7 @@ export function CrearPlatoPage() {
 
                 <Form onSubmit={handlerSubmit} noValidate>
                     <div className={s.row}>
-                        <Form.Group className={s.field} controlId='abm-producto-nombre'>
+                        <Form.Group className={s.field} controlId='abm-plato-nombre'>
                             <Form.Label className={`text-label-md ${s.label}`}>Nombre</Form.Label>
                             <Form.Control
                                 className={s.input}
@@ -95,7 +97,7 @@ export function CrearPlatoPage() {
                             <Form.Control.Feedback type='invalid'>{errores.nombre}</Form.Control.Feedback>
                         </Form.Group>
 
-                        <Form.Group className={s.field} controlId='abm-producto-categoria'>
+                        <Form.Group className={s.field} controlId='abm-plato-categoria'>
                             <Form.Label className={`text-label-md ${s.label}`}>Categoría</Form.Label>
                             <Form.Select
                                 className={s.input}
@@ -113,7 +115,7 @@ export function CrearPlatoPage() {
                         </Form.Group>
                     </div>
 
-                    <Form.Group className={s.field} controlId='abm-producto-descripcion'>
+                    <Form.Group className={s.field} controlId='abm-plato-descripcion'>
                         <Form.Label className={`text-label-md ${s.label}`}>Descripción</Form.Label>
                         <Form.Control
                             className={s.input}
@@ -128,7 +130,7 @@ export function CrearPlatoPage() {
                     </Form.Group>
 
                     <div className={s.row}>
-                        <Form.Group className={s.field} controlId='abm-producto-precio'>
+                        <Form.Group className={s.field} controlId='abm-plato-precio'>
                             <Form.Label className={`text-label-md ${s.label}`}>Precio</Form.Label>
                             <Form.Control
                                 className={s.input}
@@ -143,7 +145,7 @@ export function CrearPlatoPage() {
                             <Form.Control.Feedback type='invalid'>{errores.precio}</Form.Control.Feedback>
                         </Form.Group>
 
-                        <Form.Group className={s.field} controlId='abm-producto-imagen'>
+                        <Form.Group className={s.field} controlId='abm-plato-imagen'>
                             <Form.Label className={`text-label-md ${s.label}`}>Imagen (URL)</Form.Label>
                             <Form.Control
                                 className={s.input}
@@ -157,7 +159,7 @@ export function CrearPlatoPage() {
                         </Form.Group>
                     </div>
 
-                    <Form.Group className={s.field} controlId='abm-producto-ingredientes'>
+                    <Form.Group className={s.field} controlId='abm-plato-ingredientes'>
                         <Form.Label className={`text-label-md ${s.label}`}>Ingredientes</Form.Label>
                         <div className={s.ingredientsBox}>
                             {loadingIngredientes ? (
@@ -183,11 +185,11 @@ export function CrearPlatoPage() {
                         <Form.Control.Feedback type='invalid'>{errores.ingredientes}</Form.Control.Feedback>
                     </Form.Group>
 
-                    <Form.Group className={s.field} controlId='abm-producto-disponible'>
+                    <Form.Group className={s.field} controlId='abm-plato-disponible'>
                         <div className={s.switchWrap}>
                             <Form.Check
                                 type='switch'
-                                id='producto-disponible'
+                                id='plato-disponible'
                                 checked={disponible}
                                 onChange={(e) => setDisponible(e.target.checked)}
                             />
@@ -195,11 +197,22 @@ export function CrearPlatoPage() {
                         </div>
                     </Form.Group>
 
-                    <Button className={s.button} variant='primary' type='submit' disabled={enviando}>
-                        {enviando
-                            ? <><Spinner size='sm' animation='border' className='me-2' />Guardando...</>
-                            : 'Crear producto'}
-                    </Button>
+                    <div className={s.actions}>
+                        <Button className={s.button} variant='primary' type='submit' disabled={enviando}>
+                            {enviando
+                                ? <><Spinner size='sm' animation='border' className='me-2' />Guardando...</>
+                                : 'Crear plato'}
+                        </Button>
+                        <Button
+                            className={s.button}
+                            variant='outline-secondary'
+                            type='button'
+                            disabled={enviando}
+                            onClick={() => navigate('/gerente/carta/platos')}
+                        >
+                            Cancelar
+                        </Button>
+                    </div>
                 </Form>
             </Card>
         </div>

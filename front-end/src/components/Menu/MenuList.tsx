@@ -1,27 +1,27 @@
-import { useProductos } from '../../hooks/useProductos'
+import { usePlatos } from '../../hooks/usePlatos'
 import s from './MenuList.module.css'
-import { ProductoCard } from './ProductCard'
+import { PlatoCard } from './PlatoCard'
 
 export function MenuList(){
-  const {productos, loading, error} = useProductos()
+  const {platos, loading, error} = usePlatos()
 
   if(loading){
-    return <p className='text-body-md text-center'>Cargando productos...</p>
+    return <p className='text-body-md text-center'>Cargando platos...</p>
   }
 
   if(error){
     return <p className='text-body-md text-center'>{error}</p>
   }
 
-  if(productos.length === 0){
-    return <p className='text-body-md text-center'>No hay productos cargados todavía</p>
+  if(platos.length === 0){
+    return <p className='text-body-md text-center'>No hay platos cargados todavía</p>
   }
 
   return(
     <ul className={s.list}>
-      {productos.map(p => (
+      {platos.map(p => (
         <li key={p.id}>
-          <ProductoCard producto={p}/>
+          <PlatoCard plato={p}/>
         </li>
       ))}
     </ul>

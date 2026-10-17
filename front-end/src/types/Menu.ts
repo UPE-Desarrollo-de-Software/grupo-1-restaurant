@@ -1,7 +1,7 @@
 import z from "zod";
-import type { productoSchema } from "../schemas/menu";
+import type { categoriaSchema, ingredienteSchema, platoSchema } from "../schemas/menu";
 
-export interface ProductoListar {
+export interface PlatoListar {
   id: number;
   categoria_nombre: string;
   categoria_id: number;
@@ -15,11 +15,16 @@ export interface ProductoListar {
 export interface Ingrediente {
     id: number,
     nombre: string,
-    opcional: boolean,
     precioAdicional: number
 }
 
-export interface ProductoObtener {
+export type IngredienteInput = z.infer<typeof ingredienteSchema>
+export type IngredienteResponse = {
+    message: string,
+    ingrediente: Ingrediente
+}
+
+export interface PlatoObtener {
     id: number;
     categoria_id: number;
     nombre: string;
@@ -27,13 +32,13 @@ export interface ProductoObtener {
     precio: number;
     imagen: string | null;
     disponible: boolean;
-    ingredientes: { id: number; nombre: string }[] 
+    ingredientes: Ingrediente[]
 }
 
-export type ProductoInput = z.infer<typeof productoSchema>
-export type ProductoResponse = {
+export type PlatoInput = z.infer<typeof platoSchema>
+export type PlatoResponse = {
     message: string,
-    producto: ProductoObtener
+    plato: PlatoObtener
 }
 
 export interface Categoria {
@@ -41,4 +46,10 @@ export interface Categoria {
     nombre: string
     descripcion: string,
     activo: boolean
+}
+
+export type CategoriaInput = z.infer<typeof categoriaSchema>
+export type CategoriaResponse ={
+    message: string,
+    categoria: Categoria
 }

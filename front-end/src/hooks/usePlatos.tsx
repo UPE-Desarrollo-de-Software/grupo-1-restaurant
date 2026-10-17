@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
-import type { ProductoListar } from "../types/Menu";
-import { getProductos } from "../api/productos";
+import type { PlatoListar } from "../types/Menu";
+import { getPlatos } from "../api/platos";
 
-export function useProductos() {
+export function usePlatos() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [productos, setProductos] = useState<ProductoListar[]>([])
+    const [platos, setPlatos] = useState<PlatoListar[]>([])
 
     useEffect(()=>{
         const controller = new AbortController()
 
         async function cargarFetch(){
             try {
-                const data = await getProductos(controller.signal)
-                setProductos(data)
+                const data = await getPlatos(controller.signal)
+                setPlatos(data)
                 setError(null)
                 setLoading(false)
             } catch (err: unknown) {
@@ -30,5 +30,5 @@ export function useProductos() {
         }
     }, [])
 
-    return { productos, loading, error}
+    return { platos, loading, error}
 }

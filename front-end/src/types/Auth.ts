@@ -5,7 +5,8 @@ export interface UsuarioSesion {
     id: number,
     nombre: string,
     email: string,
-    rol_id: number
+    rol_id: number,
+    rol?: Rol
 }
 
 export type LoginInput = z.infer<typeof loginSchema>

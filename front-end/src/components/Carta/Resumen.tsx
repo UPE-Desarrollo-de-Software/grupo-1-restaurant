@@ -1,4 +1,4 @@
-import s from './ResumenPlatos.module.css'
+import s from './Resumen.module.css'
 
 const stats = [
   { label: 'Totales', valor: 48, punto: 'puntoTotales' },
@@ -6,7 +6,8 @@ const stats = [
   { label: 'Pausados', valor: 4, punto: 'puntoPausados' },
 ]
 
-export function ResumenPlatos() {
+
+export function Resumen() {
   return (
     <div className={s.grid}>
       {stats.map(stat => (

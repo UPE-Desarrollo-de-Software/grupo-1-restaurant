@@ -4,7 +4,6 @@ import { Link, useNavigate } from "react-router-dom"
 import React, { useState } from "react"
 import { loginSchema } from "../../schemas/auth"
 import { login, setSesion } from "../../api/auth"
-import { useRoles } from "../../context/RolesContext/useRoles"
 
 const INICIO_POR_ROL: Record<string, string> ={
   Gerente: '/gerente',
@@ -20,7 +19,6 @@ export function LoginPage(){
   const [enviando, setEnviando] = useState(false)
   const [errorApi, setErrorApi] = useState<string | null>(null)
   const navigate = useNavigate()
-  const {roles} = useRoles()
 
   const resultado = loginSchema.safeParse({email, password})
 
@@ -44,8 +42,7 @@ export function LoginPage(){
     try {
       const {token, usuario} = await login(resultado.data)
       setSesion(token, usuario)
-      const nombreRol = roles.find(r => r.id === usuario.rol_id)?.nombre
-      navigate(INICIO_POR_ROL[nombreRol ?? ''] ?? '/menu')
+      navigate(INICIO_POR_ROL[usuario.rol?.nombre ?? ''] ?? '/menu')
     } catch (err) {
       setErrorApi(err instanceof Error ? err.message : "Error desconocido al iniciar sesión")
     }finally{

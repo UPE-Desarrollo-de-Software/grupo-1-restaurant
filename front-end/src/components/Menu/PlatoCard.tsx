@@ -1,10 +1,10 @@
 import { Card } from "react-bootstrap"
-import type {ProductoListar} from  '../../types/Menu'
-import s from './ProductCard.module.css'
+import type {PlatoListar} from  '../../types/Menu'
+import s from './PlatoCard.module.css'
 import { Link } from "react-router-dom";
 
-interface ProductoCardProps{
-  producto: ProductoListar
+interface PlatoCardProps{
+  plato: PlatoListar
 }
 
 const formatearPrecio = (precio: number): string =>
@@ -14,26 +14,26 @@ const formatearPrecio = (precio: number): string =>
     minimumFractionDigits: 0,
   }).format(precio);
 
-export function ProductoCard({producto}: ProductoCardProps){
+export function PlatoCard({plato}: PlatoCardProps){
   return(
    <Card className={s.card}>
       <Card.Body>
         <div className={s.info}>
           <h3 className={`text-headline-sm ${s.nombre}`}>
-            {producto.nombre}
+            {plato.nombre}
           </h3>
           <p className={`text-body-sm ${s.descripcion}`}>
-            {producto.descripcion}
+            {plato.descripcion}
           </p>
           <p className={`text-price-display ${s.precio}`}>
-            {formatearPrecio(producto.precio)}
+            {formatearPrecio(plato.precio)}
           </p>
 
         </div>
       </Card.Body>
       <div className={s.media}>
-        <Card.Img className={s.imagen} src={producto.imagen ?? undefined} alt={producto.nombre} loading="lazy"/>
-        <Link className={s.link} to={`/producto/${producto.id}`}>
+        <Card.Img className={s.imagen} src={plato.imagen ?? undefined} alt={plato.nombre} loading="lazy"/>
+        <Link className={s.link} to={`/plato/${plato.id}`}>
           <p className="text-body-sm">Ver detalles</p>
         </Link>
       </div>

@@ -141,6 +141,11 @@
   gap: var(--space-xs);
 }
 
+.switchWrap :global(.form-check-input:checked) {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
 .switchLabel {
   color: var(--color-on-surface-variant);
 }
