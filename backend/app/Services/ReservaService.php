@@ -2,143 +2,267 @@
 
 namespace App\Services;
 
-use App\Models\Sesion;
-use App\Models\Usuario;
 use App\Models\Mesa;
 use App\Models\Reserva;
-use Illuminate\Database\Eloquent\Collection;
+use App\Repositories\MesaRepository;
+use App\Repositories\ReservaRepository;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
+/**
+ * RESERVA — servicio de dominio (arquitectura hexagonal: capa Service
+ * sobre los Repositories Reserva/Mesa).
+ *
+ * Reglas (DER v3.0 + decisiones del grupo):
+ *  - la mesa de la reserva SIEMPRE existe: o el empleado la elige
+ *    (find estricto) o, en la reserva pública sin mesa, el SISTEMA la
+ *    crea como "mozo virtual" validando el aforo (nunca el cliente
+ *    inserta mesas por su cuenta);
+ *  - lead time: la reserva debe hacerse con al menos 2 horas de
+ *    anticipación (siendo las 19:00 lo más temprano es 21:00);
+ *  - conflicto: misma mesa + fecha + hora EXACTA con estado pendiente;
+ *  - `cantPersonas` ≤ capacidad de la mesa;
+ *  - el estado de la mesa ('reservada') solo cambia con reservas de
+ *    HOY; las de otros días se consultan con GET /reservas?fecha=...;
+ *  - transiciones: pendiente → cancelada | finalizada | no_asistio;
+ *    finalizar e inasistir exigen que ya haya pasado la hora.
+ */
 class ReservaService
 {
-    public function crearReserva(array $datos)
+    private const LEAD_TIME_HORAS = 2;
+
+    public function __construct(
+        private ReservaRepository $reservas,
+        private MesaRepository $mesas,
+        private MesaService $mesaService,
+    ) {}
+
+    // ==================== CONSULTA ====================
+
+    /**
+     * Listado con filtros opcionales (estado, fecha, mesa_id).
+     *
+     * @return Collection<int, Reserva>
+     */
+    public function obtenerListado(?string $estado, ?string $fecha, ?int $mesaId): Collection
     {
-        $this->validarCapacidad($datos['mesa_id'], $datos['cant_personas']);
-
-        $this->validarDisponibilidad($datos['mesa_id']);
-
-        $this->validarConflictoHorario($datos['mesa_id'], $datos['fecha'], $datos['hora']);
-
-        $reserva = Reserva::create([
-            'mesa_id' => $datos['mesa_id'],
-            'usuario_id' => $datos['usuario_id'] ?? null,
-            'nombre_cliente' => $datos['nombre_cliente'],
-            'telefono_cliente' => $datos['telefono_cliente'],
-            'fecha' => $datos['fecha'],
-            'hora' => $datos['hora'],
-            'cant_personas' => $datos['cant_personas'],
-            'estado' => 'pendiente',
-        ]);
-
-        return $reserva;
+        return $this->reservas->filtradas($estado, $fecha, $mesaId);
     }
 
-    public function validarCapacidad(int $mesaId, int $cantPersonas)
+    /**
+     * Reserva por id con su mesa; lanza ModelNotFoundException (404).
+     */
+    public function obtenerPorId(int $id): Reserva
     {
-        $mesa = Mesa::find($mesaId);
-
-        if(!$mesa){
-            throw new \Exception(
-                'La mesa no existe'
-            );
-        }
-
-        if($cantPersonas > $mesa->capacidad){
-            throw new \Exception(
-                'La cantidad de personas supera capacidad de mesa'
-            );
-        }
-
-        return $mesa;
+        return $this->reservas->porIdOrFail($id);
     }
 
-    public function validarDisponibilidad(int $mesaId)
-    {
-        $mesa = Mesa::find($mesaId);
+    // ==================== ALTA ====================
 
-        if(!$mesa){
-            throw new \Exception(
-                'La mesa no existe'
-            );
-        }
-        if($mesa->estado !== 'disponible'){
-            throw new \Exception(
-                'Mesa no disponible para reservar'
-            );
-        }
+    /**
+     * Alta de reserva.
+     *
+     * @param  array<string, mixed>  $datos  {mesa_id?, contacto_solicitante, fecha, hora, cantPersonas}
+     * @param  bool  $esPublico  true = reserva del cliente web (puede
+     *                           venir sin mesa_id: la crea el "mozo
+     *                           virtual"); false = la toma el mozo y
+     *                           la mesa es obligatoria.
+     *
+     * @throws \Exception lead time, capacidad o conflicto horario
+     * @throws ModelNotFoundException mesa inexistente
+     */
+    public function crear(array $datos, bool $esPublico): Reserva
+    {
+        $fecha = Carbon::parse($datos['fecha'])->toDateString();
+        $hora = Carbon::parse($datos['hora'])->format('H:i:s');
+        $cantPersonas = (int) $datos['cantPersonas'];
+
+        $this->validarLeadTime($fecha, $hora);
+
+        return DB::transaction(function () use ($datos, $esPublico, $fecha, $hora, $cantPersonas) {
+            if (isset($datos['mesa_id'])) {
+                // Find ERICTO: jamás find-or-create. El cliente no
+                // puede crear mesas escribiendo un id inventado.
+                $mesa = $this->mesas->porIdOrFail((int) $datos['mesa_id']);
+
+                if ($cantPersonas > (int) $mesa->capacidad) {
+                    throw new \Exception('La cantidad de personas supera capacidad de mesa');
+                }
+
+                $this->validarConflicto($mesa, $fecha, $hora);
+            } else {
+                if (! $esPublico) {
+                    throw new \Exception('El empleado debe indicar la mesa a reservar.');
+                }
+
+                // Mozo virtual: la mesa la crea el SISTEMA con las
+                // mismas reglas de aforo que usa el mozo (la mesa es
+                // nueva, así que no puede tener conflicto horario).
+                $mesa = $this->mesaService->crearMesa([
+                    'capacidad' => $cantPersonas,
+                    'usuario_id' => null,
+                ]);
+            }
+
+            $reserva = $this->reservas->crear([
+                'mesa_id' => $mesa->id,
+                'contacto_solicitante' => $datos['contacto_solicitante'],
+                'fecha' => $fecha,
+                'hora' => $hora,
+                'cantPersonas' => $cantPersonas,
+                'estado' => 'pendiente',
+            ]);
+
+            // Solo las reservas de HOY marcan la mesa; las de otros
+            // días no tocan el estado (se consultan por fecha).
+            if ($this->esDeHoy($fecha)) {
+                $mesa->Reservar();
+            }
+
+            return $reserva->load('mesa');
+        });
     }
 
-    public function validarConflictoHorario(int $mesaId, string $fecha, string $hora)
+    // ==================== TRANSICIONES DE ESTADO ====================
+
+    /**
+     * pendiente a cancelada.
+     */
+    public function cancelar(int $id): Reserva
     {
-        $conflicto = Reserva::where('mesa_id', $mesaId)
-            ->where('fecha', $fecha)
-            ->where('hora', $hora)
-            ->whereIn('estado', ['pendiente'])
-            ->exists();
+        $reserva = $this->reservas->porIdOrFail($id);
+        $this->exigirPendiente($reserva, 'cancelar');
 
-        if($conflicto){
-            throw new \Exception(
-                'Hay una reserva agendada en esa misma fecha y hora'
-            );
-        }
-    }
-
-    public function cancelarReserva(int $reservaId)
-    {
-        //busco la reserva a cancelar, si no existe muestro error
-        $reserva = Reserva::find($reservaId);
-
-        if(!$reserva){
-            throw new \Exception(
-                'La reserva buscada no existe'
-            );
-        }
-        //verifico que la reserva que se quiere cancelar este pendiente, de otra manera no se podria cancelar nada
-        if($reserva->estado !== 'pendiente'){
-            throw new \Exception(
-                'Solo se pueden cancelar reservas con estado pendiente'
-            );
-        }
-
-        //una vez encontrada, cambio su estado a cancelada, la guardo y devuelvo eso
         $reserva->estado = 'cancelada';
         $reserva->save();
 
-        return $reserva;
+        $this->liberarMesaSiCorresponde($reserva);
 
+        return $reserva->load('mesa');
     }
 
-
-    //rehacer funcion completa y separar en dos (agregar inasistencia)
-    public function finalizarReserva(int $reservaId)
+    /**
+     * pendiente a finalizada (el evento ya ocurrió).
+     */
+    public function finalizar(int $id): Reserva
     {
-        $reserva = Reserva::find($reservaId);
+        $reserva = $this->reservas->porIdOrFail($id);
+        $this->exigirPendiente($reserva, 'finalizar');
+        $this->exigirHoraPasada($reserva);
 
-        //verifico que la reserva que se quiere finalizar este pendiente
-        if($reserva->estado !== 'pendiente'){
-            throw new \Exception(
-                'Solo se pueden finalizar reservas con estado pendiente'
-            );
-        }
-
-        //al tener fecha y hora separados parseo con carbon (clase de laravel para manejar fechas y horas) para armar una misma estructura
-        $fechaHoraReserva = Carbon::parse(
-            $reserva->fecha . '' . $reserva->hora
-        );
-
-        //y aca agarro el momento de ahora fecha y hora actual
-        $ahora = Carbon::now();
-
-        //comparo ahora con la fecha y hora de la reserva mediante lt (less than) para consultar si la actual es menor que la hora esperada de reserva
-        if($ahora ->lt($fechaHoraReserva))
-            {
-                throw new \Exception(
-                    'Aún no llegó la hora de la reserva'
-                );
-            }
         $reserva->estado = 'finalizada';
         $reserva->save();
 
-        return $reserva;
+        $this->liberarMesaSiCorresponde($reserva);
+
+        return $reserva->load('mesa');
+    }
+
+    /**
+     * pendiente → no_asistio (el cliente no vino).
+     */
+    public function marcarNoAsistio(int $id): Reserva
+    {
+        $reserva = $this->reservas->porIdOrFail($id);
+        $this->exigirPendiente($reserva, 'registrar la inasistencia de');
+        $this->exigirHoraPasada($reserva);
+
+        $reserva->estado = 'no_asistio';
+        $reserva->save();
+
+        $this->liberarMesaSiCorresponde($reserva);
+
+        return $reserva->load('mesa');
+    }
+
+    // ==================== VALIDACIONES ====================
+
+    /**
+     * Lead time: desde ahora faltan menos de 2 horas para la reserva.
+     *
+     * @throws \Exception
+     */
+    private function validarLeadTime(string $fecha, string $hora): void
+    {
+        $momentoReserva = Carbon::parse("{$fecha} {$hora}");
+        $limite = Carbon::now()->addHours(self::LEAD_TIME_HORAS);
+
+        if ($momentoReserva->lt($limite)) {
+            throw new \Exception(
+                'La reserva debe hacerse con al menos '
+                .self::LEAD_TIME_HORAS
+                ." horas de anticipacion (lo mas temprano seria {$limite->format('H:i')})."
+            );
+        }
+    }
+
+    /**
+     * Misma mesa + fecha + hora exacta + estado pendiente.
+     *
+     * @throws \Exception
+     */
+    private function validarConflicto(Mesa $mesa, string $fecha, string $hora): void
+    {
+        if ($this->reservas->existeConflicto($mesa->id, $fecha, $hora)) {
+            throw new \Exception('Hay una reserva agendada en esa misma fecha y hora');
+        }
+    }
+
+    // ==================== ESTADO DE LA MESA ====================
+
+    /**
+     * Al cerrar una reserva (cancelar/finalizar/no_asistio): si era de
+     * HOY y la mesa quedó solo por esa reserva, vuelve a 'libre'.
+     */
+    private function liberarMesaSiCorresponde(Reserva $reserva): void
+    {
+        if (! $this->esDeHoy($reserva->fecha)) {
+            return;
+        }
+
+        $mesa = $this->mesas->porId((int) $reserva->mesa_id);
+
+        if (! $mesa || $mesa->estado !== 'reservada') {
+            return;
+        }
+
+        if ($this->reservas->hayPendienteEnFecha($mesa->id, $reserva->fecha)) {
+            return;
+        }
+
+        $mesa->expirarReserva();
+    }
+
+    private function esDeHoy(string $fecha): bool
+    {
+        return $fecha === Carbon::today()->toDateString();
+    }
+
+    /**
+     * @throws \Exception si la reserva no está pendiente
+     */
+    private function exigirPendiente(Reserva $reserva, string $accion): void
+    {
+        if ($reserva->estado !== 'pendiente') {
+            throw new \Exception(
+                "Solo se pueden {$accion} reservas con estado pendiente"
+            );
+        }
+    }
+
+    /**
+     * @throws \Exception si aún no llegó la hora de la reserva
+     */
+    private function exigirHoraPasada(Reserva $reserva): void
+    {
+        $momentoReserva = Carbon::parse(
+            $reserva->fecha.' '.$reserva->hora
+        );
+
+        if (Carbon::now()->lt($momentoReserva)) {
+            throw new \Exception('Aún no llegó la hora de la reserva');
+        }
     }
 }
