@@ -47,6 +47,8 @@ Route::get('/categorias/{id}', [CategoriaController::class, 'show']);
 
 Route::get('/platos', [PlatoController::class, 'index']);
 
+Route::get('/platos/activos', [PlatoController::class, 'indexActive']);
+
 // plato por id para mostrar uno en específico (con sus ingredientes)
 Route::get('/platos/{id}', [PlatoController::class, 'show']);
 

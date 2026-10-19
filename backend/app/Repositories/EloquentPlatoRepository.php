@@ -32,6 +32,11 @@ class EloquentPlatoRepository implements PlatoRepository
             ->findOrFail($id);
     }
 
+    public function todos(): Collection
+    {
+        return Plato::all();
+    }
+
     public function crear(array $datos): Plato
     {
         return Plato::create($datos);

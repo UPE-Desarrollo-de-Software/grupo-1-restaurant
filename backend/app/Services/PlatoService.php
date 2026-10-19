@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Plato;
 use App\Repositories\PlatoRepository;
 
+
 /**
  * CRUD de platos (DER v2.2: entidad PLATO; antes "Producto").
  *
@@ -23,12 +24,17 @@ class PlatoService
     public function obtenerDisponibles()
     {
         return $this->platos->disponiblesConCategoria()
-            ->map(fn (Plato $plato) => $this->conPromoVigente($plato));
+            ->map(fn(Plato $plato) => $this->conPromoVigente($plato));
     }
 
     public function obtenerConIngredientes($id): Plato
     {
         return $this->conPromoVigente($this->platos->conIngredientesOrFail((int) $id));
+    }
+
+    public function todos()
+    {
+        return $this->todos();
     }
 
     /**
