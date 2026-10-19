@@ -31,8 +31,8 @@ use Illuminate\Support\Facades\DB;
  *
  * Fórmula de línea (cuadro de notas del DER):
  *   subtotal = cantidad × (precio_lista + Σ precio_adicional de
- *              agregados) − descuento   (descuento hoy: 0, pendiente
- *              el motor de promociones — PLAN-promociones.md)
+ *              agregados) − descuento   (motor de promociones
+ *              integrado: ver PLAN-promociones.md)
  */
 class PedidoService
 {
@@ -49,6 +49,7 @@ class PedidoService
         private PedidoRepository $pedidos,
         private DetallePedidoRepository $detalles,
         private PlatoRepository $platos,
+        private PromocionService $promociones,
     ) {}
 
     // ==================== ALTA DE LÍNEAS ====================
@@ -190,8 +191,10 @@ class PedidoService
         // Plato con sus ingredientes y los flags opcional / por_defecto.
         $plato = $this->platos->conIngredientesOrFail((int) $linea['plato_id']);
         $ingredientesPlato = $plato->ingredientes;
-
         $precioUnitario = (float) $plato->precio;
+        // calculo de promociones
+        $promo = $this->promociones->promoDePlato($plato);
+        $descuento = $promo ? $this->promociones->descuento($promo, (float) $plato->precio, $cantidad) : 0.0;
 
         // Agregados: solo ingredientes marcados como opcionales,
         // cobran su precio de catálogo por unidad. Los que ya vienen
@@ -230,17 +233,18 @@ class PedidoService
         }
 
         // subtotal = cantidad × (precio_lista + Σ agregados) − descuento.
-        // El descuento queda en 0 hasta integrar el motor de promociones
-        // en los pedidos (PLAN-promociones.md).
-        $subtotal = round($precioUnitario * $cantidad, 2);
+        // La promo vigente del plato se aplica y congela en la línea
+        // (PLAN-promociones.md); no hay columna descuento: se deriva.
+        $subtotal = round($precioUnitario * $cantidad - $descuento, 2);
 
         $detalle = $this->detalles->crearLinea($pedido, [
             'plato_id' => $plato->id,
             'cantidad' => $cantidad,
             'precio_lista' => $plato->precio,
             'subtotal' => $subtotal,
-            // Gate por línea: cliente false / mozo true.
+            'promocion_id' => $promo?->id,
             'confirmado' => $confirmado,
+
         ]);
 
         foreach (array_unique($agregados) as $ingredienteId) {
@@ -420,7 +424,8 @@ class PedidoService
             // Estado final: si no quedan pedidos activos en la mesa,
             // la mesa se destruye (borrado lógico: los pedidos
             // históricos conservan su FK, la app deja de verla).
-            if (in_array($nuevoEstado, self::ESTADOS_FINALES, true)
+            if (
+                in_array($nuevoEstado, self::ESTADOS_FINALES, true)
                 && ! $this->pedidos->hayActivosDeMesa($pedido->mesa_id)
             ) {
                 $pedido->mesa?->destruir();

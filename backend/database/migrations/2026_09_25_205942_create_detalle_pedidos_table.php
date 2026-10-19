@@ -24,8 +24,9 @@ return new class extends Migration
      *  - Fórmula documentada en DER-v2.1-backend.md:
      *      subtotal = cantidad × (precio_lista + Σ precio_adicional de
      *                 agregados) − descuento
-     *    `descuento` hoy es 0 (motor de promociones pendiente,
-     *    PLAN-promociones.md); `promocion_id` congela la promo aplicada.
+     *    `promocion_id` congela la promo aplicada; no hay columna
+     *    `descuento`: se deriva de precio_lista/cantidad/agregados y el
+     *    subtotal guardado (motor integrado, PLAN-promociones.md).
      */
     public function up(): void
     {

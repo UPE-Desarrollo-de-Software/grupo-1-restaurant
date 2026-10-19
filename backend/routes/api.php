@@ -56,7 +56,7 @@ Route::get('/ingredientes/{id}', [IngredienteController::class, 'show']);
 
 Route::get('/promociones', [PromocionController::class, 'index']);
 
-Route::get('/promociones/{id}', [PromocionController::class, 'show']);
+Route::get('/promociones/{id}', [PromocionController::class, 'show'])->whereNumber('id');
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -214,8 +214,6 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_mesas'])->group(function (
 });
 
 Route::middleware(['auth:sanctum', 'permiso:gestionar_promociones'])->group(function () {
-    Route::get('/promociones', [PromocionController::class, 'index']);
-    Route::get('/promociones/{id}', [PromocionController::class, 'show'])->whereNumber('id');
     Route::post('/promociones', [PromocionController::class, 'store']);
     Route::put('/promociones/{id}', [PromocionController::class, 'update'])->whereNumber('id');
     Route::delete('/promociones/{id}', [PromocionController::class, 'destroy'])->whereNumber('id');

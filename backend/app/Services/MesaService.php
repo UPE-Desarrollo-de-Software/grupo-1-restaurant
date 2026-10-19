@@ -76,7 +76,7 @@ class MesaService
         if ($ocupada + $capacidad > $aforo) {
             throw new \Exception(
                 "Se supera la capacidad del lugar: aforo {$aforo}, ocupada {$ocupada}, "
-                ."la mesa nueva necesita {$capacidad}."
+                    . "la mesa nueva necesita {$capacidad}."
             );
         }
 
@@ -285,6 +285,8 @@ class MesaService
                     'detalle_id' => $detalle->id,
                     'pedido_id' => $pedido->id,
                     'plato' => $detalle->plato->nombre,
+                    'descuento' => $this->descuentoDeLinea($detalle),
+                    'promocion' => $this->promocionDeLinea($detalle),
                     'cantidad' => $detalle->cantidad,
                     'subtotal' => (float) $detalle->subtotal,
                 ];
@@ -292,8 +294,8 @@ class MesaService
             }
         }
 
-        $partes = array_map(fn (array $p) => $p + ['subtotal' => round($p['subtotal'], 2)], array_values($porRaiz));
-        usort($partes, fn (array $a, array $b) => $a['pedido_id'] <=> $b['pedido_id']);
+        $partes = array_map(fn(array $p) => $p + ['subtotal' => round($p['subtotal'], 2)], array_values($porRaiz));
+        usort($partes, fn(array $a, array $b) => $a['pedido_id'] <=> $b['pedido_id']);
 
         $cuenta = [
             'mesa_id' => $mesa->id,
@@ -305,7 +307,7 @@ class MesaService
 
         if ($mesa->grupo_codigo !== null) {
             $cuenta['grupo'] = $this->mesas->porGrupo($mesa->grupo_codigo, [$mesa->id])
-                ->map(fn (Mesa $hermana) => $this->cuenta($hermana->id))
+                ->map(fn(Mesa $hermana) => $this->cuenta($hermana->id))
                 ->all();
         }
 
@@ -334,14 +336,14 @@ class MesaService
             'codigo_acceso' => $mesa->codigo_acceso,
             'encontrada' => true,
             'pedidos' => $pedidos
-                ->map(fn (Pedido $pedido) => $this->pedidoAArray($pedido))
+                ->map(fn(Pedido $pedido) => $this->pedidoAArray($pedido))
                 ->values()
                 ->all(),
         ];
 
         if ($mesa->grupo_codigo !== null) {
             $resumen['grupo'] = $this->mesas->porGrupo($mesa->grupo_codigo, [$mesa->id])
-                ->map(fn (Mesa $hermana) => [
+                ->map(fn(Mesa $hermana) => [
                     'mesa_id' => $hermana->id,
                     'codigo_acceso' => $hermana->codigo_acceso,
                     'pedido_estado' => $this->pedidos->activosDeMesa($hermana->id)->first()?->estado,
@@ -360,20 +362,42 @@ class MesaService
      */
     private function pedidoAArray(Pedido $pedido): array
     {
+
         return [
             'id' => $pedido->id,
             'pedido_padre_id' => $pedido->pedido_padre_id,
             'estado' => $pedido->estado,
             'total' => (float) $pedido->total,
             'fecha' => $pedido->fecha,
-            'lineas' => $pedido->detalles->map(fn (DetallePedido $detalle) => [
+            'lineas' => $pedido->detalles->map(fn(DetallePedido $detalle) => [
                 'detalle_id' => $detalle->id,
                 'plato' => $detalle->plato->nombre,
+                'promocion' => $this->promocionDeLinea($detalle),
                 'cantidad' => $detalle->cantidad,
+                'descuento' => $this->descuentoDeLinea($detalle),
                 'subtotal' => (float) $detalle->subtotal,
                 'confirmado' => (bool) $detalle->confirmado,
             ])->values()->all(),
             'todas_confirmadas' => $this->detalles->sinConfirmar($pedido->id) === 0,
         ];
+    }
+
+    private function descuentoDeLinea(DetallePedido $detalle): float
+    {
+        $agregados = (float) $detalle->ingredientes->where('tipo', 'agregado')->sum('precio_adicional');
+        $bruto = ((float) $detalle->precio_lista + $agregados) * $detalle->cantidad;
+
+        return round($bruto - (float) $detalle->subtotal, 2);
+    }
+
+    private function promocionDeLinea(DetallePedido $detalle): ?array
+    {
+        return $detalle->promocion
+            ? [
+                'id' => $detalle->promocion->id,
+                'nombre' => $detalle->promocion->nombre,
+                'tipo' => $detalle->promocion->tipo,
+            ]
+            : null;
     }
 }

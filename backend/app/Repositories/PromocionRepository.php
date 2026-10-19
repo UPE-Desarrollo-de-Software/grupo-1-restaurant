@@ -29,4 +29,10 @@ interface PromocionRepository
     public function eliminar(Promocion $promocion): void;
 
     public function tieneDetalleHistorico(Promocion $promo): bool;
+
+    /**
+     * @return Collection<int, DetallePedido>  con 'pedido' e 'ingredientes' cargados
+     */
+
+    public function detallesAplicadosEnPedidosNoFinales(Promocion $promo): Collection;
 }

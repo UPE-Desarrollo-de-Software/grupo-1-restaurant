@@ -8,6 +8,7 @@ use App\Repositories\PromocionRepository;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Motor de promociones fiel al DER v2.2.
@@ -17,8 +18,9 @@ use Illuminate\Support\Collection;
  *  - `platos.promocion_id`     → oferta vigente en la carta (catálogo), y
  *  - `detalle_pedidos.promocion_id` → descuento congelado (histórico).
  *
- * La integración de estas fórmulas dentro de PedidoService sigue
- * pendiente (ver PLAN-promociones.md).
+ * Integrado (PLAN-promociones.md): PedidoService::agregarLinea congela
+ * `promocion_id` y aplica el descuento al agregar la línea; este service
+ * recalcula las líneas de pedidos NO finales al editar tipo/valor.
  */
 class PromocionService
 {
@@ -50,12 +52,29 @@ class PromocionService
 
     /**
      * @param  array<string, mixed>  $datos
+     *
+     * @throws \Exception si una regla del DER viola (controller → 422)
      */
     public function actualizar(int $id, array $datos): Promocion
     {
-        $promo = $this->promociones->porId($id);
+        return DB::transaction(function () use ($id, $datos) {
+            $datos = $this->normalizar($datos);           // antes de comparar (2x1 anula valor)
+            $promo = $this->promociones->porId($id);
 
-        return $this->promociones->actualizar($promo, $this->normalizar($datos));
+            // Solo un cambio de ECONOMÍA de la promo mueve líneas ya pedidas:
+            // nombre/fechas/activo afectan únicamente a líneas nuevas.
+            $cambioEconomico =
+                $promo->tipo !== $datos['tipo']
+                || (float) ($promo->valor ?? 0) !== (float) ($datos['valor'] ?? 0);
+
+            $promo = $this->promociones->actualizar($promo, $datos);
+
+            if ($cambioEconomico && $this->promociones->tieneDetalleHistorico($promo)) {
+                $this->recalcularLineasAbiertas($promo);
+            }
+
+            return $promo;
+        });
     }
 
     /**
@@ -186,11 +205,27 @@ class PromocionService
         return $promo;
     }
 
-    // Pendientes (PLAN-promociones.md): elegir la mejor promo de una
-    // línea / de un pedido y devolver el mapa por plato.
-    public function mejorParaLinea() {}
+    private function recalcularLineasAbiertas(Promocion $promo): void
+    {
+        $totales = []; // pedido_id => Pedido (ya cargado por el repo)
 
-    public function mejorParaPedido() {}
+        foreach ($this->promociones->detallesAplicadosEnPedidosNoFinales($promo) as $detalle) {
+            $agregados = (float) $detalle->ingredientes->where('tipo', 'agregado')->sum('precio_adicional');
 
-    public function paraPlatos() {}
+            $detalle->update([
+                'subtotal' => round(
+                    $this->subtotal($promo, (float) $detalle->precio_lista, $detalle->cantidad)
+                        + $agregados * $detalle->cantidad,
+                    2
+                ),
+            ]);
+
+            $totales[$detalle->pedido_id] = $detalle->pedido;
+        }
+
+        foreach ($totales as $pedido) {
+            $pedido->total = round((float) $pedido->detalles()->sum('subtotal'), 2);
+            $pedido->save();
+        }
+    }
 }
