@@ -21,6 +21,7 @@ class DocsController extends Controller
         'Platos',
         'Ingredientes',
         'Mesas',
+        'Reservas',
         'Pedidos',
         'Clientes',
         'Otras',
@@ -43,6 +44,7 @@ class DocsController extends Controller
         'ConfiguracionController' => 'Mesas',
         'PedidoController' => 'Pedidos',
         'ClienteController' => 'Clientes',
+        'ReservaController' => 'Reservas',
         'Closure' => 'Autenticación',
     ];
 
@@ -82,9 +84,9 @@ class DocsController extends Controller
         'MesaController@index' => 'Listar todas las mesas vivas, con su mozo responsable y estado.',
         'MesaController@disponibles' => 'Listar las mesas libres (sin pedido activo ni reserva).',
         'MesaController@show' => 'Obtener una mesa por ID (las destruidas responden "no encontrada").',
-        'MesaController@store' => 'Crear una mesa dinámica con su código de acceso (6 dígitos) y capacidad. Valida el AFORO del lugar (PARAMETRO.capacidad_total); la crea el mozo o la reserva.',
+        'MesaController@store' => 'Crear una mesa dinámica con su código de acceso (6 dígitos) y capacidad. Valida el AFORO del lugar (PARAMETRO.capacidad_total); la crea el mozo o el sistema al reservar por la web.',
         'MesaController@update' => 'Actualizar capacidad, estado y mozo de la mesa. El código de acceso nunca cambia y la capacidad nueva vuelve a validar el aforo.',
-        'MesaController@destroy' => 'Destruir la mesa (borrado lógico): para la app deja de existir y su código deja de valer; los pedidos históricos conservan su FK.',
+        'MesaController@destroy' => 'Destruir la mesa (borrado lógico): para la app deja de existir y su código deja de valer; los pedidos históricos conservan su FK. Antes de destruirla cancela sus reservas PENDIENTES y responde { message, reservas_canceladas } con el conteo.',
         'PedidoController@pedidoActivo' => 'Pedidos NO finalizados de la mesa con sus líneas: { pedidos: [...] } (vacío si no hay; hoy hay varios por mesa, uno por comensal).',
         'PedidoController@agregarProducto' => 'Alta de líneas del mozo. Sin pedido_id crea una RAÍZ nueva (la orden nueva de esa persona); con pedido_id agrega a ese pedido si está en curso. Las líneas del mozo nacen confirmadas. Soporta agregar y excluir ingredientes según los flags del plato.',
         'PedidoController@confirmar' => '1er paso del envío: gate de que ninguna línea siga sin confirmar (o forzar: true) y deja el pedido en estado "confirmado".',
@@ -103,6 +105,14 @@ class DocsController extends Controller
         'ClienteController@confirmar' => 'Confirmar las líneas de SU pedido: { pedido_id, detalle_ids? } (sin detalle_ids, todas las del pedido). El pedido debe ser de la mesa del código.',
         'ClienteController@desconfirmar' => 'Deshacer la confirmación de las líneas de SU pedido mientras siga en curso.',
         'ClienteController@cuenta' => 'Cuenta dividida de la mesa en partes por pedido raíz: el comensal identifica SU parte con el pedido raíz que guardó en su dispositivo.',
+        'ReservaController@store' => 'Alta de reserva desde el restaurante (mozo/gerente). BODY JSON: { mesa_id (OBLIGATORIA, find estricto: si no existe → 404, nunca crea mesas), contacto_solicitante, fecha (YYYY-MM-DD), hora (HH:MM o HH:MM:SS), cantPersonas }. Reglas (422): al menos 2 horas de anticipación; cantPersonas ≤ capacidad de la mesa; no puede haber otra reserva PENDIENTE en la misma mesa + fecha + hora exacta. Si la reserva es de HOY, la mesa pasa a estado "reservada" (las de otros días no tocan el estado: se consultan con GET /reservas?fecha=...). Respuesta 201: { mensaje, reserva (con su mesa) }. El cliente no tiene cancelación pública: la cancela un empleado con permiso gestionar_reservas.',
+        'ReservaController@solicitarWeb' => 'Alta de reserva del cliente por la web (PÚBLICO con throttle 60/min, sin token). BODY JSON: { mesa_id (opcional), contacto_solicitante, fecha, hora, cantPersonas }. Si NO manda mesa_id, la crea el sistema como "mozo virtual": genera una mesa nueva con capacidad = cantPersonas validando el AFORO del lugar (PARAMETRO.capacidad_total; 422 si se supera); si manda mesa_id debe existir y cantPersonas ≤ capacidad. Mismas reglas de 2 horas de anticipación y conflicto de fecha+hora exacta que el alta del empleado. Respuesta 201: { mensaje, reserva } — el front debe guardar reserva.id como "código" de la reserva (el envío por mail está pendiente).',
+        'ReservaController@mesasParaElegir' => 'Mesas precreadas para el mapa de elección tipo cine (PÚBLICO con throttle): devuelve solo id, capacidad y estado (libre|reservada). NUNCA expone el codigo_acceso. El cliente elige una mesa del mapa y la manda en mesa_id del POST /cliente/reservas; si no elige ninguna, el sistema crea la mesa como mozo virtual.',
+        'ReservaController@index' => 'Agenda de reservas (empleado con permiso gestionar_reservas) con filtros opcionales combinables: ?estado=pendiente|cancelada|finalizada|no_asistio&fecha=YYYY-MM-DD&mesa_id=N. Respuesta 200: array de reservas con su mesa; si no hay nada: 200 {"message":"No se encontraron reservas"}. La fecha con formato distinto a YYYY-MM-DD responde 422.',
+        'ReservaController@show' => 'Detalle de una reserva con su mesa. 200: reserva completa; si no existe: 404 { "message": "Reserva no encontrada" }.',
+        'ReservaController@cancelar' => 'Cancelar una reserva (empleado con permiso gestionar_reservas). PATCH sin body. Transición pendiente → cancelada: cualquier reserva PENDIENTE se puede cancelar a cualquier hora (incluso antes de la hora reservada). Si ya no está pendiente → 422 "Solo se pueden cancelar reservas con estado pendiente". Si la reserva era de HOY y es la última pendiente de esa mesa, la mesa vuelve a "libre". Respuesta 200: { mensaje: "Reserva cancelada correctamente", reserva }.',
+        'ReservaController@finalizar' => 'Finalizar una reserva (empleado con permiso gestionar_reservas): pendiente → finalizada (el cliente vino y cumplió). PATCH sin body. Exige estado PENDIENTE (si no → 422) Y que ya haya pasado la hora de la reserva (si no → 422 "Aún no llegó la hora de la reserva"). Si era de HOY y era la última pendiente de la mesa, la mesa vuelve a "libre". Respuesta 200: { mensaje: "Reserva finalizada correctamente", reserva }.',
+        'ReservaController@inasistio' => 'Registrar inasistencia (empleado con permiso gestionar_reservas): pendiente → no_asistio (el cliente no vino). PATCH sin body. Mismas reglas que finalizar: exige estado PENDIENTE y que ya haya pasado la hora. Si era de HOY y era la última pendiente de la mesa, la mesa vuelve a "libre". Respuesta 200: { mensaje: "Inasistencia registrada", reserva }.',
     ];
 
     /**

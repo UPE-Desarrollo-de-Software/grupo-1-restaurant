@@ -7,17 +7,18 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * RESERVA (DER v2.1).
+     * RESERVA (DER v3.0).
      *
      * Cambios vs la versión vieja:
      *  - se quitó `sesion_id` (la entidad SESION fue eliminada del DER).
-     *  - `nombre_cliente` → `nombre_solicitante` y `telefono_cliente` →
-     *    `contacto_solicitante`: nombres exactos del DER dibujado.
+     *  - se quitó `usuario_id`: el DER v3.0 no dibuja relación
+     *    USUARIO–RESERVA. Quien crea la reserva no se persiste.
+     *  - se quitó `nombre_solicitante`: el DER v3.0 solo tiene
+     *    `contacto_solicitante`.
+     *  - `cant_personas` → `cantPersonas`: nombre exacto del DER v3.0
+     *    (camelCase, convención del proyecto).
      *  - `estado`: valores del cuadro de notas del DER
-     *    (pendiente | cancelada | finalizada | no_asistio). Se quitó
-     *    `confirmada`, que no estaba en el diagrama.
-     *  - se conserva `usuario_id` (mozo que toma la reserva): figura en
-     *    el DER dibujado aunque sin línea de relación dibujada.
+     *    (pendiente | cancelada | finalizada | no_asistio).
      */
     public function up(): void
     {
@@ -28,16 +29,10 @@ return new class extends Migration
                 ->constrained('mesas')
                 ->cascadeOnDelete();
 
-            $table->foreignId('usuario_id')
-                ->nullable()
-                ->constrained('usuarios')
-                ->nullOnDelete();
-
-            $table->string('nombre_solicitante');
             $table->string('contacto_solicitante');
             $table->date('fecha');
             $table->time('hora');
-            $table->unsignedInteger('cant_personas');
+            $table->unsignedInteger('cantPersonas');
             $table->enum('estado', ['pendiente', 'cancelada', 'finalizada', 'no_asistio'])
                 ->default('pendiente');
 
