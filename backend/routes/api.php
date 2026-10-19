@@ -93,6 +93,17 @@ Route::post('/cliente/reservas', [ReservaController::class, 'crear']);
 // Ruta para cancelar reserva por un cliente desde la web
 Route::patch('/cliente/reservas/{id}/cancelar', [ReservaController::class, 'cancelar']);
 
+// RESERVAS DEL CLIENTE WEB (públicas con throttle):
+//  - alta: elige mesa existente o, si no manda mesa_id, el sistema la
+//    crea como "mozo virtual" validando el aforo;
+//  - mesas precreadas para el mapa de elección (solo id/capacidad/
+//    estado; el codigo_acceso NUNCA sale en una ruta pública).
+Route::post('/cliente/reservas', [ReservaController::class, 'solicitarWeb'])
+    ->middleware('throttle:60,1');
+
+Route::get('/cliente/reservas/mesas', [ReservaController::class, 'mesasParaElegir'])
+    ->middleware('throttle:60,1');
+
 // ==================== CUALQUIER EMPLEADO AUTENTICADO ====================
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -144,8 +155,9 @@ Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () 
     // la mesa (borrado lógico) si ya no queda ningún pedido activo.
     Route::put('/pedidos/{pedido}/estado', [PedidoController::class, 'cambiarEstado']);
 
-    // Alta de mesas dinámicas: las crea el mozo o la reserva (aforo
-    // contra PARAMETRO.capacidad_total; 422 si se supera).
+    // Alta de mesas dinámicas: las crea el mozo o el sistema al
+    // reservar por la web (aforo contra PARAMETRO.capacidad_total;
+    // 422 si se supera).
     Route::post('/mesas', [MesaController::class, 'store']);
 });
 
@@ -163,11 +175,22 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_usuarios'])->group(functio
     Route::post('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar'])->whereNumber('id');
 });
 
-// RESERVAS
-// ruta para crear reservas desde el lado del restaurante por parte del gerente
-Route::post('/reservas', [ReservaController::class, 'crear']);
-// ruta para cancelar reservas
-Route::patch('/reservas/{id}/cancelar', [ReservaController::class, 'cancelar']);
+// RESERVAS (ABM completo, permiso gestionar_reservas: Mozo y Gerente)
+
+Route::middleware(['auth:sanctum', 'permiso:gestionar_reservas'])->group(function () {
+
+    // Alta desde el restaurante: la mesa es obligatoria (find estricto).
+    Route::post('/reservas', [ReservaController::class, 'store']);
+
+    // Agenda con filtros opcionales: ?estado=&fecha=&mesa_id=
+    Route::get('/reservas', [ReservaController::class, 'index']);
+    Route::get('/reservas/{id}', [ReservaController::class, 'show'])->whereNumber('id');
+
+    // Transiciones desde 'pendiente'.
+    Route::patch('/reservas/{id}/cancelar', [ReservaController::class, 'cancelar'])->whereNumber('id');
+    Route::patch('/reservas/{id}/finalizar', [ReservaController::class, 'finalizar'])->whereNumber('id');
+    Route::patch('/reservas/{id}/inasistio', [ReservaController::class, 'inasistio'])->whereNumber('id');
+});
 
 // nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front
 // ROLES

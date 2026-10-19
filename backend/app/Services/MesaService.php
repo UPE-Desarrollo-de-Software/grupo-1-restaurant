@@ -10,6 +10,7 @@ use App\Repositories\DetallePedidoRepository;
 use App\Repositories\MesaRepository;
 use App\Repositories\ParametroRepository;
 use App\Repositories\PedidoRepository;
+use App\Repositories\ReservaRepository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\DB;
  * sobre los Repositories Mesa/Pedido/Parametro).
  *
  * Reglas del rebote 2 (DER v2.2):
- *  - entidad DINÁMICA: la crea el mozo o la reserva y se DESTRUYE
+ *  - entidad DINÁMICA: la crea el mozo o el sistema al reservar por
+ *    la web ("mozo virtual") y se DESTRUYE
  *    (borrado lógico) al terminar el servicio; `codigo_acceso` nace
  *    con la mesa y no cambia nunca;
  *  - AFORO: al crear, Σ capacidad(mesas vivas) + capacidad nueva ≤
@@ -34,6 +36,7 @@ class MesaService
         private PedidoRepository $pedidos,
         private DetallePedidoRepository $detalles,
         private ParametroRepository $parametros,
+        private ReservaRepository $reservas,
     ) {}
 
     // ==================== CRUD Y CICLO DE VIDA ====================
@@ -123,11 +126,25 @@ class MesaService
     }
 
     /**
-     * Destrucción de la mesa (borrado lógico).
+     * Destrucción de la mesa (borrado lógico). Antes cancela sus
+     * reservas PENDIENTES (la mesa deja de existir para el DER v3.0).
+     *
+     * @return int cantidad de reservas canceladas
      */
-    public function eliminar(int $id): void
+    public function eliminar(int $id): int
     {
-        $this->mesas->eliminar($this->mesas->porIdOrFail($id));
+        $mesa = $this->mesas->porIdOrFail($id);
+
+        $canceladas = 0;
+        foreach ($this->reservas->pendientesDeMesa($id) as $reserva) {
+            $reserva->estado = 'cancelada';
+            $reserva->save();
+            $canceladas++;
+        }
+
+        $this->mesas->eliminar($mesa);
+
+        return $canceladas;
     }
 
     // ==================== SERVICIO DE LA VISITA ====================

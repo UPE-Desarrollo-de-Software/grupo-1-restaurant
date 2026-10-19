@@ -125,12 +125,15 @@ class MesaController extends Controller
      */
     public function destroy(string $id)
     {
-        if (! ($this->eliminar)((int) $id)) {
+        $canceladas = ($this->eliminar)((int) $id);
+
+        if ($canceladas === false) {
             return response()->json(['message' => 'Mesa no encontrada'], 200);
         }
 
         return response()->json([
             'message' => 'Mesa eliminada exitosamente',
+            'reservas_canceladas' => $canceladas,
         ], 200);
     }
 

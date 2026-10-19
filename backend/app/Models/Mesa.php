@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * `usuario_id`: mozo responsable (DER: USUARIO "atiende" MESA).
  * `codigo_acceso`: ÚNICO código de la mesa, nace con ella (6 dígitos,
- *   lo genera el mozo al crear la mesa / la reserva al reservar) y no
+ *   lo genera el mozo o el sistema al crearla) y no
  *   cambia nunca: es la credencial del cliente (Authorization:
  *   Bearer {codigo_acceso}) hasta que la mesa se destruye.
  * `ocupada_desde`: corte de la cuenta de la visita.
@@ -25,9 +25,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *   mesa deja de existir (listados, aforo y validación por código la
  *   ignoran).
  *
- * Ciclo de vida: la crea el mozo (POST /mesas) o la reserva, el primer
- * pedido la pone 'ocupada' y destruirla (DELETE o cierre del último
- * pedido) la saca de circulación.
+ * Ciclo de vida: la crea el mozo (POST /mesas) o el sistema al
+ * reservar por la web ("mozo virtual"), el primer pedido la pone
+ * 'ocupada' y destruirla (DELETE o cierre del último pedido) la saca
+ * de circulación.
  */
 class Mesa extends Model
 {
