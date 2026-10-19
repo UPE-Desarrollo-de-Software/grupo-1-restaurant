@@ -11,6 +11,7 @@ class EloquentPlatoRepository implements PlatoRepository
     {
         return Plato::join('categorias', 'platos.categoria_id', '=', 'categorias.id')
             ->where('platos.disponible', true)
+            ->with('promocion')
             ->select(
                 'categorias.nombre as categoria_nombre',
                 'platos.id',
@@ -27,7 +28,7 @@ class EloquentPlatoRepository implements PlatoRepository
 
     public function conIngredientesOrFail(int $id): Plato
     {
-        return Plato::with('ingredientes:id,nombre,precioAdicional')
+        return Plato::with('ingredientes:id,nombre,precioAdicional', 'promocion')
             ->findOrFail($id);
     }
 

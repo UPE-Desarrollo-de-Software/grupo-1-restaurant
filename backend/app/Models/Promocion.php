@@ -16,6 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Promocion extends Model
 {
+    // La pluralización en inglés daría "promocions": la tabla es la del DER.
+    protected $table = 'promociones';
+
     protected $fillable = [
         'nombre',
         'tipo',

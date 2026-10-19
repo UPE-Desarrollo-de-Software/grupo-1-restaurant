@@ -16,7 +16,7 @@ class EloquentPedidoRepository implements PedidoRepository
 
     public function conDetallesOrFail(int $id): Pedido
     {
-        return Pedido::with('mesa', 'detalles.plato', 'detalles.ingredientes.ingrediente')
+        return Pedido::with('mesa', 'detalles.plato', 'detalles.promocion', 'detalles.ingredientes.ingrediente')
             ->findOrFail($id);
     }
 
@@ -34,7 +34,7 @@ class EloquentPedidoRepository implements PedidoRepository
     {
         return Pedido::where('mesa_id', $mesaId)
             ->whereNotIn('estado', self::FINALES)
-            ->with('detalles.plato', 'detalles.ingredientes.ingrediente')
+            ->with('detalles.plato', 'detalles.promocion', 'detalles.ingredientes.ingrediente')
             ->orderBy('id')
             ->get();
     }
@@ -51,7 +51,7 @@ class EloquentPedidoRepository implements PedidoRepository
         return Pedido::where('mesa_id', $mesaId)
             ->where('estado', '!=', 'cancelado')
             ->when($desde !== null, fn ($q) => $q->where('fecha', '>=', $desde))
-            ->with('detalles.plato')
+            ->with('detalles.plato', 'detalles.promocion', 'detalles.ingredientes.ingrediente')
             ->orderBy('id')
             ->get();
     }
