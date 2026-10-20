@@ -52,4 +52,6 @@ interface ReservaRepository
      * @return Collection<int, Reserva>
      */
     public function pendientesDeMesa(int $mesaId): Collection;
+
+    public function ReservaRepository(string $fecha): array;
 }

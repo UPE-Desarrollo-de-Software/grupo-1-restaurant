@@ -7,6 +7,7 @@ use App\UseCases\Categorias\CrearCategoriaUseCase;
 use App\UseCases\Categorias\EliminarCategoriaUseCase;
 use App\UseCases\Categorias\ListarCategoriasUseCase;
 use App\UseCases\Categorias\ObtenerCategoriaUseCase;
+use App\UseCases\Categorias\ListarCategoriasActivasUseCase;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
@@ -18,6 +19,7 @@ class CategoriaController extends Controller
 {
     public function __construct(
         private ListarCategoriasUseCase $listar,
+        private ListarCategoriasActivasUseCase $listarActivas,
         private ObtenerCategoriaUseCase $obtener,
         private CrearCategoriaUseCase $crear,
         private ActualizarCategoriaUseCase $actualizar,
@@ -25,6 +27,11 @@ class CategoriaController extends Controller
     ) {}
 
     public function index()
+    {
+        return response()->json(($this->listarActivas)());
+    }
+
+    public function indexAll()
     {
         return response()->json(($this->listar)());
     }

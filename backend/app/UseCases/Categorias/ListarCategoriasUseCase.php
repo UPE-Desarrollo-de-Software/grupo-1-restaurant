@@ -19,6 +19,6 @@ class ListarCategoriasUseCase
      */
     public function __invoke(): Collection
     {
-        return $this->categorias->obtenerActivas();
+        return $this->categorias->obtenerTodos();
     }
 }

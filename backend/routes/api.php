@@ -41,7 +41,9 @@ Route::get('/user', function (Request $request) {
 
 // CARTA
 
-Route::get('/categorias', [CategoriaController::class, 'index']);
+Route::get('/categorias/activas', [CategoriaController::class, 'index']);
+
+Route::get('/categorias', [CategoriaController::class, 'indexAll']);
 
 Route::get('/categorias/{id}', [CategoriaController::class, 'show']);
 
@@ -106,7 +108,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/mesas/disponibles', [MesaController::class, 'disponibles']);
     Route::get('/mesas/{mesa}', [MesaController::class, 'show']);
 
-    // Aforo del lugar (PARAMETRO.capacidad_total).
+    // Aforo del lugar y composición CONFIG_MESA.
     Route::get('/configuracion', [ConfiguracionController::class, 'show']);
 });
 
@@ -146,7 +148,7 @@ Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () 
     Route::put('/pedidos/{pedido}/estado', [PedidoController::class, 'cambiarEstado']);
 
     // Alta de mesas dinámicas: las crea el mozo o el sistema al
-    // reservar por la web (aforo contra PARAMETRO.capacidad_total;
+    // reservar por la web (aforo contra CONFIG_MESA;
     // 422 si se supera).
     Route::post('/mesas', [MesaController::class, 'store']);
 });
@@ -225,7 +227,7 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_mesas'])->group(function (
     Route::put('/mesas/{mesa}', [MesaController::class, 'update']);
     Route::delete('/mesas/{mesa}', [MesaController::class, 'destroy']);
 
-    // Aforo del lugar (PARAMETRO.capacidad_total).
+    // Aforo del lugar y composición CONFIG_MESA (replace-all).
     Route::put('/configuracion', [ConfiguracionController::class, 'update']);
 });
 
@@ -236,3 +238,18 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_promociones'])->group(func
     Route::put('/promociones/{id}', [PromocionController::class, 'update'])->whereNumber('id');
     Route::delete('/promociones/{id}', [PromocionController::class, 'destroy'])->whereNumber('id');
 });
+
+// ==================== REPORTES ====================
+/*
+// Dashboard de estadísticas (solo Gerente).
+Route::middleware(['auth:sanctum', 'permiso:ver_dashboard'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+});
+*/
+/*
+// Historial de comandas (= pedidos): Gerente y Cocina.
+Route::middleware(['auth:sanctum', 'permiso:ver_historial_comandas'])->group(function () {
+    Route::get('/historial/comandas', [HistorialComandaController::class, 'index']);
+    Route::get('/historial/comandas/{id}', [HistorialComandaController::class, 'show'])->whereNumber('id');
+});
+*/
