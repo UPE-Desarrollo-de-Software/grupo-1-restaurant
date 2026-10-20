@@ -47,18 +47,12 @@ Route::get('/categorias/{id}', [CategoriaController::class, 'show']);
 
 Route::get('/platos', [PlatoController::class, 'index']);
 
-Route::get('/platos/activos', [PlatoController::class, 'indexActive']);
-
 // plato por id para mostrar uno en específico (con sus ingredientes)
 Route::get('/platos/{id}', [PlatoController::class, 'show']);
 
 Route::get('/ingredientes', [IngredienteController::class, 'index']);
 
 Route::get('/ingredientes/{id}', [IngredienteController::class, 'show']);
-
-Route::get('/promociones', [PromocionController::class, 'index']);
-
-Route::get('/promociones/{id}', [PromocionController::class, 'show'])->whereNumber('id');
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -88,10 +82,6 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
     // Cuenta dividida en partes por pedido raíz.
     Route::get('/cuenta', [ClienteController::class, 'cuenta']);
 });
-// ruta para crear reserva pero por un cliente desde la web
-Route::post('/cliente/reservas', [ReservaController::class, 'crear']);
-// Ruta para cancelar reserva por un cliente desde la web
-Route::patch('/cliente/reservas/{id}/cancelar', [ReservaController::class, 'cancelar']);
 
 // RESERVAS DEL CLIENTE WEB (públicas con throttle):
 //  - alta: elige mesa existente o, si no manda mesa_id, el sistema la
@@ -212,6 +202,7 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_categorias'])->group(funct
 
 Route::middleware(['auth:sanctum', 'permiso:gestionar_platos'])->group(function () {
 
+    Route::get('/platos/todos', [PlatoController::class, 'indexAll']);
     Route::post('/platos', [PlatoController::class, 'store']);
     Route::put('/platos/{id}', [PlatoController::class, 'update']);
     Route::delete('/platos/{id}', [PlatoController::class, 'destroy']);
@@ -239,6 +230,8 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_mesas'])->group(function (
 });
 
 Route::middleware(['auth:sanctum', 'permiso:gestionar_promociones'])->group(function () {
+    Route::get('/promociones', [PromocionController::class, 'index']);
+    Route::get('/promociones/{id}', [PromocionController::class, 'show'])->whereNumber('id');
     Route::post('/promociones', [PromocionController::class, 'store']);
     Route::put('/promociones/{id}', [PromocionController::class, 'update'])->whereNumber('id');
     Route::delete('/promociones/{id}', [PromocionController::class, 'destroy'])->whereNumber('id');
