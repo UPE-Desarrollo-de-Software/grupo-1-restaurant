@@ -41,7 +41,9 @@ Route::get('/user', function (Request $request) {
 
 // CARTA
 
-Route::get('/categorias', [CategoriaController::class, 'index']);
+Route::get('/categorias/activas', [CategoriaController::class, 'index']);
+
+Route::get('/categorias', [CategoriaController::class, 'indexAll']);
 
 Route::get('/categorias/{id}', [CategoriaController::class, 'show']);
 
