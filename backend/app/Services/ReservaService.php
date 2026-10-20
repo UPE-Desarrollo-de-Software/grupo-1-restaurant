@@ -144,6 +144,46 @@ class ReservaService
     }
 
     /**
+     * Cancelación pública (cliente web): con el codigo_acceso de la
+     * mesa cancela TODAS sus reservas pendientes (cualquier fecha).
+     *
+     * El código identifica la MESA (no una reserva), así que una única
+     * respuesta cubre las dos fallas: si el código no corresponde a una
+     * mesa viva o si esa mesa ya no tiene pendientes → 422 "No hay
+     * reservas pendientes con ese código" (no revela cuál fue).
+     *
+     * @return Collection<int, Reserva> las reservas canceladas, con su mesa
+     *
+     * @throws \Exception sin reservas pendientes para ese código
+     */
+    public function cancelarPorCodigoMesa(string $codigo): Collection
+    {
+        $mesa = $this->mesas->porCodigo($codigo);
+
+        $pendientes = $mesa
+            ? $this->reservas->pendientesDeMesa((int) $mesa->id)
+            : collect();
+
+        if ($pendientes->isEmpty()) {
+            throw new \Exception('No hay reservas pendientes con ese código');
+        }
+
+        $canceladas = [];
+        foreach ($pendientes as $reserva) {
+            $reserva->estado = 'cancelada';
+            $reserva->save();
+
+            // Si era de hoy, la mesa se libera recién al cerrar la
+            // última pendiente de HOY (las de otros días no la tocan).
+            $this->liberarMesaSiCorresponde($reserva);
+
+            $canceladas[] = $reserva->load('mesa');
+        }
+
+        return collect($canceladas);
+    }
+
+    /**
      * pendiente a finalizada (el evento ya ocurrió).
      */
     public function finalizar(int $id): Reserva

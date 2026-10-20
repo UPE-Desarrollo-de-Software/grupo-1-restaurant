@@ -46,10 +46,10 @@ class ClienteController extends Controller
     public function acceder(Request $request)
     {
         $datos = $request->validate([
-            'codigo' => 'required|string|size:6',
+            'codigo' => 'required|string|size:4',
         ]);
 
-        // Throttle por IP: evita adivinar los 6 dígitos del código.
+        // Throttle por IP: evita adivinar los 4 dígitos del código.
         $llave = 'acceso:'.ip2long($request->ip());
         if (RateLimiter::tooManyAttempts($llave, 10)) {
             return response()->json([

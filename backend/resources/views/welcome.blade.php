@@ -362,7 +362,7 @@
                 </p>
                 <p>
                     <strong>Comensal</strong> (auto-pedido, sin registro): <code>POST /api/acceso</code>
-                    con <code>codigo</code> (el código de 6 dígitos de la mesa) → responde la mesa. El
+                    con <code>codigo</code> (el código de 4 dígitos de la mesa) → responde la mesa. El
                     front guarda ese código y lo envía en cada llamada como
                     <code>Authorization: Bearer {codigo_acceso}</code> contra las rutas bajo
                     <code>/api/cliente</code>. No existe token de cliente: su identidad en la visita es

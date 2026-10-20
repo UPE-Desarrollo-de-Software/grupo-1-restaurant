@@ -63,7 +63,7 @@ class MesaService
 
     /**
      * Alta de mesa dinámica: valida el AFORO del lugar y genera el
-     * único código de acceso de la mesa (6 dígitos) ANTES de crearla.
+     * único código de acceso de la mesa (4 dígitos) ANTES de crearla.
      *
      * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?}
      *

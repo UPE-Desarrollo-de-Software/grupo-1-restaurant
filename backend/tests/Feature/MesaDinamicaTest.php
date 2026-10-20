@@ -68,7 +68,7 @@ test('el mozo crea una mesa dinamica con su codigo de acceso', function () {
     $mesa = $response->json('mesa');
     expect($mesa['estado'])->toBe('libre')
         ->and($mesa['capacidad'])->toBe(4)
-        ->and($mesa['codigo_acceso'])->toMatch('/^\d{6}$/');
+        ->and($mesa['codigo_acceso'])->toMatch('/^\d{4}$/');
 
     // El código es único entre las mesas vivas.
     expect(Mesa::where('codigo_acceso', $mesa['codigo_acceso'])->count())->toBe(1);
@@ -137,7 +137,7 @@ test('el alta es del mozo y la baja logica del gerente', function () {
     expect(Mesa::find($mesaId))->toBeNull()
         ->and(Mesa::withTrashed()->find($mesaId))->not->toBeNull()
         // Para la app la mesa dejó de existir: su código no entra.
-        ->and($codigo)->toMatch('/^\d{6}$/');
+        ->and($codigo)->toMatch('/^\d{4}$/');
 
     $this->postJson('/api/acceso', ['codigo' => $codigo])->assertStatus(401);
 });

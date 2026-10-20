@@ -19,7 +19,8 @@ beforeEach(function () {
 /*
  * ABM de RESERVAS (DER v3.0): altas (pública con "mozo virtual" y del
  * empleado), lead time de 2 horas, conflicto por fecha+hora exacta,
- * transiciones de estado, liberación de la mesa y permisos.
+ * transiciones de estado, liberación de la mesa, cancelación pública
+ * por codigo_acceso y permisos.
  *
  * OJO: helpers globales ya definidos en otros tests (tokenEmpleado,
  * conEmpleado, fijarAforo, autenticarMozo…) no se redeclaran acá; por
@@ -98,7 +99,7 @@ test('la reserva publica sin mesa la crea el sistema como mozo virtual', functio
     $mesa = Mesa::findOrFail($response->json('reserva.mesa_id'));
     expect($mesa->capacidad)->toBe(5)
         ->and($mesa->usuario_id)->toBeNull()
-        ->and($mesa->codigo_acceso)->toMatch('/^\d{6}$/');
+        ->and($mesa->codigo_acceso)->toMatch('/^\d{4}$/');
 });
 
 test('el mozo virtual respeta el aforo del lugar', function () {
@@ -345,4 +346,68 @@ test('el mapa publico de mesas no expone los codigos de acceso', function () {
     expect($mesas)->toHaveCount(2)
         ->and($mesas[0])->toHaveKeys(['id', 'capacidad', 'estado'])
         ->and($mesas[0])->not->toHaveKey('codigo_acceso');
+});
+
+test('el cliente cancela todas las pendientes de su mesa con el codigo', function () {
+    $this->travelTo('2026-11-10 19:00:00');
+    $mesa = Mesa::factory()->create(['estado' => 'reservada', 'codigo_acceso' => '4444']);
+    $hoy = Reserva::factory()->create([
+        'mesa_id' => $mesa->id, 'fecha' => '2026-11-10', 'hora' => '20:00:00',
+    ]);
+    $otroDia = Reserva::factory()->create([
+        'mesa_id' => $mesa->id, 'fecha' => '2026-11-12', 'hora' => '21:00:00',
+    ]);
+    $yaCancelada = Reserva::factory()->cancelada()->create(['mesa_id' => $mesa->id]);
+
+    $this->postJson('/api/cliente/reservas/cancelar', ['codigo' => '4444'])
+        ->assertOk()
+        ->assertJsonPath('mensaje', 'Reservas canceladas correctamente')
+        ->assertJsonCount(2, 'reservas');
+
+    // Cancela las pendientes de cualquier fecha; la ya cancelada no se toca.
+    expect(Reserva::findOrFail($hoy->id)->estado)->toBe('cancelada')
+        ->and(Reserva::findOrFail($otroDia->id)->estado)->toBe('cancelada')
+        ->and(Reserva::findOrFail($yaCancelada->id)->estado)->toBe('cancelada')
+        // Hoy era la única pendiente de HOY: al cerrarla la mesa vuelve a libre.
+        ->and(Mesa::findOrFail($mesa->id)->estado)->toBe('libre');
+});
+
+test('cancelar con codigo inexistente o sin pendientes responde 422 generico', function () {
+    $mesa = Mesa::factory()->create(['codigo_acceso' => '1111']);
+
+    // El código no es de ninguna mesa.
+    $this->postJson('/api/cliente/reservas/cancelar', ['codigo' => '2222'])
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'No hay reservas pendientes con ese código');
+
+    // La mesa existe pero no tiene reservas pendientes.
+    $this->postJson('/api/cliente/reservas/cancelar', ['codigo' => '1111'])
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'No hay reservas pendientes con ese código');
+
+    // Con solo reservas ya canceladas tampoco hace nada.
+    Reserva::factory()->cancelada()->create(['mesa_id' => $mesa->id]);
+    $this->postJson('/api/cliente/reservas/cancelar', ['codigo' => '1111'])
+        ->assertStatus(422);
+
+    // Destruída la mesa su código deja de valer (sus pendientes se
+    // cancelaron juntas con la destrucción).
+    $otra = Mesa::factory()->create(['codigo_acceso' => '3333']);
+    Reserva::factory()->create(['mesa_id' => $otra->id]);
+    empleadoReserva($this, tokenReserva('Gerente'))
+        ->deleteJson("/api/mesas/{$otra->id}")
+        ->assertOk();
+
+    $this->postJson('/api/cliente/reservas/cancelar', ['codigo' => '3333'])
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'No hay reservas pendientes con ese código');
+});
+
+test('el codigo de cancelacion valida el formato de 4 digitos', function () {
+    // Formato viejo de 6 dígitos: la validación lo corta antes de buscar.
+    $this->postJson('/api/cliente/reservas/cancelar', ['codigo' => '123456'])
+        ->assertStatus(422);
+
+    $this->postJson('/api/cliente/reservas/cancelar', [])
+        ->assertStatus(422);
 });
