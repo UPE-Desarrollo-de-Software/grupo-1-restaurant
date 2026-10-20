@@ -11,6 +11,7 @@ use App\Repositories\EloquentMesaRepository;
 use App\Repositories\EloquentParametroRepository;
 use App\Repositories\EloquentPedidoRepository;
 use App\Repositories\EloquentPlatoRepository;
+use App\Repositories\EloquentPromocionRepository;
 use App\Repositories\EloquentReservaRepository;
 use App\Repositories\EloquentRolRepository;
 use App\Repositories\EloquentUsuarioRepository;
@@ -19,10 +20,10 @@ use App\Repositories\MesaRepository;
 use App\Repositories\ParametroRepository;
 use App\Repositories\PedidoRepository;
 use App\Repositories\PlatoRepository;
+use App\Repositories\PromocionRepository;
 use App\Repositories\ReservaRepository;
 use App\Repositories\RolRepository;
 use App\Repositories\UsuarioRepository;
-use App\Repositories\PromocionRepository;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -46,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DetallePedidoRepository::class, EloquentDetallePedidoRepository::class);
         $this->app->bind(ParametroRepository::class, EloquentParametroRepository::class);
         $this->app->bind(ReservaRepository::class, EloquentReservaRepository::class);
+        $this->app->bind(PromocionRepository::class, EloquentPromocionRepository::class);
     }
 
     /**

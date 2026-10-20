@@ -24,7 +24,7 @@ class PlatoController extends Controller
         private EliminarPlatoUseCase $eliminar,
     ) {}
 
-    public function index()
+    public function indexAll()
     {
         $platos = ($this->listar)();
 
@@ -34,7 +34,7 @@ class PlatoController extends Controller
 
         return response()->json($platos, 200);
     }
-    public function indexActive()
+    public function index()
     {
         $platos = ($this->listarActivos)();
 

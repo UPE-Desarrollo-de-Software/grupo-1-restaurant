@@ -447,7 +447,7 @@ test('la carta muestra la promocion embebida solo si esta vigente', function () 
 
     $this->putJson("/api/platos/{$plato->id}", bodyPlato($plato, $id))->assertOk();
 
-    // vigente → viene embebida
+    // vigente → viene embebida (la carta es /platos, público)
     $carta = $this->getJson('/api/platos')->assertOk()->json();
     $fila = collect($carta)->firstWhere('id', $plato->id);
     expect($fila['promocion'])->not->toBeNull()

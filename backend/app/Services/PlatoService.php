@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Plato;
 use App\Repositories\PlatoRepository;
 
-
 /**
  * CRUD de platos (DER v2.2: entidad PLATO; antes "Producto").
  *
@@ -24,17 +23,18 @@ class PlatoService
     public function obtenerDisponibles()
     {
         return $this->platos->disponiblesConCategoria()
-            ->map(fn(Plato $plato) => $this->conPromoVigente($plato));
+            ->map(fn (Plato $plato) => $this->conPromoVigente($plato));
     }
 
-    public function obtenerConIngredientes($id): Plato
+    public function obtenerConIngredientes(int $id): Plato
     {
         return $this->conPromoVigente($this->platos->conIngredientesOrFail((int) $id));
     }
 
+    /** Listado completo (activos e inactivos) para el panel del encargado. */
     public function todos()
     {
-        return $this->todos();
+        return $this->platos->todos();
     }
 
     /**
@@ -56,7 +56,7 @@ class PlatoService
     /**
      * @param  array<string, mixed>  $datos
      */
-    public function actualizar($id, array $datos): Plato
+    public function actualizar(int $id, array $datos): Plato
     {
         $plato = $this->platos->conIngredientesOrFail((int) $id);
 
@@ -77,7 +77,7 @@ class PlatoService
         return $plato->load('ingredientes:id,nombre,precioAdicional');
     }
 
-    public function eliminar($id): void
+    public function eliminar(int $id): void
     {
         $plato = $this->platos->conIngredientesOrFail((int) $id);
 
