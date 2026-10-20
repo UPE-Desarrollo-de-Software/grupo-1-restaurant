@@ -4,6 +4,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ConfiguracionController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HistorialComandaController;
 use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\MesaController;
 use App\Http\Controllers\PedidoController;
@@ -49,8 +51,10 @@ Route::get('/categorias/{id}', [CategoriaController::class, 'show']);
 
 Route::get('/platos', [PlatoController::class, 'index']);
 
-// plato por id para mostrar uno en específico (con sus ingredientes)
-Route::get('/platos/{id}', [PlatoController::class, 'show']);
+// plato por id para mostrar uno en específico (con sus ingredientes).
+// whereNumber: si no, /platos/todos (abajo) matchea /platos/{id}
+// con id="todos" y show(int) revienta con TypeError.
+Route::get('/platos/{id}', [PlatoController::class, 'show'])->whereNumber('id');
 
 Route::get('/ingredientes', [IngredienteController::class, 'index']);
 
@@ -206,8 +210,8 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_platos'])->group(function 
 
     Route::get('/platos/todos', [PlatoController::class, 'indexAll']);
     Route::post('/platos', [PlatoController::class, 'store']);
-    Route::put('/platos/{id}', [PlatoController::class, 'update']);
-    Route::delete('/platos/{id}', [PlatoController::class, 'destroy']);
+    Route::put('/platos/{id}', [PlatoController::class, 'update'])->whereNumber('id');
+    Route::delete('/platos/{id}', [PlatoController::class, 'destroy'])->whereNumber('id');
 });
 
 // INGREDIENTES
@@ -240,16 +244,14 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_promociones'])->group(func
 });
 
 // ==================== REPORTES ====================
-/*
+
 // Dashboard de estadísticas (solo Gerente).
 Route::middleware(['auth:sanctum', 'permiso:ver_dashboard'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
 });
-*/
-/*
+
 // Historial de comandas (= pedidos): Gerente y Cocina.
 Route::middleware(['auth:sanctum', 'permiso:ver_historial_comandas'])->group(function () {
     Route::get('/historial/comandas', [HistorialComandaController::class, 'index']);
     Route::get('/historial/comandas/{id}', [HistorialComandaController::class, 'show'])->whereNumber('id');
 });
-*/

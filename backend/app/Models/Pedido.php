@@ -42,6 +42,17 @@ class Pedido extends Model
         return $this->belongsTo(Mesa::class);
     }
 
+    /**
+     * Mesa para el HISTORIAL de comandas: con trashed, porque la mesa
+     * se destruye al cerrar la visita y la comanda histórica debe
+     * poder mostrarla igual (la relación `mesa` normal la excluye el
+     * scope global de SoftDeletes).
+     */
+    public function mesaHistorial(): BelongsTo
+    {
+        return $this->belongsTo(Mesa::class, 'mesa_id')->withTrashed();
+    }
+
     public function detalles(): HasMany
     {
         return $this->hasMany(DetallePedido::class);

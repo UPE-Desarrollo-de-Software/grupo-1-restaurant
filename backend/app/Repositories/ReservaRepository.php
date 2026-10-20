@@ -53,5 +53,11 @@ interface ReservaRepository
      */
     public function pendientesDeMesa(int $mesaId): Collection;
 
-    public function ReservaRepository(string $fecha): array;
+    /**
+     * Resumen del día (dashboard): conteo por estado de las reservas
+     * de la fecha + suma de `cantPersonas` de las pendientes.
+     *
+     * @return array{por_estado: array<string, int>, total_personas_pendientes: int}
+     */
+    public function resumenDelDia(string $fecha): array;
 }

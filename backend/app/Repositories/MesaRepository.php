@@ -96,5 +96,11 @@ interface MesaRepository
 
     public function eliminar(Mesa $mesa): void;
 
+    /**
+     * Conteo de mesas vivas por estado (dashboard): solo los estados
+     * presentes; el service rellena los faltantes con 0.
+     *
+     * @return array<string, int>
+     */
     public function cantidadPorEstado(): array;
 }

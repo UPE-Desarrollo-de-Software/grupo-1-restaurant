@@ -34,7 +34,20 @@ class EloquentPlatoRepository implements PlatoRepository
 
     public function todos(): Collection
     {
-        return Plato::all();
+        return Plato::join('categorias', 'platos.categoria_id', '=', 'categorias.id')
+            ->with('promocion')
+            ->select(
+                'categorias.nombre as categoria_nombre',
+                'platos.id',
+                'platos.categoria_id',
+                'platos.promocion_id',
+                'platos.nombre',
+                'platos.descripcion',
+                'platos.precio',
+                'platos.imagen',
+                'platos.disponible'
+            )
+            ->get();
     }
 
     public function crear(array $datos): Plato
