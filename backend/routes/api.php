@@ -51,8 +51,10 @@ Route::get('/categorias/{id}', [CategoriaController::class, 'show']);
 
 Route::get('/platos', [PlatoController::class, 'index']);
 
-// plato por id para mostrar uno en específico (con sus ingredientes)
-Route::get('/platos/{id}', [PlatoController::class, 'show']);
+// plato por id para mostrar uno en específico (con sus ingredientes).
+// whereNumber: si no, /platos/todos (abajo) matchea /platos/{id}
+// con id="todos" y show(int) revienta con TypeError.
+Route::get('/platos/{id}', [PlatoController::class, 'show'])->whereNumber('id');
 
 Route::get('/ingredientes', [IngredienteController::class, 'index']);
 
@@ -208,8 +210,8 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_platos'])->group(function 
 
     Route::get('/platos/todos', [PlatoController::class, 'indexAll']);
     Route::post('/platos', [PlatoController::class, 'store']);
-    Route::put('/platos/{id}', [PlatoController::class, 'update']);
-    Route::delete('/platos/{id}', [PlatoController::class, 'destroy']);
+    Route::put('/platos/{id}', [PlatoController::class, 'update'])->whereNumber('id');
+    Route::delete('/platos/{id}', [PlatoController::class, 'destroy'])->whereNumber('id');
 });
 
 // INGREDIENTES
