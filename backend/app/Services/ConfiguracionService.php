@@ -2,52 +2,84 @@
 
 namespace App\Services;
 
+use App\Models\ConfigMesa;
+use App\Repositories\ConfigMesaRepository;
 use App\Repositories\MesaRepository;
-use App\Repositories\ParametroRepository;
 
 /**
- * Configuración del restaurante (tabla PARAMETRO, DER v2.2).
+ * Configuración del restaurante (tabla CONFIG_MESA, DER del grupo).
  *
- * Hoy solo se usa el aforo `capacidad_total`, pero el service está
- * preparado para cualquier clave/valor que el DER agregue después.
+ * El salón se describe como composición de piezas: "hay `cantidad`
+ * mesas de `capacidad` cubiertos". De ahí se derivan los dos límites
+ * que valida MesaService:
+ *
+ *   aforo          = Σ(capacidad × cantidad)  → cubiertos máximos
+ *   mesas_maximas  = Σ cantidad                → mesas vivas máximas
+ *
+ * PUT /api/configuracion es REPLACE-ALL: se borran las filas y se
+ * guardan las nuevas (ConfigMesaRepository::reemplazar).
  */
 class ConfiguracionService
 {
     public function __construct(
-        private ParametroRepository $parametros,
+        private ConfigMesaRepository $configMesas,
         private MesaRepository $mesas,
     ) {}
 
     /**
-     * @return array{capacidad_total: int}
+     * @return array{config_mesas: list<array{cantidad: int, capacidad: int}>, aforo: int, mesas_maximas: int}
      */
     public function obtener(): array
     {
         return [
-            'capacidad_total' => $this->parametros->capacidadTotal(),
+            'config_mesas' => $this->configMesas->filas()
+                ->map(fn (ConfigMesa $fila) => [
+                    'cantidad' => (int) $fila->cantidad,
+                    'capacidad' => (int) $fila->capacidad,
+                ])
+                ->values()
+                ->all(),
+            'aforo' => $this->configMesas->aforo(),
+            'mesas_maximas' => $this->configMesas->cantidadMaximaMesas(),
         ];
     }
 
     /**
-     * @param  array<string, mixed>  $datos  {capacidad_total?: int}
+     * REPLACE-ALL de la composición. Reglas previas al guardado:
+     *  - el aforo nuevo no puede quedar por debajo de la capacidad
+     *    que ya ocupan las mesas vivas;
+     *  - el tope de mesas (Σ cantidad) no puede quedar por debajo de
+     *    las mesas vivas.
      *
-     * @throws \Exception si el aforo nuevo queda por debajo de lo ya
-     *                    ocupado por las mesas vivas
+     * @param  array{config_mesas: list<array{cantidad: int, capacidad: int}>}  $datos
+     *
+     * @throws \Exception si alguna de las dos reglas se viola
      */
     public function actualizar(array $datos): array
     {
-        if (array_key_exists('capacidad_total', $datos)) {
-            $nuevo = (int) $datos['capacidad_total'];
-            $ocupada = $this->mesas->capacidadOcupada();
+        $filas = $datos['config_mesas'];
 
-            if ($nuevo < $ocupada) {
-                throw new \Exception(
-                    "No se puede bajar el aforo a {$nuevo}: las mesas vivas ya ocupan {$ocupada}."
-                );
-            }
+        $aforoNuevo = (int) array_sum(
+            array_map(fn (array $fila) => $fila['capacidad'] * $fila['cantidad'], $filas)
+        );
+        $ocupada = $this->mesas->capacidadOcupada();
 
-            $this->parametros->establecer('capacidad_total', (string) $nuevo);
+        if ($aforoNuevo < $ocupada) {
+            throw new \Exception(
+                "No se puede bajar el aforo a {$aforoNuevo}: las mesas vivas ya ocupan {$ocupada}."
+            );
         }
+
+        $maxMesas = (int) array_sum(array_column($filas, 'cantidad'));
+        $vivas = $this->mesas->todas()->count();
+
+        if ($maxMesas < $vivas) {
+            throw new \Exception(
+                "No se puede bajar la cantidad de mesas a {$maxMesas}: hay {$vivas} mesas vivas."
+            );
+        }
+
+        $this->configMesas->reemplazar($filas);
 
         return $this->obtener();
     }

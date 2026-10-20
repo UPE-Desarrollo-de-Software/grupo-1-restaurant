@@ -52,4 +52,12 @@ interface PedidoRepository
      * @return Collection<int, Pedido>
      */
     public function pedidosDeVisita(int $mesaId, ?string $desde): Collection;
+
+    public function ventasEntre(string $desde, string $hasta): array;
+
+    public function porEstadoEntre(string $desde, string $hasta): array;
+
+    public function platosMasVendidos(string $desde, string $hasta, int $limite = 10): Collection;
+
+    public function conDetallesYTrashedOrFail(int $id): Pedido;
 }

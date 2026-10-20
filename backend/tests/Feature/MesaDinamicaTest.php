@@ -1,7 +1,7 @@
 <?php
 
+use App\Models\ConfigMesa;
 use App\Models\Mesa;
-use App\Models\Parametro;
 use App\Models\Pedido;
 use App\Models\Plato;
 use App\Models\Rol;
@@ -19,8 +19,9 @@ beforeEach(function () {
 });
 
 /*
- * Reglas del rebote 2: mesas DINÁMICAS con aforo (PARAMETRO), alta del
- * mozo / baja lógica del gerente y configuración del aforo.
+ * Reglas del rebote 2: mesas DINÁMICAS con aforo (CONFIG_MESA), alta
+ * del mozo / baja lógica del gerente y configuración de la
+ * composición del salón.
  *
  * OJO: helpers globales ya definidos en otros tests (autenticarMozo,
  * platoDePrueba, mesaVisita, platoAuto, tokenMozo, comensal…) no se
@@ -50,14 +51,13 @@ function conEmpleado(TestCase $test, string $token): TestCase
 }
 
 /**
- * Fija el aforo del lugar en la tabla PARAMETRO.
+ * Fija el aforo del lugar en la tabla CONFIG_MESA (N mesas de 1
+ * cubierto: aforo N y hasta N mesas vivas).
  */
 function fijarAforo(int $capacidad): void
 {
-    Parametro::query()->updateOrCreate(
-        ['clave' => 'capacidad_total'],
-        ['valor' => (string) $capacidad],
-    );
+    ConfigMesa::query()->delete();
+    ConfigMesa::create(['cantidad' => $capacidad, 'capacidad' => 1]);
 }
 
 test('el mozo crea una mesa dinamica con su codigo de acceso', function () {
@@ -172,24 +172,36 @@ test('la configuracion expone y protege el aforo', function () {
     conEmpleado($this, tokenEmpleado('Mozo'))
         ->getJson('/api/configuracion')
         ->assertOk()
-        ->assertJsonPath('capacidad_total', 100);
+        ->assertJsonPath('aforo', 100)
+        ->assertJsonPath('mesas_maximas', 100)
+        ->assertJsonPath('config_mesas.0.cantidad', 100)
+        ->assertJsonPath('config_mesas.0.capacidad', 1);
 
     // La edita solo quien gestiona mesas.
     conEmpleado($this, tokenEmpleado('Mozo'))
-        ->putJson('/api/configuracion', ['capacidad_total' => 50])
-        ->assertForbidden();
+        ->putJson('/api/configuracion', [
+            'config_mesas' => [['cantidad' => 50, 'capacidad' => 1]],
+        ])->assertForbidden();
 
     // Con una mesa de capacidad 8 no se puede bajar el aforo a 5.
     $mzo = conEmpleado($this, tokenEmpleado('Mozo'));
     $mzo->postJson('/api/mesas', ['capacidad' => 8])->assertStatus(201);
 
     $gerente = conEmpleado($this, tokenEmpleado('Gerente'));
-    $gerente->putJson('/api/configuracion', ['capacidad_total' => 5])->assertStatus(422);
-    $gerente->putJson('/api/configuracion', ['capacidad_total' => 50])->assertOk();
+    $gerente->putJson('/api/configuracion', [
+        'config_mesas' => [['cantidad' => 5, 'capacidad' => 1]],
+    ])
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'No se puede bajar el aforo a 5: las mesas vivas ya ocupan 8.');
+
+    $gerente->putJson('/api/configuracion', [
+        'config_mesas' => [['cantidad' => 5, 'capacidad' => 10]],
+    ])->assertOk();
 
     $this->app['auth']->forgetGuards();
     conEmpleado($this, tokenEmpleado('Mozo'))
         ->getJson('/api/configuracion')
         ->assertOk()
-        ->assertJsonPath('capacidad_total', 50);
+        ->assertJsonPath('aforo', 50)
+        ->assertJsonPath('mesas_maximas', 5);
 });

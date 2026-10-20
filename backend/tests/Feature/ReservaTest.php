@@ -1,7 +1,7 @@
 <?php
 
+use App\Models\ConfigMesa;
 use App\Models\Mesa;
-use App\Models\Parametro;
 use App\Models\Reserva;
 use App\Models\Rol;
 use App\Models\Usuario;
@@ -50,14 +50,13 @@ function empleadoReserva(TestCase $test, string $token): TestCase
 }
 
 /**
- * Fija el aforo del lugar en la tabla PARAMETRO.
+ * Fija el aforo del lugar en la tabla CONFIG_MESA (N mesas de 1
+ * cubierto: aforo N y hasta N mesas vivas).
  */
 function aforoReserva(int $capacidad): void
 {
-    Parametro::query()->updateOrCreate(
-        ['clave' => 'capacidad_total'],
-        ['valor' => (string) $capacidad],
-    );
+    ConfigMesa::query()->delete();
+    ConfigMesa::create(['cantidad' => $capacidad, 'capacidad' => 1]);
 }
 
 test('el cliente publico reserva eligiendo una mesa existente', function () {

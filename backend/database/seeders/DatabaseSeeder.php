@@ -17,12 +17,12 @@ class DatabaseSeeder extends Seeder
         // Orden importa: permisos antes de roles (RolSeeder los
         // asigna); usuarios antes de nada que los referencie. Las MESAS
         // ya NO se precrean (rebote 2: entidad dinámica contra el
-        // aforo) — solo queda el PARAMETRO capacidad_total.
+        // aforo) — solo se seedea la CONFIG_MESA (25×4 = aforo 100).
         $this->call([
             PermisoSeeder::class,
             RolSeeder::class,
             UsuarioSeeder::class,
-            ParametroSeeder::class,
+            ConfigMesaSeeder::class,
             CategoriaSeeder::class,
             IngredienteSeeder::class,
             PlatoSeeder::class,

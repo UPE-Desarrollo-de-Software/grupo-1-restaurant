@@ -57,7 +57,7 @@ class MesaController extends Controller
 
     /**
      * Alta de mesa dinámica (el mozo o la reserva la crean). Valida el
-     * aforo contra PARAMETRO.capacidad_total (422 si se supera).
+     * aforo contra CONFIG_MESA (422 si se supera).
      */
     public function store(Request $request)
     {

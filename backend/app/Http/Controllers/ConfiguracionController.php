@@ -7,8 +7,10 @@ use App\UseCases\Configuracion\ObtenerConfiguracionUseCase;
 use Illuminate\Http\Request;
 
 /**
- * Configuración del restaurante (tabla PARAMETRO, DER v2.2).
- * Hoy expone el aforo `capacidad_total` que usan las mesas dinámicas.
+ * Configuración del restaurante (tabla CONFIG_MESA, DER del grupo).
+ * Expone la composición del salón (piezas cantidad×capacidad), el
+ * AFORO derivado (Σ capacidad×cantidad) y el tope de mesas (Σ
+ * cantidad) que usan las mesas dinámicas.
  */
 class ConfiguracionController extends Controller
 {
@@ -19,6 +21,7 @@ class ConfiguracionController extends Controller
 
     /**
      * GET /api/configuracion (cualquier empleado autenticado).
+     * Devuelve { config_mesas: [...], aforo, mesas_maximas }.
      */
     public function show()
     {
@@ -26,13 +29,17 @@ class ConfiguracionController extends Controller
     }
 
     /**
-     * PUT /api/configuracion (permiso gestionar_mesas). El aforo no
-     * puede quedar por debajo de la capacidad de las mesas vivas (422).
+     * PUT /api/configuracion (permiso gestionar_mesas). REPLACE-ALL:
+     * BODY { config_mesas: [{cantidad, capacidad}, ...] }. El aforo
+     * no puede quedar por debajo de la capacidad de las mesas vivas
+     * ni el tope de mesas por debajo de las vivas (422).
      */
     public function update(Request $request)
     {
         $datos = $request->validate([
-            'capacidad_total' => 'required|integer|min:0',
+            'config_mesas' => 'required|array|min:1',
+            'config_mesas.*.cantidad' => 'required|integer|min:1',
+            'config_mesas.*.capacidad' => 'required|integer|min:1',
         ]);
 
         try {

@@ -6,9 +6,9 @@ use App\Exceptions\ApiException;
 use App\Models\DetallePedido;
 use App\Models\Mesa;
 use App\Models\Pedido;
+use App\Repositories\ConfigMesaRepository;
 use App\Repositories\DetallePedidoRepository;
 use App\Repositories\MesaRepository;
-use App\Repositories\ParametroRepository;
 use App\Repositories\PedidoRepository;
 use App\Repositories\ReservaRepository;
 use Illuminate\Support\Collection;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * MESA — servicio de dominio (arquitectura hexagonal: capa Service
- * sobre los Repositories Mesa/Pedido/Parametro).
+ * sobre los Repositories Mesa/Pedido/ConfigMesa).
  *
  * Reglas del rebote 2 (DER v2.2):
  *  - entidad DINÁMICA: la crea el mozo o el sistema al reservar por
@@ -24,7 +24,8 @@ use Illuminate\Support\Facades\DB;
  *    (borrado lógico) al terminar el servicio; `codigo_acceso` nace
  *    con la mesa y no cambia nunca;
  *  - AFORO: al crear, Σ capacidad(mesas vivas) + capacidad nueva ≤
- *    PARAMETRO.capacidad_total (tabla PARAMETRO);
+ *    aforo (Σ capacidad×cantidad de CONFIG_MESA); además el total de
+ *    mesas vivas + 1 no puede superar Σ cantidad;
  *  - la cuenta ya no divide por "comensal con fila en el pivot": son
  *    PARTES por pedido RAÍZ (raíz + sus hijos = lo que paga cada quien);
  *  - `ocupada_desde` sigue siendo el corte de la visita.
@@ -35,7 +36,7 @@ class MesaService
         private MesaRepository $mesas,
         private PedidoRepository $pedidos,
         private DetallePedidoRepository $detalles,
-        private ParametroRepository $parametros,
+        private ConfigMesaRepository $configMesas,
         private ReservaRepository $reservas,
     ) {}
 
@@ -62,24 +63,34 @@ class MesaService
     }
 
     /**
-     * Alta de mesa dinámica: valida el AFORO del lugar y genera el
-     * único código de acceso de la mesa (6 dígitos) ANTES de crearla.
+     * Alta de mesa dinámica: valida el AFORO del lugar y el TOPE de
+     * mesas (ambos derivados de CONFIG_MESA) y genera el único código
+     * de acceso de la mesa (6 dígitos) ANTES de crearla.
      *
      * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?}
      *
-     * @throws \Exception aforo superado
+     * @throws \Exception aforo o tope de mesas superado
      */
     public function crearMesa(array $datos): Mesa
     {
         $capacidad = (int) ($datos['capacidad'] ?? 0);
 
-        $aforo = $this->parametros->capacidadTotal();
+        $aforo = $this->configMesas->aforo();
         $ocupada = $this->mesas->capacidadOcupada();
 
         if ($ocupada + $capacidad > $aforo) {
             throw new \Exception(
                 "Se supera la capacidad del lugar: aforo {$aforo}, ocupada {$ocupada}, "
-                    . "la mesa nueva necesita {$capacidad}."
+                    ."la mesa nueva necesita {$capacidad}."
+            );
+        }
+
+        $maxMesas = $this->configMesas->cantidadMaximaMesas();
+        $vivas = $this->mesas->todas()->count();
+
+        if ($vivas + 1 > $maxMesas) {
+            throw new \Exception(
+                "Se supera la cantidad de mesas permitidas: máximo {$maxMesas}, vivas {$vivas}."
             );
         }
 
@@ -111,7 +122,7 @@ class MesaService
         if (isset($datos['capacidad']) && (int) $datos['capacidad'] !== (int) $mesa->capacidad) {
             $capacidadNueva = (int) $datos['capacidad'];
             $ocupadaFutura = $this->mesas->capacidadOcupada() - (int) $mesa->capacidad + $capacidadNueva;
-            $aforo = $this->parametros->capacidadTotal();
+            $aforo = $this->configMesas->aforo();
 
             if ($ocupadaFutura > $aforo) {
                 throw new \Exception(
@@ -311,8 +322,8 @@ class MesaService
             }
         }
 
-        $partes = array_map(fn(array $p) => $p + ['subtotal' => round($p['subtotal'], 2)], array_values($porRaiz));
-        usort($partes, fn(array $a, array $b) => $a['pedido_id'] <=> $b['pedido_id']);
+        $partes = array_map(fn (array $p) => $p + ['subtotal' => round($p['subtotal'], 2)], array_values($porRaiz));
+        usort($partes, fn (array $a, array $b) => $a['pedido_id'] <=> $b['pedido_id']);
 
         $cuenta = [
             'mesa_id' => $mesa->id,
@@ -324,7 +335,7 @@ class MesaService
 
         if ($mesa->grupo_codigo !== null) {
             $cuenta['grupo'] = $this->mesas->porGrupo($mesa->grupo_codigo, [$mesa->id])
-                ->map(fn(Mesa $hermana) => $this->cuenta($hermana->id))
+                ->map(fn (Mesa $hermana) => $this->cuenta($hermana->id))
                 ->all();
         }
 
@@ -353,14 +364,14 @@ class MesaService
             'codigo_acceso' => $mesa->codigo_acceso,
             'encontrada' => true,
             'pedidos' => $pedidos
-                ->map(fn(Pedido $pedido) => $this->pedidoAArray($pedido))
+                ->map(fn (Pedido $pedido) => $this->pedidoAArray($pedido))
                 ->values()
                 ->all(),
         ];
 
         if ($mesa->grupo_codigo !== null) {
             $resumen['grupo'] = $this->mesas->porGrupo($mesa->grupo_codigo, [$mesa->id])
-                ->map(fn(Mesa $hermana) => [
+                ->map(fn (Mesa $hermana) => [
                     'mesa_id' => $hermana->id,
                     'codigo_acceso' => $hermana->codigo_acceso,
                     'pedido_estado' => $this->pedidos->activosDeMesa($hermana->id)->first()?->estado,
@@ -386,7 +397,7 @@ class MesaService
             'estado' => $pedido->estado,
             'total' => (float) $pedido->total,
             'fecha' => $pedido->fecha,
-            'lineas' => $pedido->detalles->map(fn(DetallePedido $detalle) => [
+            'lineas' => $pedido->detalles->map(fn (DetallePedido $detalle) => [
                 'detalle_id' => $detalle->id,
                 'plato' => $detalle->plato->nombre,
                 'promocion' => $this->promocionDeLinea($detalle),
