@@ -25,6 +25,7 @@ class DocsController extends Controller
         'Reservas',
         'Pedidos',
         'Clientes',
+        'Reportes',
         'Otras',
     ];
 
@@ -47,6 +48,8 @@ class DocsController extends Controller
         'PedidoController' => 'Pedidos',
         'ClienteController' => 'Clientes',
         'ReservaController' => 'Reservas',
+        'DashboardController' => 'Reportes',
+        'HistorialComandaController' => 'Reportes',
         'Closure' => 'Autenticación',
     ];
 
@@ -120,6 +123,9 @@ class DocsController extends Controller
         'ReservaController@cancelar' => 'Cancelar una reserva (empleado con permiso gestionar_reservas). PATCH sin body. Transición pendiente → cancelada: cualquier reserva PENDIENTE se puede cancelar a cualquier hora (incluso antes de la hora reservada). Si ya no está pendiente → 422 "Solo se pueden cancelar reservas con estado pendiente". Si la reserva era de HOY y es la última pendiente de esa mesa, la mesa vuelve a "libre". Respuesta 200: { mensaje: "Reserva cancelada correctamente", reserva }.',
         'ReservaController@finalizar' => 'Finalizar una reserva (empleado con permiso gestionar_reservas): pendiente → finalizada (el cliente vino y cumplió). PATCH sin body. Exige estado PENDIENTE (si no → 422) Y que ya haya pasado la hora de la reserva (si no → 422 "Aún no llegó la hora de la reserva"). Si era de HOY y era la última pendiente de la mesa, la mesa vuelve a "libre". Respuesta 200: { mensaje: "Reserva finalizada correctamente", reserva }.',
         'ReservaController@inasistio' => 'Registrar inasistencia (empleado con permiso gestionar_reservas): pendiente → no_asistio (el cliente no vino). PATCH sin body. Mismas reglas que finalizar: exige estado PENDIENTE y que ya haya pasado la hora. Si era de HOY y era la última pendiente de la mesa, la mesa vuelve a "libre". Respuesta 200: { mensaje: "Inasistencia registrada", reserva }.',
+        'DashboardController@index' => 'Dashboard de estadísticas (permiso ver_dashboard, solo Gerente). Query opcionales ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (default hoy; máximo 366 días → 422). Respuesta 200: { periodo, ventas (cantidad_pedidos, total, ticket_promedio de entregado+cerrado), pedidos_por_estado (los 7 estados del período), platos_mas_vendidos (top 10 por unidades), ocupacion_actual (mesas por estado, cubiertos ocupados, aforo de CONFIG_MESA y porcentaje), reservas_hoy (por estado de HOY + total_personas_pendientes) }.',
+        'HistorialComandaController@index' => 'Historial de comandas paginado (permiso ver_historial_comandas: Gerente y Cocina). La comanda = pedido con sus líneas y su mesa aunque la mesa ya se haya destruido. Filtros opcionales combinables: ?desde&hasta&estado (los 7; SIN filtro lista solo finalizados: cerrado+cancelado)&mesa_id&page&per_page (default 20, máx 100). Respuesta 200: el paginador de Laravel directo (current_page, data, per_page, total, last_page).',
+        'HistorialComandaController@show' => 'Comanda única del historial por ID (extravíos; mismo shape que un item del listado: cabecera + mesa + líneas). Si no existe → 404 { "message": "Comanda no encontrada" }.',
     ];
 
     /**

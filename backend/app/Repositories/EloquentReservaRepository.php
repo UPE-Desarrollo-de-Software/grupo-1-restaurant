@@ -51,4 +51,23 @@ class EloquentReservaRepository implements ReservaRepository
             ->where('estado', 'pendiente')
             ->get();
     }
+
+    public function resumenDelDia(string $fecha): array
+    {
+        $porEstado = Reserva::where('fecha', $fecha)
+            ->selectRaw('estado, count(*) as cantidad')
+            ->groupBy('estado')
+            ->pluck('cantidad', 'estado')
+            ->map(fn ($cantidad) => (int) $cantidad)
+            ->all();
+
+        $personasPendientes = (int) Reserva::where('fecha', $fecha)
+            ->where('estado', 'pendiente')
+            ->sum('cantPersonas');
+
+        return [
+            'por_estado' => $porEstado,
+            'total_personas_pendientes' => $personasPendientes,
+        ];
+    }
 }

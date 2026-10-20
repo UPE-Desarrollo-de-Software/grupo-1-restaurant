@@ -4,6 +4,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ConfiguracionController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HistorialComandaController;
 use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\MesaController;
 use App\Http\Controllers\PedidoController;
@@ -240,16 +242,14 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_promociones'])->group(func
 });
 
 // ==================== REPORTES ====================
-/*
+
 // Dashboard de estadísticas (solo Gerente).
 Route::middleware(['auth:sanctum', 'permiso:ver_dashboard'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
 });
-*/
-/*
+
 // Historial de comandas (= pedidos): Gerente y Cocina.
 Route::middleware(['auth:sanctum', 'permiso:ver_historial_comandas'])->group(function () {
     Route::get('/historial/comandas', [HistorialComandaController::class, 'index']);
     Route::get('/historial/comandas/{id}', [HistorialComandaController::class, 'show'])->whereNumber('id');
 });
-*/

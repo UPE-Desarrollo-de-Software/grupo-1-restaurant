@@ -27,7 +27,7 @@ class RolSeeder extends Seeder
      */
     private const ASIGNACIONES = [
         'Gerente' => 'todos',
-        'Cocina' => ['ver_carta', 'ver_pedidos'],
+        'Cocina' => ['ver_carta', 'ver_pedidos', 'ver_historial_comandas'],
         'Mozo' => ['ver_carta', 'ver_pedidos', 'tomar_pedidos', 'gestionar_reservas'],
     ];
 
