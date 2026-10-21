@@ -24,8 +24,10 @@ use Illuminate\Support\Facades\DB;
  *    (raíz; profundidad 2). Si el padre sigue `en_curso`, hay que
  *    agrandar ese pedido (pedido_id), no crear otro.
  *  - `confirmado` (gate) vive en DETALLE_PEDIDO: las líneas del
- *    cliente nacen en false, las del mozo en true; el mozo confirma el
- *    resumen cuando ninguna siga en false (o `forzar`).
+ *    cliente nacen en false, las del mozo en true; cuando TODOS los
+ *    pedidos de la mesa están confirmados, salen juntos a cocina
+ *    (en_curso → enviado, lote). El mozo conserva el envío manual
+ *    (confirmarResumen con gate/forzar + enviarPedido) como fallback.
  *  - Estados finales (cerrado/cancelado): si la mesa quedó sin
  *    pedidos activos, se DESTRUYE (borrado lógico; Mesa::destruir()).
  *
@@ -276,6 +278,12 @@ class PedidoService
      * pedido tiene que ser de esa mesa (la usa el cliente para no tocar
      * pedidos ajenos).
      *
+     * AUTO-ENVÍO EN LOTE: al confirmar, si TODOS los pedidos vivos de
+     * la mesa tienen todas sus líneas confirmadas, salen juntos a
+     * cocina (`en_curso → enviado`). Si queda un pedido sin confirmar,
+     * ninguno sale (fallback del mozo: confirmarResumen + enviar).
+     * Desconfirmar nunca dispara el envío.
+     *
      * @param  list<int>|null  $detalleIds
      *
      * @throws \Exception
@@ -303,8 +311,45 @@ class PedidoService
                 throw new \Exception('No tenes lineas en este pedido para confirmar.');
             }
 
+            if ($confirmado) {
+                $this->autoEnviarListosDeMesa($pedido->mesa_id);
+            }
+
             return $this->pedidos->conDetallesOrFail($pedidoId);
         });
+    }
+
+    /**
+     * Auto-envío en lote (gate por MESA): envía (`en_curso → enviado`)
+     * todos los pedidos vivos de la mesa que tengan todas sus líneas
+     * confirmadas y al menos una línea. Si un pedido vivo de la mesa
+     * quedó con líneas sin confirmar, no se envía NINGUNO (la mesa
+     * espera a que el último comensal confirme; el mozo puede forzar).
+     *
+     * @return Collection<int, Pedido> los pedidos recién enviados
+     */
+    private function autoEnviarListosDeMesa(int $mesaId): Collection
+    {
+        // Solo los que siguen esperando (en_curso). Un pedido que el
+        // mozo ya dejó en 'confirmado' (su gate manual) no se toca.
+        $enCurso = $this->pedidos->activosDeMesa($mesaId)
+            ->filter(fn (Pedido $pedido) => $pedido->estado === 'en_curso');
+
+        $listos = $enCurso->filter(fn (Pedido $pedido) => $pedido->detalles->isNotEmpty()
+            && $this->todasLasLineasConfirmadas($pedido));
+
+        // Si algún pedido de la mesa quedó sin confirmar, la mesa
+        // entera espera (el mozo puede forzar).
+        if ($listos->count() !== $enCurso->count()) {
+            return collect();
+        }
+
+        foreach ($listos as $pedido) {
+            $pedido->estado = 'enviado';
+            $pedido->save();
+        }
+
+        return $listos;
     }
 
     /**

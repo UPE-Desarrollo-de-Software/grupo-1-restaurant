@@ -9,6 +9,7 @@ use App\UseCases\Clientes\ConfirmarLineasClienteUseCase;
 use App\UseCases\Clientes\DesconfirmarLineasClienteUseCase;
 use App\UseCases\Mesas\ObtenerCuentaMesaUseCase;
 use App\UseCases\Mesas\ObtenerResumenMesaUseCase;
+use App\UseCases\Pedidos\EnviarPedidoUseCase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -37,6 +38,7 @@ class ClienteController extends Controller
         private AgregarLineasClienteUseCase $agregarLineas,
         private ConfirmarLineasClienteUseCase $confirmarLineas,
         private DesconfirmarLineasClienteUseCase $desconfirmarLineas,
+        private EnviarPedidoUseCase $enviarPedido,
     ) {}
 
     /**
@@ -50,7 +52,7 @@ class ClienteController extends Controller
         ]);
 
         // Throttle por IP: evita adivinar los 6 dígitos del código.
-        $llave = 'acceso:'.ip2long($request->ip());
+        $llave = 'acceso:' . ip2long($request->ip());
         if (RateLimiter::tooManyAttempts($llave, 10)) {
             return response()->json([
                 'message' => 'Demasiados intentos: espera un momento y volvé a intentar.',
@@ -187,4 +189,5 @@ class ClienteController extends Controller
             'pedido' => $pedido,
         ], 200);
     }
+    public function enviarPedido(Request $request) {}
 }
