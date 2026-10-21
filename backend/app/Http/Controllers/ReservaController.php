@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Mesa;
 use App\UseCases\Mesas\ListarMesasUseCase;
 use App\UseCases\Reservas\CancelarReservaUseCase;
+use App\UseCases\Reservas\CancelarReservaWebUseCase;
 use App\UseCases\Reservas\CrearReservaUseCase;
 use App\UseCases\Reservas\FinalizarReservaUseCase;
 use App\UseCases\Reservas\ListarReservasUseCase;
@@ -27,6 +28,7 @@ class ReservaController extends Controller
     public function __construct(
         private CrearReservaUseCase $crear,
         private SolicitarReservaWebUseCase $solicitarWeb,
+        private CancelarReservaWebUseCase $cancelarWeb,
         private ListarReservasUseCase $listar,
         private ObtenerReservaUseCase $obtener,
         private CancelarReservaUseCase $cancelar,
@@ -90,6 +92,30 @@ class ReservaController extends Controller
             'mensaje' => 'Reserva pedida correctamente. Guarda el id de tu reserva para el local.',
             'reserva' => $reserva,
         ], 201);
+    }
+
+    /**
+     * POST /api/cliente/reservas/cancelar (público con throttle
+     * estricto): el codigo_acceso de la mesa cancela todas sus reservas
+     * pendientes. Un mismo 422 responde si el código no vale o si no
+     * hay pendientes (no revela cuál fue el problema).
+     */
+    public function cancelarWeb(Request $request)
+    {
+        $datos = $request->validate([
+            'codigo' => 'required|string|size:4',
+        ]);
+
+        try {
+            $reservas = ($this->cancelarWeb)($datos['codigo']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'mensaje' => 'Reservas canceladas correctamente',
+            'reservas' => $reservas,
+        ], 200);
     }
 
     /**

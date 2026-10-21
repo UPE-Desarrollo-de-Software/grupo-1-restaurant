@@ -17,7 +17,7 @@ return new class extends Migration
      *    con identidad propia; la crea el mozo (o la reserva) AL MOMENTO
      *    y el único código que tiene es `codigo_acceso`.
      *  - `codigo_acceso` ahora es NOT NULL y UNIQUE: nace con la mesa
-     *    (6 dígitos generado por MesaService::crearMesa) y no cambia
+     *    (4 dígitos generado por MesaService::crearMesa) y no cambia
      *    durante su vida; se invalida solo cuando la mesa se destruye.
      *  - `softDeletes()` (borrado lógico): "se crea y se destruye"
      *    (respuesta del usuario al profes). El borrado es lógico para no

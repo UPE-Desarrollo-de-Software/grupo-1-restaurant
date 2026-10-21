@@ -92,10 +92,16 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
 // RESERVAS DEL CLIENTE WEB (públicas con throttle):
 //  - alta: elige mesa existente o, si no manda mesa_id, el sistema la
 //    crea como "mozo virtual" validando el aforo;
+//  - cancelación: con el codigo_acceso de la mesa (4 dígitos) cancela
+//    todas sus reservas pendientes (throttle estricto: son pocos
+//    combos para adivinar);
 //  - mesas precreadas para el mapa de elección (solo id/capacidad/
 //    estado; el codigo_acceso NUNCA sale en una ruta pública).
 Route::post('/cliente/reservas', [ReservaController::class, 'solicitarWeb'])
     ->middleware('throttle:60,1');
+
+Route::post('/cliente/reservas/cancelar', [ReservaController::class, 'cancelarWeb'])
+    ->middleware('throttle:10,1');
 
 Route::get('/cliente/reservas/mesas', [ReservaController::class, 'mesasParaElegir'])
     ->middleware('throttle:60,1');
