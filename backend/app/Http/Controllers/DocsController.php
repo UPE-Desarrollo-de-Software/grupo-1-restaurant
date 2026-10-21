@@ -94,11 +94,7 @@ class DocsController extends Controller
         'MesaController@index' => 'Listar todas las mesas vivas, con su mozo responsable y estado.',
         'MesaController@disponibles' => 'Listar las mesas libres (sin pedido activo ni reserva).',
         'MesaController@show' => 'Obtener una mesa por ID (las destruidas responden "no encontrada").',
-<<<<<<< HEAD
-        'MesaController@store' => 'Crear una mesa dinámica con su código de acceso (6 dígitos) y capacidad. Valida el AFORO del lugar y el TOPE de mesas (CONFIG_MESA: aforo = Σ capacidad×cantidad, máximo de mesas = Σ cantidad); la crea el mozo o el sistema al reservar por la web.',
-=======
         'MesaController@store' => 'Crear una mesa dinámica con su código de acceso (4 dígitos) y capacidad. Valida el AFORO del lugar (PARAMETRO.capacidad_total); la crea el mozo o el sistema al reservar por la web.',
->>>>>>> 260a168a6dd73e3049bccdc30551275a33c0ad76
         'MesaController@update' => 'Actualizar capacidad, estado y mozo de la mesa. El código de acceso nunca cambia y la capacidad nueva vuelve a validar el aforo.',
         'MesaController@destroy' => 'Destruir la mesa (borrado lógico): para la app deja de existir y su código deja de valer; los pedidos históricos conservan su FK. Antes de destruirla cancela sus reservas PENDIENTES y responde { message, reservas_canceladas } con el conteo.',
         'PedidoController@pedidoActivo' => 'Pedidos NO finalizados de la mesa con sus líneas: { pedidos: [...] } (vacío si no hay; hoy hay varios por mesa, uno por comensal).',
