@@ -9,6 +9,7 @@ use App\UseCases\Clientes\ConfirmarLineasClienteUseCase;
 use App\UseCases\Clientes\DesconfirmarLineasClienteUseCase;
 use App\UseCases\Mesas\ObtenerCuentaMesaUseCase;
 use App\UseCases\Mesas\ObtenerResumenMesaUseCase;
+use App\UseCases\Pedidos\EnviarPedidoUseCase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -37,6 +38,7 @@ class ClienteController extends Controller
         private AgregarLineasClienteUseCase $agregarLineas,
         private ConfirmarLineasClienteUseCase $confirmarLineas,
         private DesconfirmarLineasClienteUseCase $desconfirmarLineas,
+        private EnviarPedidoUseCase $enviarPedido,
     ) {}
 
     /**
@@ -187,4 +189,5 @@ class ClienteController extends Controller
             'pedido' => $pedido,
         ], 200);
     }
+    public function enviarPedido(Request $request) {}
 }

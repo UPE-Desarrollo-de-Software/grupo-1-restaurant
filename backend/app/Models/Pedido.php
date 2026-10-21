@@ -19,8 +19,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * su pedido raíz: eso reemplaza a la entidad CLIENTE (eliminada del
  * DER, rebote 2).
  *
- * Flujo de envío en dos pasos (auto-pedido):
- *   en_curso → confirmado → enviado
+ * Flujo de envío (auto-pedido):
+ *   en_curso → enviado   (automático en LOTE: cuando TODOS los pedidos
+ *                         de la mesa tienen todas sus líneas
+ *                         confirmadas, salen juntos a cocina)
+ *   en_curso → confirmado → enviado   (manual del mozo: gate/forzar y
+ *                         enviar; fallback si la mesa no se confirma)
  * `confirmado` (el estado) = el mozo validó que todas las líneas del
  * pedido tienen detalle_pedidos.confirmado = true (o forzó).
  *
