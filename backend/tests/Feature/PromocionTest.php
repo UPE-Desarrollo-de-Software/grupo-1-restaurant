@@ -383,7 +383,9 @@ test('editar el valor NO toca lineas de pedidos cerrados', function () {
     ])->json('pedido.id');
 
     // Cerrar el pedido: confirmar → enviar → en_preparacion → entregado →
-    // cerrado (al ser el único activo, la mesa queda destruida).
+    // cerrado (la mesa NO se destruye sola: la visita se cierra con el
+    // pago, vía POST /mesas/{id}/cerrar; aquí no hace falta para leer
+    // la cuenta).
     $this->postJson("/api/pedidos/{$pedidoId}/confirmar")->assertOk();
     $this->postJson("/api/pedidos/{$pedidoId}/enviar")->assertOk();
     $this->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'en_preparacion'])->assertOk();

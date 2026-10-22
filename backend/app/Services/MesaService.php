@@ -11,6 +11,7 @@ use App\Repositories\DetallePedidoRepository;
 use App\Repositories\MesaRepository;
 use App\Repositories\PedidoRepository;
 use App\Repositories\ReservaRepository;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -19,10 +20,10 @@ use Illuminate\Support\Facades\DB;
  * sobre los Repositories Mesa/Pedido/ConfigMesa).
  *
  * Reglas del rebote 2 (DER v2.2):
- *  - entidad DINÁMICA: la crea el mozo o el sistema al reservar por
- *    la web ("mozo virtual") y se DESTRUYE
- *    (borrado lógico) al terminar el servicio; `codigo_acceso` nace
- *    con la mesa y no cambia nunca;
+ *  - entidad DINÁMICA: la crea el mozo y se DESTRUYE (borrado lógico)
+ *    al cerrar la VISITA (POST /mesas/{id}/cerrar: el cliente pagó)
+ *    o con DELETE /mesas/{id} (baja administrativa del gerente);
+ *    `codigo_acceso` nace con la mesa y no cambia nunca;
  *  - AFORO: al crear, Σ capacidad(mesas vivas) + capacidad nueva ≤
  *    aforo (Σ capacidad×cantidad de CONFIG_MESA); además el total de
  *    mesas vivas + 1 no puede superar Σ cantidad;
@@ -156,6 +157,36 @@ class MesaService
         $this->mesas->eliminar($mesa);
 
         return $canceladas;
+    }
+
+    /**
+     * Cierre de VISITA (POST /mesas/{mesa}/cerrar): el cliente pagó
+     * la cuenta y el mozo termina el servicio. Lo que cierra la mesa
+     * es el PAGO, no la finalización del ciclo de vida de un pedido:
+     * por eso exige CERO pedidos activos y NO se dispara solo.
+     *
+     * Efecto = mismo que `eliminar` (borrado lógico, el código deja
+     * de valer y se cancelan reservas pendientes legadas), pero con
+     * la validación previa y accesible para el mozo.
+     *
+     *
+     * @return int cantidad de reservas canceladas
+     *
+     * @throws ModelNotFoundException si la mesa no existe o ya se cerró
+     * @throws \Exception si quedan pedidos activos
+     */
+    public function cerrarVisita(int $id): int
+    {
+        $mesa = $this->mesas->porIdOrFail($id);
+
+        if ($this->pedidos->hayActivosDeMesa($mesa->id)) {
+            throw new \Exception(
+                'No se puede cerrar la mesa: quedan pedidos activos. '
+                    .'Cobrá la cuenta y cerrá (o cancelá) todos los pedidos primero.'
+            );
+        }
+
+        return $this->eliminar($id);
     }
 
     // ==================== SERVICIO DE LA VISITA ====================

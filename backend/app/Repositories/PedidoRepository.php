@@ -41,8 +41,8 @@ interface PedidoRepository
     public function activosDeMesa(int $mesaId): Collection;
 
     /**
-     * ¿Queda algún pedido no finalizado en la mesa? (al finalizar el
-     * último se destruye la mesa).
+     * ¿Queda algún pedido no finalizado en la mesa? (gate para cerrar
+     * la visita: la cierra el mozo tras el PAGO, no un pedido).
      */
     public function hayActivosDeMesa(int $mesaId): bool;
 

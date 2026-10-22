@@ -90,14 +90,15 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
 });
 
 // RESERVAS DEL CLIENTE WEB (públicas con throttle):
-//  - alta: elige mesa existente o, si no manda mesa_id, el sistema la
-//    crea como "mozo virtual" validando el aforo;
-//  - mesas precreadas para el mapa de elección (solo id/capacidad/
-//    estado; el codigo_acceso NUNCA sale en una ruta pública).
+//  - alta: pide personas + horario y el sistema asigna la combinación
+//    de capacidades del inventario (CONFIG_MESA − pendientes
+//    solapadas); no hay mesa que elegir ni "mozo virtual";
+//  - disponibilidad: qué capacidades quedan libres para ese intervalo
+//    (reemplaza al antiguo mapa de elección de mesas).
 Route::post('/cliente/reservas', [ReservaController::class, 'solicitarWeb'])
     ->middleware('throttle:60,1');
 
-Route::get('/cliente/reservas/mesas', [ReservaController::class, 'mesasParaElegir'])
+Route::get('/cliente/reservas/disponibilidad', [ReservaController::class, 'disponibilidad'])
     ->middleware('throttle:60,1');
 
 // ==================== CUALQUIER EMPLEADO AUTENTICADO ====================
@@ -137,6 +138,10 @@ Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () 
     // Ocupa la mesa. NO regenera el código: es estable hasta destruirla.
     Route::post('/mesas/{mesa}/ocupar', [MesaController::class, 'ocupar']);
 
+    // Fin de la VISITA: el cliente PAGÓ la cuenta y el mozo cierra la
+    // mesa (borrado lógico). Exige cero pedidos activos (422 si quedan).
+    Route::post('/mesas/{mesa}/cerrar', [MesaController::class, 'cerrar']);
+
     // Agrupación de lectura de varias mesas (no fusiona pedidos; los
     // códigos tampoco cambian).
     Route::post('/mesas/agrupar', [MesaController::class, 'agrupar']);
@@ -147,13 +152,12 @@ Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () 
     Route::post('/pedidos/{pedido}/confirmar', [PedidoController::class, 'confirmar']);
     Route::post('/pedidos/{pedido}/enviar', [PedidoController::class, 'enviarPedido']);
 
-    // Avanza el flujo del DER o cancela; los estados finales DESTRUYEN
-    // la mesa (borrado lógico) si ya no queda ningún pedido activo.
+    // Avanza el flujo del DER o cancela. NO toca la mesa: la visita
+    // termina cuando el mozo la cierra tras el pago.
     Route::put('/pedidos/{pedido}/estado', [PedidoController::class, 'cambiarEstado']);
 
-    // Alta de mesas dinámicas: las crea el mozo o el sistema al
-    // reservar por la web (aforo contra CONFIG_MESA;
-    // 422 si se supera).
+    // Alta de mesas dinámicas: las crea el mozo cuando hace falta
+    // (aforo contra CONFIG_MESA; 422 si se supera).
     Route::post('/mesas', [MesaController::class, 'store']);
 });
 

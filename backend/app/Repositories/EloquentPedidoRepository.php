@@ -10,7 +10,8 @@ use Illuminate\Support\Collection;
 class EloquentPedidoRepository implements PedidoRepository
 {
     /**
-     * Estados finales (espejo de PedidoService::ESTADOS_FINALES).
+     * Estados finales del DER (cerrado/cancelado): no admiten cambios
+     * ni agregados; la visita se cierra con el pago, no con el pedido.
      *
      * @var list<string>
      */
