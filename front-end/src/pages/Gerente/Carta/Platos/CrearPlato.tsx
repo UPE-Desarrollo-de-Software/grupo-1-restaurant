@@ -4,12 +4,15 @@ import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Platos.module.css'
 import { useCategorias } from '../../../../hooks/useCategorias'
 import { useIngredientes } from '../../../../hooks/useIngredientes'
-import { platoSchema } from '../../../../schemas/menu'
+import { usePromociones } from '../../../../hooks/usePromociones'
+import { etiquetaPromocion } from '../../../../components/Platos/promocionEtiqueta'
+import { platoSchema } from '../../../../schemas/carta'
 import { createPlato } from '../../../../api/platos'
 
 export function CrearPlatoPage() {
     const navigate = useNavigate()
     const [categoria_id, setCategoriaId] = useState('')
+    const [promocion_id, setPromocionId] = useState('')
     const [nombre, setNombre] = useState('')
     const [descripcion, setDescripcion] = useState('')
     const [precio, setPrecio] = useState('')
@@ -19,6 +22,7 @@ export function CrearPlatoPage() {
 
     const {categorias, loadingCategorias, errorCategorias} = useCategorias()
     const {listaIngredientes, loadingIngredientes, errorIngredientes} = useIngredientes()
+    const {promociones, loadingPromociones, errorPromociones} = usePromociones()
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
@@ -26,7 +30,16 @@ export function CrearPlatoPage() {
     const [tocado, setTocado] = useState(false)
 
     const errores: Record<string, string> = {}
-    const resultados = platoSchema.safeParse({categoria_id,nombre,descripcion,precio,imagen,disponible,ingredientes})
+    const resultados = platoSchema.safeParse({
+        categoria_id,
+        promocion_id: promocion_id === '' ? null : promocion_id,
+        nombre,
+        descripcion,
+        precio,
+        imagen,
+        disponible,
+        ingredientes,
+    })
     if (!resultados.success) {
         for (const issue of resultados.error.issues) {
         const campo = issue.path[0]
@@ -55,6 +68,7 @@ export function CrearPlatoPage() {
             const plato = await createPlato(resultados.data)
             setExito(plato.message)
             setCategoriaId('')
+            setPromocionId('')
             setNombre('')
             setDescripcion('')
             setPrecio('')
@@ -75,9 +89,9 @@ export function CrearPlatoPage() {
                 <h1 className={`text-headline-md ${s.title}`}>Nuevo plato</h1>
                 <p className={`text-body-sm ${s.subtitle}`}>El plato creado se refleja en la carta.</p>
 
-                {(errorCategorias || errorIngredientes) && 
+                {(errorCategorias || errorIngredientes || errorPromociones) && 
                     <Alert variant='danger' className='text-body-md'>
-                        No se pudieron cargar las categorías o los ingredientes. Verificá que el servidor esté activo
+                        No se pudieron cargar las categorías, los ingredientes o las promociones. Verificá que el servidor esté activo
                     </Alert>}
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
                 {exito && <Alert variant='success' className='text-body-md'>{exito}</Alert>}
@@ -158,6 +172,28 @@ export function CrearPlatoPage() {
                             <Form.Control.Feedback type='invalid'>{errores.imagen}</Form.Control.Feedback>
                         </Form.Group>
                     </div>
+
+                    <Form.Group className={s.field} controlId='abm-plato-promocion'>
+                        <Form.Label className={`text-label-md ${s.label}`}>Promoción</Form.Label>
+                        <Form.Select
+                            className={s.input}
+                            value={promocion_id}
+                            onChange={(e) => setPromocionId(e.target.value)}
+                            disabled={loadingPromociones}
+                        >
+                            <option value=''>Sin promoción</option>
+                            {promociones.filter(p => p.activo).map(p => (
+                                <option value={p.id} key={p.id}>
+                                    {p.nombre} ({etiquetaPromocion(p)})
+                                </option>
+                            ))}
+                        </Form.Select>
+                        <p className={`text-body-sm ${s.ayuda}`}>
+                            {loadingPromociones
+                                ? 'Cargando promociones...'
+                                : 'La promoción seleccionada se muestra en la tarjeta del plato y el descuento se aplica al precio al realizar el pedido.'}
+                        </p>
+                    </Form.Group>
 
                     <Form.Group className={s.field} controlId='abm-plato-ingredientes'>
                         <Form.Label className={`text-label-md ${s.label}`}>Ingredientes</Form.Label>

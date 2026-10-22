@@ -1,27 +1,28 @@
-import { useState } from 'react'
+import type { Categoria, PlatoListar } from '../../types/Menu'
+import type { FiltroPlatos } from './filtroPlatos'
+import { chipsFiltroPlatos } from './filtroPlatos'
 import s from './FiltroCategorias.module.css'
 
-const CATEGORIAS = [
-  { nombre: 'Todas', cantidad: 48 },
-  { nombre: 'Carnes', cantidad: 14 },
-  { nombre: 'Milanesas', cantidad: 8 },
-  { nombre: 'Pastas', cantidad: 6 },
-  { nombre: 'Postres', cantidad: 5 },
-]
+interface FiltroCategoriasProps {
+  platos: PlatoListar[]
+  categorias: Categoria[]
+  filtro: FiltroPlatos
+  onFiltro: (filtro: FiltroPlatos) => void
+}
 
-export function FiltroCategorias() {
-  const [seleccionada, setSeleccionada] = useState('Todas')
+export function FiltroCategorias({ platos, categorias, filtro, onFiltro }: FiltroCategoriasProps) {
+  const chips = chipsFiltroPlatos(platos, categorias)
 
   return (
     <div className={s.wrapper}>
-      {CATEGORIAS.map(cat => (
+      {chips.map(chip => (
         <button
-          key={cat.nombre}
+          key={chip.clave}
           type='button'
-          className={`${s.chip} ${seleccionada === cat.nombre ? s.chipActivo : ''} text-label-md`}
-          onClick={() => setSeleccionada(cat.nombre)}
+          className={`${s.chip} ${filtro === chip.clave ? s.chipActivo : ''} text-label-md`}
+          onClick={() => onFiltro(chip.clave)}
         >
-          {cat.nombre} {cat.cantidad}
+          {chip.etiqueta} {chip.cantidad}
         </button>
       ))}
     </div>

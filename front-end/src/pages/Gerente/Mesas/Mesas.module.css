@@ -1,0 +1,409 @@
+.page {
+  padding: var(--space-xl) var(--gutter-mobile);
+}
+
+.hub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.card {
+  max-width: 44rem;
+  margin: 0 auto;
+  background-color: var(--color-surface-container-lowest);
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-level-2);
+  padding: var(--space-xl);
+}
+
+.title {
+  color: var(--color-on-surface);
+  margin: 0 0 var(--space-2xs) 0;
+}
+
+.subtitle {
+  color: var(--color-on-surface-variant);
+  margin: 0 0 var(--space-lg) 0;
+}
+
+.field {
+  margin-bottom: var(--space-sm);
+}
+
+.label {
+  color: var(--color-on-surface);
+  margin-bottom: var(--space-2xs);
+}
+
+.input {
+  border-color: var(--color-outline-variant);
+  border-radius: var(--radius-default);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 0.2rem rgba(159, 60, 22, 0.15);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 var(--space-md);
+}
+
+.button {
+  width: 100%;
+  margin-top: var(--space-sm);
+  padding: var(--space-xs) 0;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.actions .button {
+  width: auto;
+  flex: 1;
+  margin-top: 0;
+}
+
+.zonaWrap {
+  margin-top: var(--space-xl);
+}
+
+/* ============ TOOLBAR DEL HUB (Nueva mesa + acciones) ============ */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.accionesGrupo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* Acciones condicionales: gris apagado (nunca celeste) + cursor de
+   "no tocar" mientras no se cumpla la condición (hay mesas libres,
+   2 ocupadas sin grupo, grupos activos…). */
+.accionesGrupo .btn:disabled {
+  background-color: transparent;
+  border-color: var(--color-outline-variant);
+  color: var(--color-on-surface-variant);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ============ PIN (EditarMesa) ============ */
+
+.pinBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  background-color: var(--color-surface-container);
+  border: 1px dashed var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.pinEtiqueta {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+.pinValor {
+  color: var(--color-on-surface);
+  letter-spacing: 0.3em;
+  margin: 0;
+}
+
+/* ============ COMANDAS: selector de mesas ============ */
+
+.vacio {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+  text-align: center;
+}
+
+.mesasGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-sm);
+}
+
+.chipMesa {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2xs);
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-level-1);
+  padding: var(--space-sm);
+  text-align: left;
+  color: var(--color-on-surface);
+  cursor: pointer;
+}
+
+.chipMesa:hover {
+  border-color: var(--color-primary);
+}
+
+.chipLibre {
+  border-left: 4px solid var(--color-secondary);
+}
+
+.chipOcupada {
+  border-left: 4px solid var(--color-error);
+}
+
+.chipReservada {
+  border-left: 4px solid var(--color-tertiary);
+}
+
+.chipId {
+  background-color: var(--color-inverse-surface);
+  color: var(--color-inverse-on-surface);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2xs);
+}
+
+.chipCapacidad {
+  color: var(--color-on-surface);
+}
+
+/* ============ COMANDAS: cabecera del detalle ============ */
+
+.detalleHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.detalleTitulo h2,
+.detalleTitulo p {
+  margin: 0;
+}
+
+.detalleTitulo {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-on-surface);
+}
+
+.detalleSub {
+  color: var(--color-on-surface-variant);
+}
+
+.vistaToggle {
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+/* ============ COMANDAS: pedidos, partes y líneas ============ */
+
+.parteCard {
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-level-1);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.pedidoHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+.pedidoTitulo {
+  color: var(--color-on-surface);
+  margin: 0;
+  margin-right: auto;
+}
+
+.badgeEstado {
+  background-color: var(--color-outline-variant);
+  color: var(--color-on-surface-variant);
+  border-radius: var(--radius-full);
+  padding: var(--space-2xs) var(--space-xs);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badgeOk {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+  border-radius: var(--radius-full);
+  padding: var(--space-2xs) var(--space-xs);
+  white-space: nowrap;
+}
+
+.badgePendiente {
+  background-color: var(--color-tertiary-container);
+  color: var(--color-on-tertiary-container);
+  border-radius: var(--radius-full);
+  padding: var(--space-2xs) var(--space-xs);
+  white-space: nowrap;
+}
+
+.lineas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.linea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.lineaPlato {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineaAux {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-on-surface-variant);
+}
+
+.promoTag {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-xs);
+  white-space: nowrap;
+}
+
+.descuento {
+  color: var(--color-error);
+  white-space: nowrap;
+}
+
+.lineaMonto {
+  color: var(--color-on-surface);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.confirmadoSi {
+  color: var(--color-secondary);
+  flex-shrink: 0;
+}
+
+.confirmadoNo {
+  color: var(--color-error);
+  flex-shrink: 0;
+}
+
+.pedidoTotal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  border-top: 1px solid var(--color-surface-container);
+  margin-top: var(--space-xs);
+  padding-top: var(--space-xs);
+  color: var(--color-on-surface);
+}
+
+/* ============ COMANDAS: cuenta y grupos ============ */
+
+.totalBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xs);
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-level-1);
+  padding: var(--space-sm) var(--space-md);
+  text-align: center;
+  color: var(--color-on-surface);
+}
+
+.totalEtiqueta {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+.grupoSeccion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  border: 1px dashed var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+}
+
+.grupoTitulo {
+  color: var(--color-on-surface);
+  margin: 0;
+}
+
+.grupoLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.grupoItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  color: var(--color-on-surface);
+}
+
+.grupoHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  color: var(--color-on-surface);
+}
+
+.nota {
+  color: var(--color-on-surface-variant);
+  text-align: center;
+  margin: 0;
+}
+
+@media (min-width: 576px) {
+  .row {
+    grid-template-columns: 1fr 1fr;
+  }
+}

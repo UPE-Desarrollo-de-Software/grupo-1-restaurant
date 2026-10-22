@@ -91,6 +91,22 @@
   padding: var(--space-xs) 0;
 }
 
+.actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.actions .button {
+  width: auto;
+  flex: 1;
+  margin-top: 0;
+}
+
+.zonaWrap {
+  margin-top: var(--space-xl);
+}
+
 @media (min-width: 576px) {
   .row {
     grid-template-columns: 1fr 1fr;

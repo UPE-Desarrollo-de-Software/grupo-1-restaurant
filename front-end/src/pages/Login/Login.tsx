@@ -1,15 +1,10 @@
 import { Card, Form, Button, Container, Alert, Spinner} from "react-bootstrap"
 import s from './login.module.css'
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import React, { useState } from "react"
-import { loginSchema } from "../../schemas/auth"
+import { loginSchema } from "../../schemas/usuarios"
 import { login, setSesion } from "../../api/auth"
-
-const INICIO_POR_ROL: Record<string, string> ={
-  Gerente: '/gerente',
-  Cocina: '/cocina',
-  Mozo: '/mozo'
-}
+import { INICIO_POR_ROL } from "../../navigation/inicios"
 
 export function LoginPage(){
   const [email, setEmail] = useState('')
@@ -113,10 +108,6 @@ export function LoginPage(){
               <Button className={s.button} variant="primary" type="submit" disabled={enviando}>
                 {enviando ? <><Spinner size="sm" animation="border" className="me-2" />Ingresando...</> : "Ingresar"}
               </Button>
-
-              <Link to={'/register'} className={s.link}>
-                  <p className='text-body-md text-center mt-2'>¿Olvidaste tu contraseña?</p>
-              </Link>
 
             </Form>
           </Card.Body>

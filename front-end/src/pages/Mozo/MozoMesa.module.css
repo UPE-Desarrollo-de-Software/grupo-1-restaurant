@@ -1,0 +1,265 @@
+.page {
+  padding: var(--space-xl) var(--gutter-mobile);
+}
+
+.hub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.vacio {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+  text-align: center;
+}
+
+/* ============ Cabecera del detalle ============ */
+
+.detalleHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.detalleTitulo h2,
+.detalleTitulo p {
+  margin: 0;
+}
+
+.detalleTitulo {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-on-surface);
+}
+
+.detalleSub {
+  color: var(--color-on-surface-variant);
+}
+
+.vistaToggle {
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+/* ============ PIN ============ */
+
+.pinBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  background-color: var(--color-surface-container);
+  border: 1px dashed var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+}
+
+.pinEtiqueta {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+.pinValor {
+  color: var(--color-on-surface);
+  letter-spacing: 0.3em;
+  margin: 0;
+}
+
+/* ============ Comanda: pedidos, partes y líneas ============ */
+
+.parteCard {
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-level-1);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.pedidoHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+.pedidoTitulo {
+  color: var(--color-on-surface);
+  margin: 0;
+  margin-right: auto;
+}
+
+.badgeEstado {
+  background-color: var(--color-outline-variant);
+  color: var(--color-on-surface-variant);
+  border-radius: var(--radius-full);
+  padding: var(--space-2xs) var(--space-xs);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badgeOk {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+  border-radius: var(--radius-full);
+  padding: var(--space-2xs) var(--space-xs);
+  white-space: nowrap;
+}
+
+.badgePendiente {
+  background-color: var(--color-tertiary-container);
+  color: var(--color-on-tertiary-container);
+  border-radius: var(--radius-full);
+  padding: var(--space-2xs) var(--space-xs);
+  white-space: nowrap;
+}
+
+.lineas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.linea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.lineaPlato {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineaAux {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-on-surface-variant);
+}
+
+.promoTag {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-xs);
+  white-space: nowrap;
+}
+
+.descuento {
+  color: var(--color-error);
+  white-space: nowrap;
+}
+
+.lineaMonto {
+  color: var(--color-on-surface);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pedidoTotal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  border-top: 1px solid var(--color-surface-container);
+  margin-top: var(--space-xs);
+  padding-top: var(--space-xs);
+  color: var(--color-on-surface);
+}
+
+/* ============ Cuenta y grupos ============ */
+
+.totalBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xs);
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-level-1);
+  padding: var(--space-sm) var(--space-md);
+  text-align: center;
+  color: var(--color-on-surface);
+}
+
+.totalEtiqueta {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+.grupoSeccion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  border: 1px dashed var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+}
+
+.grupoTitulo {
+  color: var(--color-on-surface);
+  margin: 0;
+}
+
+.grupoLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.grupoItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  color: var(--color-on-surface);
+}
+
+.grupoLink {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.grupoLink:hover {
+  text-decoration: underline;
+}
+
+.grupoHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  color: var(--color-on-surface);
+}
+
+.grupoHeader a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.grupoHeader a:hover {
+  text-decoration: underline;
+}
+
+.nota {
+  color: var(--color-on-surface-variant);
+  text-align: center;
+  margin: 0;
+}

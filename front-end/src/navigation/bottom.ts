@@ -1,10 +1,10 @@
 import type { OpcionNav } from './tipos'
 
 export const NAV_PUBLICO: OpcionNav[] = [
-    { to: '/menu', label: 'Carta', icon: 'bi-journal-text' },
+    { to: '/carta', label: 'Carta', icon: 'bi-journal-text' },
     { to: '/pedido', label: 'Mi pedido', icon: 'bi-basket' },
     { to: '/reservas', label: 'Reservas', icon: 'bi-calendar-check' },
-    { to: '/unir-mesa', label: 'Mesa', icon: 'bi-box-arrow-in-right' },
+    { to: '/mesa', label: 'Mesa', icon: 'bi-box-arrow-in-right' },
 ]
 
 export const BOTTOM_POR_ROL: Record<string, OpcionNav[]> = {

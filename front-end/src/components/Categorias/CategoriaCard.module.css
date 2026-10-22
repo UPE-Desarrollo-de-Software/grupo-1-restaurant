@@ -71,3 +71,31 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-surface-container);
+}
+
+.botonEditar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--color-primary);
+  border-color: var(--color-outline-variant);
+}
+
+.botonEditar:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.iconoEditar {
+  font-size: 0.9rem;
+}

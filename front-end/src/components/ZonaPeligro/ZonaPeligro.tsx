@@ -1,4 +1,5 @@
-import { Button, Spinner } from 'react-bootstrap'
+import { useState } from 'react'
+import { Button, Modal, Spinner } from 'react-bootstrap'
 import s from './ZonaPeligro.module.css'
 
 interface ZonaPeligroProps {
@@ -16,6 +17,10 @@ export function ZonaPeligro({
   onEliminar,
   eliminando = false,
 }: ZonaPeligroProps) {
+  // Borrado en 2 pasos: el botón abre el modal; la acción recién se
+  // ejecuta al confirmar ahí dentro. Aplica en todos los ABM.
+  const [confirmando, setConfirmando] = useState(false)
+
   return (
     <section className={s.zona} aria-labelledby='zona-peligro-titulo'>
       <div className={s.encabezado}>
@@ -35,13 +40,50 @@ export function ZonaPeligro({
           variant='danger'
           type='button'
           disabled={eliminando}
-          onClick={onEliminar}
+          onClick={() => setConfirmando(true)}
         >
-          {eliminando
-            ? <><Spinner size='sm' animation='border' className='me-2' />Eliminando...</>
-            : <><i className={`bi bi-trash3 ${s.iconoBoton}`} aria-hidden='true' /> {textoBoton}</>}
+          <i className={`bi bi-trash3 ${s.iconoBoton}`} aria-hidden='true' /> {textoBoton}
         </Button>
       </div>
+
+      <Modal
+        show={confirmando}
+        onHide={() => setConfirmando(false)}
+        centered
+        size='sm'
+        aria-labelledby='confirmar-eliminar-titulo'
+      >
+        <Modal.Header closeButton>
+          <Modal.Title id='confirmar-eliminar-titulo' className='text-headline-sm'>
+            ¿{textoBoton}?
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className='text-body-sm'>
+          {descripcion}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            className='text-label-md'
+            variant='outline-secondary'
+            type='button'
+            disabled={eliminando}
+            onClick={() => setConfirmando(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            className='text-label-md'
+            variant='danger'
+            type='button'
+            disabled={eliminando}
+            onClick={onEliminar}
+          >
+            {eliminando
+              ? <><Spinner size='sm' animation='border' className='me-2' />Eliminando...</>
+              : 'Confirmar'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </section>
   )
 }

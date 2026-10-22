@@ -13,12 +13,12 @@ export function ConexionMesa(){
         </h2>
       </div>
       <p className={`text-body-md ${s.texto}`}>
-        Solicita a tu mozo el PIN de 4 dígitos para ordenar,
-        personalizar platos o unirte a un pedido grupal.
+        Solicita a tu mozo el código de 4 dígitos de tu mesa para
+        consultar la carta, personalizar platos y armar tu pedido.
       </p>
-      <Link to="/unir-mesa" className={`btn ${s.cta}`}>
+      <Link to="/mesa" className={`btn ${s.cta}`}>
         <i className="bi bi-box-arrow-in-right" aria-hidden="true" />
-        Conectar Mesa (con PIN)
+        Conectar mi mesa
       </Link>
     </section>
   )

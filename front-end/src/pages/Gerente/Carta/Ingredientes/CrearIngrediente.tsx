@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Platos.module.css'
-import { ingredienteSchema } from '../../../../schemas/menu'
+import { ingredienteSchema } from '../../../../schemas/carta'
 import { createIngrediente } from '../../../../api/ingredientes'
 
 export function CrearIngredientePage() {

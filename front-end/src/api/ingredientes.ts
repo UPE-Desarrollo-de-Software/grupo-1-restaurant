@@ -1,6 +1,7 @@
 import type { Ingrediente, IngredienteInput, IngredienteResponse } from "../types/Menu";
 import { API_BASE_URL } from "../config/env";
 import { getToken } from "./auth";
+import { mensajeErrorApi } from "./error";
 
 export async function getIngredientes(signal?:AbortSignal): Promise<Ingrediente[]> {
     const response = await fetch(`${API_BASE_URL}/ingredientes`,
@@ -8,7 +9,7 @@ export async function getIngredientes(signal?:AbortSignal): Promise<Ingrediente[
     )
     const data = await response.json()
     if(!response.ok){
-        throw new Error(data?.message ?? `Error ${response.status} al obtener ingredientes`)
+        throw new Error(mensajeErrorApi(response.status, data, `Error ${response.status} al crear ingrediente`))
     }
     if(!Array.isArray(data)) return []
     return data.map(i => ({
@@ -39,9 +40,13 @@ export async function updateIngrediente(id: number, ingrediente: IngredienteInpu
         },
         body: JSON.stringify(ingrediente),
     })
-    const data = await response.json()
+    const data = await response.json().catch(() => null)
     if (!response.ok) {
         throw new Error(data?.message ?? `Error ${response.status} al actualizar el ingrediente`)
+    }
+    // El backend responde 200 con {message} si no existe (no es 404).
+    if (!data?.ingrediente) {
+        throw new Error(data?.message ?? 'No se encontró el ingrediente para actualizar')
     }
 
     return {
@@ -65,8 +70,8 @@ export async function createIngrediente(ingrediente:IngredienteInput, signal?: A
         signal
     })
     const data = await response.json()
-    if(!response.ok){
-        throw new Error(data?.message ?? `Error ${response.status} al crear ingrediente`)
+    if (!response.ok) {
+        throw new Error(mensajeErrorApi(response.status, data, `Error ${response.status} al actualizar el ingrediente`))
     }
 
     return{
@@ -90,7 +95,7 @@ export async function deleteIngrediente(id:number, signal?: AbortSignal): Promis
     const data = await response.json().catch(()=> null)
 
     if(!response.ok){
-        throw new Error(data?.message ?? `Error ${response.status} al eliminarel ingrediente`)
+        throw new Error(mensajeErrorApi(response.status, data, `Error ${response.status} al eliminar el ingrediente`))
     }
 
     return {

@@ -15,7 +15,7 @@ export function CartaHubPage() {
                 </Link>
                 
                 <Link to='/gerente/carta/promociones' className={s.card}>
-                    <i className={`bi bi-egg ${s.icon}`} aria-hidden="true" />
+                    <i className={`bi bi-tags ${s.icon}`} aria-hidden="true" />
                     <h2 className={`text-headline-sm ${s.cardTitle}`}>Promociones</h2>
                     <p className={`text-body-sm ${s.cardDesc}`}>Creá, editá y administrá los ingredientes</p>
                 </Link>

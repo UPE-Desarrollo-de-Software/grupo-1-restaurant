@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Platos.module.css'
-import { ingredienteSchema } from '../../../../schemas/menu'
+import { ingredienteSchema } from '../../../../schemas/carta'
 import { deleteIngrediente, getIngrediente, updateIngrediente } from '../../../../api/ingredientes'
 import { ZonaPeligro } from '../../../../components/ZonaPeligro/ZonaPeligro'
 
@@ -96,13 +96,26 @@ export function EditarIngredientePage() {
 
     return (
         <div className={s.page}>
-            {exito ? <Alert variant='success' className='text-body-md'>{exito}</Alert> : 
             <Card className={s.card}>
                 <h1 className={`text-headline-md ${s.title}`}>Editar ingrediente</h1>
                 <p className={`text-body-sm ${s.subtitle}`}>Modificá el nombre o el precio adicional del ingrediente.</p>
 
+                {exito && (
+                    <Alert variant='success' className='text-body-md d-flex flex-wrap align-items-center justify-content-between gap-2'>
+                        <span>{exito}</span>
+                        <Button
+                            className='text-label-md'
+                            variant='outline-success'
+                            size='sm'
+                            type='button'
+                            onClick={() => navigate('/gerente/carta/ingredientes')}
+                        >
+                            Volver a la lista
+                        </Button>
+                    </Alert>
+                )}
+
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
-                {exito && <Alert variant='success' className='text-body-md'>{exito}</Alert>}
 
                 <Form onSubmit={handlerSubmit} noValidate>
                     <div className={s.row}>
@@ -156,8 +169,6 @@ export function EditarIngredientePage() {
 
                 </Form>
             </Card>
-            
-            }
             <div className={s.zonaWrap}>
                 <ZonaPeligro
                 descripcion='Eliminar este ingrediente lo quitará de todos sus platos. Esta acción no se puede deshacer.'

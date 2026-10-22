@@ -1,0 +1,27 @@
+.page {
+  padding: var(--space-xl) var(--gutter-mobile);
+}
+
+.hub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+/* ============ TOOLBAR DEL HUB (Nueva mesa + acciones) ============ */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.accionesGrupo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}

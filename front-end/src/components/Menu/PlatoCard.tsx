@@ -2,6 +2,7 @@ import { Card } from "react-bootstrap"
 import type {PlatoListar} from  '../../types/Menu'
 import s from './PlatoCard.module.css'
 import { Link } from "react-router-dom";
+import { BotonAgregarPlato } from "../Cliente/BotonAgregarPlato"
 
 interface PlatoCardProps{
   plato: PlatoListar
@@ -28,6 +29,7 @@ export function PlatoCard({plato}: PlatoCardProps){
           <p className={`text-price-display ${s.precio}`}>
             {formatearPrecio(plato.precio)}
           </p>
+          <BotonAgregarPlato plato={plato} />
 
         </div>
       </Card.Body>

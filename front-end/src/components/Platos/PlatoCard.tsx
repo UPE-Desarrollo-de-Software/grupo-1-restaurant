@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Card, Form } from 'react-bootstrap'
+import { Card, Form, Spinner } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
 import type { PlatoListar } from '../../types/Menu'
+import { cambiarDisponibilidad } from '../../api/platos'
 import s from './PlatoCard.module.css'
 
 const formatearPrecio = (precio: number): string =>
@@ -13,11 +14,28 @@ const formatearPrecio = (precio: number): string =>
 
 interface PlatoCardProps {
   plato: PlatoListar
+  // Recarga de la lista del hub tras un cambio (useDatos.recargar).
+  onCambio?: () => void
 }
 
-export function PlatoCard({ plato }: PlatoCardProps) {
-  const [override, setOverride] = useState<boolean | null>(null)
-  const disponible = override ?? plato.disponible
+export function PlatoCard({ plato, onCambio }: PlatoCardProps) {
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const disponible = plato.disponible
+
+  async function alternarDisponible() {
+    setGuardando(true)
+    setError(null)
+    try {
+      await cambiarDisponibilidad(plato, !disponible)
+      onCambio?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido al cambiar la disponibilidad')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
   return (
     <Card className={s.card}>
       <Card.Body className={s.body}>
@@ -35,6 +53,12 @@ export function PlatoCard({ plato }: PlatoCardProps) {
           <div className={s.info}>
             <div className={s.badges}>
               <span className={`text-label-sm ${s.badgeCategoria}`}>{plato.categoria_nombre}</span>
+              {plato.promocion && (
+                <span className={`text-label-sm ${s.badgePromo}`}>
+                  <i className={`bi bi-tag-fill ${s.iconoPromo}`} aria-hidden="true" />
+                  {plato.promocion.nombre}
+                </span>
+              )}
               <span className={`text-label-sm ${disponible ? s.badgeActivo : s.badgePausado}`}>
                 {disponible ? 'Activo' : 'Pausado'}
               </span>
@@ -57,10 +81,13 @@ export function PlatoCard({ plato }: PlatoCardProps) {
               type='switch'
               id={`disponible-${plato.id}`}
               checked={disponible}
-              onChange={() => setOverride(!disponible)}
+              disabled={guardando}
+              onChange={alternarDisponible}
             />
+            {guardando && <Spinner size='sm' animation='border' className={s.guardando} />}
           </div>
         </div>
+        {error && <p className={`text-body-sm ${s.error}`}>{error}</p>}
       </Card.Body>
     </Card>
   )

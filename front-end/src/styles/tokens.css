@@ -301,3 +301,17 @@
   letter-spacing: var(--text-label-sm-tracking);
   padding: var(--space-2xs) var(--space-xs);
 }
+
+/* ============================================================
+   IMPRESIÓN (afiche de QR): se oculta el chrome de la app
+   (Navbar, SubNavbar y BottomNavbar son <nav>) y las acciones.
+   ============================================================ */
+@media print {
+  nav {
+    display: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
