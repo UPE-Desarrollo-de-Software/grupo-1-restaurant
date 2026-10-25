@@ -47,6 +47,15 @@ interface PedidoRepository
     public function hayActivosDeMesa(int $mesaId): bool;
 
     /**
+     * Cola de cocina: pedidos en 'enviado' (por preparar) y
+     * 'en_preparacion' (en cocción), con sus líneas y su mesa, en
+     * orden de llegada.
+     *
+     * @return Collection<int, Pedido>
+     */
+    public function pendientesDeCocina(): Collection;
+
+    /**
      * Pedidos de la visita de una mesa: excluye 'cancelado' y corta
      * por `ocupada_desde` (histórico para la cuenta dividida).
      *

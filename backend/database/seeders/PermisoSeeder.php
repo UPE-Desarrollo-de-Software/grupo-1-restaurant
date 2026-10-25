@@ -42,6 +42,7 @@ class PermisoSeeder extends Seeder
         'pedidos' => [
             'tomar_pedidos',
             'ver_pedidos',
+            'preparar_pedidos',
         ],
         'reportes' => [
             'ver_dashboard',

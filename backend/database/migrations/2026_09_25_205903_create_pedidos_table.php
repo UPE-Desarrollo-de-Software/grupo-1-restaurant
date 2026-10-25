@@ -54,6 +54,7 @@ return new class extends Migration
                 'confirmado',
                 'enviado',
                 'en_preparacion',
+                'listo',
                 'entregado',
                 'cerrado',
                 'cancelado',

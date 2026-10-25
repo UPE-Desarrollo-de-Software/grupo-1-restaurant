@@ -28,6 +28,10 @@ use Illuminate\Support\Facades\DB;
  *    pedidos de la mesa están confirmados, salen juntos a cocina
  *    (en_curso → enviado, lote). El mozo conserva el envío manual
  *    (confirmarResumen con gate/forzar + enviarPedido) como fallback.
+ *  - ESTADOS (8): el tramo de la cocina lo avanza la cocina
+ *    (enviado → en_preparacion → listo, permiso preparar_pedidos) y
+ *    el resto el mozo (listo → entregado → cerrado; cancelar desde
+ *    cualquier no final, exclusivo del mozo).
  *  - Estados finales (cerrado/cancelado): NO tocan la mesa; la
  *    visita termina cuando el mozo la cierra tras el PAGO
  *    (POST /mesas/{mesa}/cerrar, ver MesaService::cerrarVisita).
@@ -426,12 +430,14 @@ class PedidoService
     }
 
     /**
-     * Avanza el pedido por el flujo del DER:
-     *   confirmado → enviado → en_preparacion → entregado → cerrado
-     * y permite cancelar desde cualquier estado no final. También
-     * permite deshacer confirmado → en_curso (reabrir resumen).
-     * NO toca la mesa: la visita sigue hasta que el mozo la cierra
-     * tras el pago (POST /mesas/{mesa}/cerrar).
+     * Avanza el pedido en el tramo del MOZO:
+     *   listo → entregado → cerrado
+     * y permite cancelar desde cualquier estado no final (el cancel
+     * es exclusivo del mozo). También permite deshacer
+     * confirmado → en_curso (reabrir resumen). La preparación la
+     * avanza la cocina (`avanzarEnCocina`). NO toca la mesa: la
+     * visita sigue hasta que el mozo la cierra tras el pago
+     * (POST /mesas/{mesa}/cerrar).
      *
      * @throws \Exception
      */
@@ -440,11 +446,46 @@ class PedidoService
         $transiciones = [
             'en_curso' => ['cancelado'],
             'confirmado' => ['en_curso', 'cancelado'],
-            'enviado' => ['en_preparacion', 'cancelado'],
-            'en_preparacion' => ['entregado', 'cancelado'],
+            'enviado' => ['cancelado'],
+            'en_preparacion' => ['cancelado'],
+            'listo' => ['entregado', 'cancelado'],
             'entregado' => ['cerrado', 'cancelado'],
         ];
 
+        return $this->aplicarTransicion($pedidoId, $nuevoEstado, $transiciones);
+    }
+
+    /**
+     * Avance de COCINA (PUT /api/cocina/pedidos/{id}/estado,
+     * permiso preparar_pedidos): SOLO cambia el estado, sin otros
+     * efectos. Tramo exclusivo de la cocina y sin saltos:
+     *   enviado → en_preparacion → listo
+     * Ni cancel ni el resto de los estados: los maneja el mozo con
+     * `cambiarEstado`.
+     *
+     * @throws \Exception
+     */
+    public function avanzarEnCocina(int $pedidoId, string $nuevoEstado): Pedido
+    {
+        $transiciones = [
+            'enviado' => ['en_preparacion'],
+            'en_preparacion' => ['listo'],
+        ];
+
+        return $this->aplicarTransicion($pedidoId, $nuevoEstado, $transiciones);
+    }
+
+    /**
+     * Aplica una transición de estado en una transacción de DB:
+     * valida contra el mapa, persiste y devuelve el pedido con sus
+     * detalles recargados.
+     *
+     * @param  array<string, list<string>>  $transiciones
+     *
+     * @throws \Exception si el salto no está permitido
+     */
+    private function aplicarTransicion(int $pedidoId, string $nuevoEstado, array $transiciones): Pedido
+    {
         return DB::transaction(function () use ($pedidoId, $nuevoEstado, $transiciones) {
             $pedido = $this->pedidos->conDetallesOrFail($pedidoId);
 

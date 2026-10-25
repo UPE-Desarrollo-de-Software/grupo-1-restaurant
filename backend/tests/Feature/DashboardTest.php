@@ -108,7 +108,7 @@ test('el dashboard devuelve el shape completo con los 7 estados en 0', function 
     $estados = $respuesta->json('pedidos_por_estado');
     expect(array_keys($estados))->toBe([
         'en_curso', 'confirmado', 'enviado', 'en_preparacion',
-        'entregado', 'cerrado', 'cancelado',
+        'listo', 'entregado', 'cerrado', 'cancelado',
     ])->and(array_values(array_unique($estados)))->toBe([0]);
 });
 

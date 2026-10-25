@@ -125,13 +125,15 @@ class PedidoController extends Controller
 
     /**
      * PUT /api/pedidos/{pedido}/estado
-     * Avanza el flujo del DER o cancela. Al llegar a un estado final,
-     * si la mesa quedó sin pedidos activos se DESTRUYE (borrado lógico).
+     * Avanza el flujo del mozo (listo → entregado → cerrado), reabre
+     * (confirmado → en_curso) o cancela desde cualquier estado no
+     * final. NO toca la cocina: en_preparacion y los saltos de cocina
+     * los hace la cocina (PUT /api/cocina/pedidos/{id}/estado).
      */
     public function cambiarEstado(Request $request, Pedido $pedido)
     {
         $request->validate([
-            'estado' => 'required|in:en_curso,enviado,en_preparacion,entregado,cerrado,cancelado',
+            'estado' => 'required|in:en_curso,entregado,cerrado,cancelado',
         ]);
 
         try {

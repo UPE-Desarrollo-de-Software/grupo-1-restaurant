@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\CocinaController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HistorialComandaController;
@@ -159,6 +160,14 @@ Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () 
     // Alta de mesas dinámicas: las crea el mozo cuando hace falta
     // (aforo contra CONFIG_MESA; 422 si se supera).
     Route::post('/mesas', [MesaController::class, 'store']);
+});
+
+// ==================== COCINA (permiso preparar_pedidos) ====================
+// Único de Cocina (Gerente lo hereda por 'todos', sin uso en la UI):
+// solo ve la cola y avanza su tramo (enviado → en_preparacion → listo).
+Route::middleware(['auth:sanctum', 'permiso:preparar_pedidos'])->group(function () {
+    Route::get('/cocina/pedidos', [CocinaController::class, 'index']);
+    Route::put('/cocina/pedidos/{id}/estado', [CocinaController::class, 'cambiarEstado'])->whereNumber('id');
 });
 
 // ==================== GESTIÓN (permisos por módulo) ====================
