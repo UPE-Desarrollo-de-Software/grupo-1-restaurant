@@ -28,8 +28,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `confirmado` (el estado) = el mozo validó que todas las líneas del
  * pedido tienen detalle_pedidos.confirmado = true (o forzó).
  *
- * Estados finales (cerrado/cancelado): destruyen la mesa cuando no
- * quedan pedidos activos en ella.
+ * Estados finales (cerrado/cancelado): NO tocan la mesa; la visita
+ * termina cuando el mozo la cierra tras el pago.
  */
 class Pedido extends Model
 {
@@ -89,8 +89,8 @@ class Pedido extends Model
     }
 
     /**
-     * Estados finales: destruyen la mesa cuando es el último activo y
-     * no admiten cambios.
+     * Estados finales: no admiten cambios (la mesa se cierra recién
+     * con el pago, vía POST /mesas/{mesa}/cerrar).
      */
     public function estaFinalizado(): bool
     {

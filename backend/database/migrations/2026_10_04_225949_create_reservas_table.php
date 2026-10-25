@@ -19,6 +19,10 @@ return new class extends Migration
      *    (camelCase, convención del proyecto).
      *  - `estado`: valores del cuadro de notas del DER
      *    (pendiente | cancelada | finalizada | no_asistio).
+     *
+     * `mesa_id` nace NOT NULL acá y se vuelve NULLABLE en la migración
+     * posterior (2026_10_22_...): la reserva ya no apunta a una mesa,
+     * reserva CAPACIDADES del inventario (`reserva_inventario`).
      */
     public function up(): void
     {

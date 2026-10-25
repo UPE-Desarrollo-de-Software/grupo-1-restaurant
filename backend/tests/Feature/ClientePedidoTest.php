@@ -360,8 +360,8 @@ test('la cuenta reparte las lineas en partes por pedido raiz', function () {
     expect((float) $porPedido[$raizAna]['subtotal'])->toBe(1000.0)
         ->and((float) $porPedido[$raizBeto]['subtotal'])->toBe(3000.0);
 
-    // Cancelada la raíz de Beto: queda fuera de la cuenta (y con
-    // otros pedidos activos la mesa NO se destruye).
+    // Cancelada la raíz de Beto: queda fuera de la cuenta (y la mesa
+    // no se toca: lo que termina la visita es el pago, no un pedido).
     conMozo($this, tokenMozo())
         ->putJson("/api/pedidos/{$raizBeto}/estado", ['estado' => 'cancelado'])
         ->assertOk();
@@ -390,15 +390,22 @@ test('la cuenta corta por ocupada_desde y sigue tras destruir la mesa', function
     expect((float) $cuenta['total'])->toBe(800.0)
         ->and(collect($cuenta['partes'])->pluck('pedido_id'))->not->toContain($pedidoViejo->id);
 
-    // El mozo lleva el pedido al estado final: con el último pedido
-    // activo cerrado, la mesa se DESTRUYE (borrado lógico) y los
-    // pedidos siguen existiendo.
+    // El mozo lleva el pedido al estado final: la mesa NO se
+    // destruye sola, la visita sigue hasta el pago.
     $mzo = tokenMozo();
     conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/confirmar", ['forzar' => true])->assertOk();
     conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/enviar")->assertOk();
     foreach (['en_preparacion', 'entregado', 'cerrado'] as $estado) {
         conMozo($this, $mzo)->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => $estado])->assertOk();
     }
+
+    // El pedido quedó finalizado pero el código SIGUE valiendo: la
+    // visita no terminó hasta que el cliente pague.
+    comensal($this, $codigo)->getJson('/api/cliente/pedidos')->assertOk();
+
+    // Pagó: el mozo cierra la visita y recién ahí la mesa queda
+    // DESTRUIDA (borrado lógico); los pedidos siguen existiendo.
+    conMozo($this, $mzo)->postJson("/api/mesas/{$mesa->id}/cerrar")->assertOk();
 
     expect(Mesa::find($mesa->id))->toBeNull();
 

@@ -28,8 +28,9 @@ use Illuminate\Support\Facades\DB;
  *    pedidos de la mesa están confirmados, salen juntos a cocina
  *    (en_curso → enviado, lote). El mozo conserva el envío manual
  *    (confirmarResumen con gate/forzar + enviarPedido) como fallback.
- *  - Estados finales (cerrado/cancelado): si la mesa quedó sin
- *    pedidos activos, se DESTRUYE (borrado lógico; Mesa::destruir()).
+ *  - Estados finales (cerrado/cancelado): NO tocan la mesa; la
+ *    visita termina cuando el mozo la cierra tras el PAGO
+ *    (POST /mesas/{mesa}/cerrar, ver MesaService::cerrarVisita).
  *
  * Fórmula de línea (cuadro de notas del DER):
  *   subtotal = cantidad × (precio_lista + Σ precio_adicional de
@@ -38,14 +39,6 @@ use Illuminate\Support\Facades\DB;
  */
 class PedidoService
 {
-    /**
-     * Estados finales del DER: destruyen la mesa (si es el último
-     * activo) y no admiten cambios.
-     *
-     * @var list<string>
-     */
-    private const ESTADOS_FINALES = ['cerrado', 'cancelado'];
-
     public function __construct(
         private MesaRepository $mesas,
         private PedidoRepository $pedidos,
@@ -437,8 +430,8 @@ class PedidoService
      *   confirmado → enviado → en_preparacion → entregado → cerrado
      * y permite cancelar desde cualquier estado no final. También
      * permite deshacer confirmado → en_curso (reabrir resumen).
-     * Al llegar a un estado final, si la mesa quedó sin pedidos
-     * activos se DESTRUYE (borrado lógico, rebote 2).
+     * NO toca la mesa: la visita sigue hasta que el mozo la cierra
+     * tras el pago (POST /mesas/{mesa}/cerrar).
      *
      * @throws \Exception
      */
@@ -465,16 +458,6 @@ class PedidoService
 
             $pedido->estado = $nuevoEstado;
             $pedido->save();
-
-            // Estado final: si no quedan pedidos activos en la mesa,
-            // la mesa se destruye (borrado lógico: los pedidos
-            // históricos conservan su FK, la app deja de verla).
-            if (
-                in_array($nuevoEstado, self::ESTADOS_FINALES, true)
-                && ! $this->pedidos->hayActivosDeMesa($pedido->mesa_id)
-            ) {
-                $pedido->mesa?->destruir();
-            }
 
             return $this->pedidos->conDetallesOrFail($pedidoId);
         });

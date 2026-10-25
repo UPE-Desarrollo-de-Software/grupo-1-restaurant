@@ -4,15 +4,16 @@ namespace App\UseCases\Reservas;
 
 use App\Models\Reserva;
 use App\Services\ReservaService;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * CASO DE USO: crear una reserva DESDE EL RESTAURANTE (POST
- * /api/reservas, permiso gestionar_reservas). La mesa es obligatoria
- * (la elige el empleado con find estricto).
+ * /api/reservas, permiso gestionar_reservas).
  *
- * @throws \Exception lead time, capacidad o conflicto (controller responde 422)
- * @throws ModelNotFoundException mesa inexistente
+ * El empleado NO elige mesa: pide personas + horario y el sistema
+ * asigna la combinación de capacidades del inventario (igual que la
+ * reserva pública).
+ *
+ * @throws \Exception lead time o sin inventario para el horario (controller responde 422)
  */
 class CrearReservaUseCase
 {
@@ -23,6 +24,6 @@ class CrearReservaUseCase
      */
     public function __invoke(array $datos): Reserva
     {
-        return $this->reservas->crear($datos, esPublico: false);
+        return $this->reservas->crear($datos);
     }
 }
