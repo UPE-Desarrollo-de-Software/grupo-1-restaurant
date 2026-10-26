@@ -60,7 +60,8 @@ interface MesaRepository
 
     /**
      * Suma de las capacidades de TODAS las mesas vivas: contra
-     * PARAMETRO.capacidad_total valida el aforo del lugar.
+     * CONFIG_MESA (aforo = Σ capacidad×cantidad) valida el aforo del
+     * lugar.
      */
     public function capacidadOcupada(): int;
 
@@ -94,4 +95,12 @@ interface MesaRepository
     public function porIds(array $ids): Collection;
 
     public function eliminar(Mesa $mesa): void;
+
+    /**
+     * Conteo de mesas vivas por estado (dashboard): solo los estados
+     * presentes; el service rellena los faltantes con 0.
+     *
+     * @return array<string, int>
+     */
+    public function cantidadPorEstado(): array;
 }

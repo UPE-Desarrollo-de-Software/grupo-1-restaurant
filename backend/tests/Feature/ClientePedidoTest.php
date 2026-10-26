@@ -185,23 +185,32 @@ test('la repeticion cuelga de la primer orden (arbol de pedidos)', function () {
 test('el comensal confirma y desconfirma las lineas de su pedido', function () {
     $mesa = mesaVisita();
     $codigo = $mesa->codigo_acceso;
+    $plato = platoAuto();
 
-    $pedidoId = pedirLineaCliente($this, $codigo, platoAuto())
-        ->assertStatus(201)
-        ->json('pedido.id');
-    $detalleId = $mesa->pedidos()->first()->detalles()->first()->id;
+    // 2 líneas: con una sola sin confirmar el pedido NO se auto-envía,
+    // así dá tiempo a deshacer antes de que salga a cocina.
+    $pedidoId = pedirLineaCliente($this, $codigo, $plato, 1, [
+        'platos' => [
+            ['plato_id' => $plato->id, 'cantidad' => 1],
+            ['plato_id' => $plato->id, 'cantidad' => 1],
+        ],
+    ])->assertStatus(201)->json('pedido.id');
+
+    $detalles = DB::table('detalle_pedidos')->where('pedido_id', $pedidoId)->pluck('id');
+    $detalleId = $detalles[0];
 
     comensal($this, $codigo)->postJson('/api/cliente/pedidos/confirmar', [
         'pedido_id' => $pedidoId,
         'detalle_ids' => [$detalleId],
-    ])->assertOk();
+    ])->assertOk()->assertJsonPath('pedido.estado', 'en_curso');
 
     expect((bool) DB::table('detalle_pedidos')->where('id', $detalleId)->value('confirmado'))->toBeTrue();
 
-    // Sin detalle_ids: desconfirma todas las de ese pedido.
+    // Deshace solo esa línea: el pedido sigue en_curso (falta la otra).
     comensal($this, $codigo)->postJson('/api/cliente/pedidos/desconfirmar', [
         'pedido_id' => $pedidoId,
-    ])->assertOk();
+        'detalle_ids' => [$detalleId],
+    ])->assertOk()->assertJsonPath('pedido.estado', 'en_curso');
 
     expect((bool) DB::table('detalle_pedidos')->where('id', $detalleId)->value('confirmado'))->toBeFalse();
 
@@ -210,30 +219,89 @@ test('el comensal confirma y desconfirma las lineas de su pedido', function () {
         ->assertStatus(422);
 });
 
-test('el envio del mozo exige que las lineas del comensal esten confirmadas', function () {
+test('cuando el unico pedido de la mesa queda confirmado sale a cocina', function () {
+    $mesa = mesaVisita();
+    $codigo = $mesa->codigo_acceso;
+    $plato = platoAuto();
+
+    // Pide 2 líneas separadas en un solo request (dos platos).
+    $pedidoId = pedirLineaCliente($this, $codigo, $plato, 1, [
+        'platos' => [
+            ['plato_id' => $plato->id, 'cantidad' => 1],
+            ['plato_id' => $plato->id, 'cantidad' => 1],
+        ],
+    ])->assertStatus(201)->json('pedido.id');
+
+    $lineas = DB::table('detalle_pedidos')
+        ->where('pedido_id', $pedidoId)
+        ->pluck('id')
+        ->all();
+    expect($lineas)->toHaveCount(2);
+
+    // Confirma 1 sola línea → sigue en_curso (falta la otra).
+    comensal($this, $codigo)->postJson('/api/cliente/pedidos/confirmar', [
+        'pedido_id' => $pedidoId,
+        'detalle_ids' => [$lineas[0]],
+    ])->assertOk()->assertJsonPath('pedido.estado', 'en_curso');
+
+    // Confirma la última → como es el único pedido de la mesa, sale a cocina.
+    comensal($this, $codigo)->postJson('/api/cliente/pedidos/confirmar', [
+        'pedido_id' => $pedidoId,
+        'detalle_ids' => [$lineas[1]],
+    ])->assertOk()->assertJsonPath('pedido.estado', 'enviado');
+
+    // El mozo ya no puede retomar el flujo manual sobre un pedido enviado.
+    $mzo = tokenMozo();
+    conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/confirmar")->assertStatus(422);
+    conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/enviar")->assertStatus(422);
+});
+
+test('cuando todos los pedidos de la mesa estan confirmados salen juntos a cocina', function () {
+    $mesa = mesaVisita();
+    $codigo = $mesa->codigo_acceso;
+    $plato = platoAuto();
+
+    // Ana y Beto: cada uno su pedido (raíz) en la misma mesa.
+    $anaId = pedirLineaCliente($this, $codigo, $plato)
+        ->assertStatus(201)->json('pedido.id');
+    $betoId = pedirLineaCliente($this, $codigo, $plato)
+        ->assertStatus(201)->json('pedido.id');
+    expect($anaId)->not->toBe($betoId);
+
+    // Ana confirma todas las suyas → NO sale nada: Beto sigue sin confirmar.
+    comensal($this, $codigo)->postJson('/api/cliente/pedidos/confirmar', [
+        'pedido_id' => $anaId,
+    ])->assertOk()->assertJsonPath('pedido.estado', 'en_curso');
+
+    expect((int) DB::table('pedidos')->where('estado', 'enviado')->count())->toBe(0);
+
+    // Beto confirma las suyas → salen JUNTOS los dos a cocina.
+    comensal($this, $codigo)->postJson('/api/cliente/pedidos/confirmar', [
+        'pedido_id' => $betoId,
+    ])->assertOk()->assertJsonPath('pedido.estado', 'enviado');
+
+    expect((int) DB::table('pedidos')->where('estado', 'enviado')->count())->toBe(2)
+        ->and(DB::table('pedidos')->whereIn('id', [$anaId, $betoId])->pluck('estado')->unique()->all())
+        ->toBe(['enviado']);
+});
+
+test('un pedido ya enviado no admite desconfirmar lineas', function () {
     $mesa = mesaVisita();
     $codigo = $mesa->codigo_acceso;
     $pedidoId = pedirLineaCliente($this, $codigo, platoAuto())
         ->assertStatus(201)
         ->json('pedido.id');
-    $mzo = tokenMozo();
 
-    // Filas sin confirmar: el gate bloquea y enviar ni siquiera pasa.
-    conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/confirmar")->assertStatus(422);
-    conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/enviar")->assertStatus(422);
-
+    // Confirmar y deshacer: vuelve a en_curso y no se envía.
     comensal($this, $codigo)->postJson('/api/cliente/pedidos/confirmar', [
         'pedido_id' => $pedidoId,
-    ])->assertOk();
+    ])->assertOk()->assertJsonPath('pedido.estado', 'enviado');
 
-    // 2 pasos: confirmar resumen → enviar.
-    conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/confirmar")
-        ->assertOk()
-        ->assertJsonPath('pedido.estado', 'confirmado');
-
-    conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/enviar")
-        ->assertOk()
-        ->assertJsonPath('pedido.estado', 'enviado');
+    // Un pedido enviado ya no admite desconfirmar (solo en_curso):
+    // el deshacer solo aplica antes del envío.
+    comensal($this, $codigo)->postJson('/api/cliente/pedidos/desconfirmar', [
+        'pedido_id' => $pedidoId,
+    ])->assertStatus(422);
 });
 
 test('el mozo puede forzar la confirmacion con lineas sin confirmar', function () {
@@ -292,8 +360,8 @@ test('la cuenta reparte las lineas en partes por pedido raiz', function () {
     expect((float) $porPedido[$raizAna]['subtotal'])->toBe(1000.0)
         ->and((float) $porPedido[$raizBeto]['subtotal'])->toBe(3000.0);
 
-    // Cancelada la raíz de Beto: queda fuera de la cuenta (y con
-    // otros pedidos activos la mesa NO se destruye).
+    // Cancelada la raíz de Beto: queda fuera de la cuenta (y la mesa
+    // no se toca: lo que termina la visita es el pago, no un pedido).
     conMozo($this, tokenMozo())
         ->putJson("/api/pedidos/{$raizBeto}/estado", ['estado' => 'cancelado'])
         ->assertOk();
@@ -322,15 +390,22 @@ test('la cuenta corta por ocupada_desde y sigue tras destruir la mesa', function
     expect((float) $cuenta['total'])->toBe(800.0)
         ->and(collect($cuenta['partes'])->pluck('pedido_id'))->not->toContain($pedidoViejo->id);
 
-    // El mozo lleva el pedido al estado final: con el último pedido
-    // activo cerrado, la mesa se DESTRUYE (borrado lógico) y los
-    // pedidos siguen existiendo.
+    // El mozo lleva el pedido al estado final: la mesa NO se
+    // destruye sola, la visita sigue hasta el pago.
     $mzo = tokenMozo();
     conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/confirmar", ['forzar' => true])->assertOk();
     conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/enviar")->assertOk();
     foreach (['en_preparacion', 'entregado', 'cerrado'] as $estado) {
         conMozo($this, $mzo)->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => $estado])->assertOk();
     }
+
+    // El pedido quedó finalizado pero el código SIGUE valiendo: la
+    // visita no terminó hasta que el cliente pague.
+    comensal($this, $codigo)->getJson('/api/cliente/pedidos')->assertOk();
+
+    // Pagó: el mozo cierra la visita y recién ahí la mesa queda
+    // DESTRUIDA (borrado lógico); los pedidos siguen existiendo.
+    conMozo($this, $mzo)->postJson("/api/mesas/{$mesa->id}/cerrar")->assertOk();
 
     expect(Mesa::find($mesa->id))->toBeNull();
 

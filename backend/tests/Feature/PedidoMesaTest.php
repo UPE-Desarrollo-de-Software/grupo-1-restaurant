@@ -154,7 +154,7 @@ test('respeta los flags opcional y por_defecto al personalizar ingredientes', fu
     expect((float) $response->json('pedido.total'))->toBe(2500.0);
 });
 
-test('el flujo de estados del pedido libera la mesa al cerrar', function () {
+test('la visita termina cuando el mozo cierra la mesa tras el pago', function () {
     autenticarMozo();
 
     $mesa = Mesa::factory()->create();
@@ -177,17 +177,26 @@ test('el flujo de estados del pedido libera la mesa al cerrar', function () {
 
     expect($pedido->fresh()->estado)->toBe('cerrado');
 
-    // Cerrado el último pedido activo, la mesa queda DESTRUIDA
-    // (borrado lógico): para la app dejó de existir.
-    expect(Mesa::find($mesa->id))->toBeNull()
-        ->and(Mesa::withTrashed()->find($mesa->id))->not->toBeNull();
+    // El último pedido finalizado NO destruye la mesa: la visita sigue
+    // viva hasta que el cliente pague y el mozo la cierre.
+    expect(Mesa::find($mesa->id))->not->toBeNull();
 
     // Un pedido finalizado no admite cambios.
     $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => 'en_preparacion'])
         ->assertStatus(422);
+
+    // El mozo cierra la visita (cliente pagó): la mesa queda DESTRUIDA
+    // (borrado lógico), para la app dejó de existir.
+    $this->postJson("/api/mesas/{$mesa->id}/cerrar")->assertStatus(200);
+
+    expect(Mesa::find($mesa->id))->toBeNull()
+        ->and(Mesa::withTrashed()->find($mesa->id))->not->toBeNull();
+
+    // Ya cerrada, la mesa no existe más (404).
+    $this->postJson("/api/mesas/{$mesa->id}/cerrar")->assertStatus(404);
 });
 
-test('cancelar el pedido tambien destruye la mesa', function () {
+test('la cancelacion de un pedido no cierra la mesa sin el pago', function () {
     autenticarMozo();
 
     $mesa = Mesa::factory()->create();
@@ -202,6 +211,61 @@ test('cancelar el pedido tambien destruye la mesa', function () {
     $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => 'cancelado'])
         ->assertStatus(200);
 
+    // Sin pedidos activos la mesa sigue VIVA: lo que termina la
+    // visita es el pago (el cierre del mozo), no el ciclo del pedido.
     expect($pedido->fresh()->estado)->toBe('cancelado')
-        ->and(Mesa::find($mesa->id))->toBeNull();
+        ->and(Mesa::find($mesa->id))->not->toBeNull();
+
+    $this->postJson("/api/mesas/{$mesa->id}/cerrar")->assertStatus(200);
+    expect(Mesa::find($mesa->id))->toBeNull();
+});
+
+test('no se puede cerrar la mesa con pedidos activos', function () {
+    autenticarMozo();
+
+    $mesa = Mesa::factory()->create();
+    ['plato' => $plato] = platoDePrueba();
+
+    $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [['plato_id' => $plato->id, 'cantidad' => 1]],
+    ])->assertStatus(201);
+
+    $pedido = $mesa->pedidos()->first();
+
+    $this->postJson("/api/mesas/{$mesa->id}/cerrar")
+        ->assertStatus(422)
+        ->assertJsonPath(
+            'message',
+            'No se puede cerrar la mesa: quedan pedidos activos. Cobrá la cuenta y cerrá (o cancelá) todos los pedidos primero.'
+        );
+
+    expect(Mesa::find($mesa->id))->not->toBeNull();
+
+    // Cancelado el pedido (ya no quedan activos): ahora sí se cierra.
+    $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => 'cancelado'])
+        ->assertStatus(200);
+
+    $this->postJson("/api/mesas/{$mesa->id}/cerrar")->assertStatus(200);
+    expect(Mesa::find($mesa->id))->toBeNull();
+});
+
+test('cerrar la mesa exige tomar_pedidos', function () {
+    $mesa = Mesa::factory()->create();
+
+    // Sin token: 401.
+    $this->postJson("/api/mesas/{$mesa->id}/cerrar")->assertStatus(401);
+
+    // Cocina no tiene tomar_pedidos: 403.
+    $cocina = Usuario::factory()->create([
+        'rol_id' => Rol::where('nombre', 'Cocina')->first()->id,
+    ]);
+    Sanctum::actingAs($cocina);
+    $this->postJson("/api/mesas/{$mesa->id}/cerrar")->assertStatus(403);
+
+    // Mozo (tomar_pedidos): puede cerrar la visita.
+    app('auth')->forgetGuards();
+    autenticarMozo();
+    $this->postJson("/api/mesas/{$mesa->id}/cerrar")->assertStatus(200);
+
+    expect(Mesa::find($mesa->id))->toBeNull();
 });

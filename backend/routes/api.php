@@ -4,10 +4,13 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ConfiguracionController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HistorialComandaController;
 use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\MesaController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PlatoController;
+use App\Http\Controllers\PromocionController;
 use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\UsuarioController;
@@ -40,14 +43,18 @@ Route::get('/user', function (Request $request) {
 
 // CARTA
 
-Route::get('/categorias', [CategoriaController::class, 'index']);
+Route::get('/categorias/activas', [CategoriaController::class, 'index']);
+
+Route::get('/categorias', [CategoriaController::class, 'indexAll']);
 
 Route::get('/categorias/{id}', [CategoriaController::class, 'show']);
 
 Route::get('/platos', [PlatoController::class, 'index']);
 
-// plato por id para mostrar uno en específico (con sus ingredientes)
-Route::get('/platos/{id}', [PlatoController::class, 'show']);
+// plato por id para mostrar uno en específico (con sus ingredientes).
+// whereNumber: si no, /platos/todos (abajo) matchea /platos/{id}
+// con id="todos" y show(int) revienta con TypeError.
+Route::get('/platos/{id}', [PlatoController::class, 'show'])->whereNumber('id');
 
 Route::get('/ingredientes', [IngredienteController::class, 'index']);
 
@@ -81,6 +88,7 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
     // Cuenta dividida en partes por pedido raíz.
     Route::get('/cuenta', [ClienteController::class, 'cuenta']);
 });
+
 // RESERVAS DEL CLIENTE WEB (públicas con throttle):
 //  - alta: elige mesa existente o, si no manda mesa_id, el sistema la
 //    crea como "mozo virtual" validando el aforo;
@@ -95,7 +103,16 @@ Route::post('/cliente/reservas', [ReservaController::class, 'solicitarWeb'])
 Route::post('/cliente/reservas/cancelar', [ReservaController::class, 'cancelarWeb'])
     ->middleware('throttle:10,1');
 
-Route::get('/cliente/reservas/mesas', [ReservaController::class, 'mesasParaElegir'])
+Route::get('/cliente/reservas/mesas', [ReservaController::class, 'mesasParaElegir']);
+//  - alta: pide personas + horario y el sistema asigna la combinación
+//    de capacidades del inventario (CONFIG_MESA − pendientes
+//    solapadas); no hay mesa que elegir ni "mozo virtual";
+//  - disponibilidad: qué capacidades quedan libres para ese intervalo
+//    (reemplaza al antiguo mapa de elección de mesas).
+Route::post('/cliente/reservas', [ReservaController::class, 'solicitarWeb'])
+    ->middleware('throttle:60,1');
+
+Route::get('/cliente/reservas/disponibilidad', [ReservaController::class, 'disponibilidad'])
     ->middleware('throttle:60,1');
 
 // ==================== CUALQUIER EMPLEADO AUTENTICADO ====================
@@ -110,7 +127,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/mesas/disponibles', [MesaController::class, 'disponibles']);
     Route::get('/mesas/{mesa}', [MesaController::class, 'show']);
 
-    // Aforo del lugar (PARAMETRO.capacidad_total).
+    // Aforo del lugar y composición CONFIG_MESA.
     Route::get('/configuracion', [ConfiguracionController::class, 'show']);
 });
 
@@ -135,6 +152,10 @@ Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () 
     // Ocupa la mesa. NO regenera el código: es estable hasta destruirla.
     Route::post('/mesas/{mesa}/ocupar', [MesaController::class, 'ocupar']);
 
+    // Fin de la VISITA: el cliente PAGÓ la cuenta y el mozo cierra la
+    // mesa (borrado lógico). Exige cero pedidos activos (422 si quedan).
+    Route::post('/mesas/{mesa}/cerrar', [MesaController::class, 'cerrar']);
+
     // Agrupación de lectura de varias mesas (no fusiona pedidos; los
     // códigos tampoco cambian).
     Route::post('/mesas/agrupar', [MesaController::class, 'agrupar']);
@@ -145,13 +166,12 @@ Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () 
     Route::post('/pedidos/{pedido}/confirmar', [PedidoController::class, 'confirmar']);
     Route::post('/pedidos/{pedido}/enviar', [PedidoController::class, 'enviarPedido']);
 
-    // Avanza el flujo del DER o cancela; los estados finales DESTRUYEN
-    // la mesa (borrado lógico) si ya no queda ningún pedido activo.
+    // Avanza el flujo del DER o cancela. NO toca la mesa: la visita
+    // termina cuando el mozo la cierra tras el pago.
     Route::put('/pedidos/{pedido}/estado', [PedidoController::class, 'cambiarEstado']);
 
-    // Alta de mesas dinámicas: las crea el mozo o el sistema al
-    // reservar por la web (aforo contra PARAMETRO.capacidad_total;
-    // 422 si se supera).
+    // Alta de mesas dinámicas: las crea el mozo cuando hace falta
+    // (aforo contra CONFIG_MESA; 422 si se supera).
     Route::post('/mesas', [MesaController::class, 'store']);
 });
 
@@ -206,9 +226,10 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_categorias'])->group(funct
 
 Route::middleware(['auth:sanctum', 'permiso:gestionar_platos'])->group(function () {
 
+    Route::get('/platos/todos', [PlatoController::class, 'indexAll']);
     Route::post('/platos', [PlatoController::class, 'store']);
-    Route::put('/platos/{id}', [PlatoController::class, 'update']);
-    Route::delete('/platos/{id}', [PlatoController::class, 'destroy']);
+    Route::put('/platos/{id}', [PlatoController::class, 'update'])->whereNumber('id');
+    Route::delete('/platos/{id}', [PlatoController::class, 'destroy'])->whereNumber('id');
 });
 
 // INGREDIENTES
@@ -228,6 +249,27 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_mesas'])->group(function (
     Route::put('/mesas/{mesa}', [MesaController::class, 'update']);
     Route::delete('/mesas/{mesa}', [MesaController::class, 'destroy']);
 
-    // Aforo del lugar (PARAMETRO.capacidad_total).
+    // Aforo del lugar y composición CONFIG_MESA (replace-all).
     Route::put('/configuracion', [ConfiguracionController::class, 'update']);
+});
+
+Route::middleware(['auth:sanctum', 'permiso:gestionar_promociones'])->group(function () {
+    Route::get('/promociones', [PromocionController::class, 'index']);
+    Route::get('/promociones/{id}', [PromocionController::class, 'show'])->whereNumber('id');
+    Route::post('/promociones', [PromocionController::class, 'store']);
+    Route::put('/promociones/{id}', [PromocionController::class, 'update'])->whereNumber('id');
+    Route::delete('/promociones/{id}', [PromocionController::class, 'destroy'])->whereNumber('id');
+});
+
+// ==================== REPORTES ====================
+
+// Dashboard de estadísticas (solo Gerente).
+Route::middleware(['auth:sanctum', 'permiso:ver_dashboard'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+});
+
+// Historial de comandas (= pedidos): Gerente y Cocina.
+Route::middleware(['auth:sanctum', 'permiso:ver_historial_comandas'])->group(function () {
+    Route::get('/historial/comandas', [HistorialComandaController::class, 'index']);
+    Route::get('/historial/comandas/{id}', [HistorialComandaController::class, 'show'])->whereNumber('id');
 });

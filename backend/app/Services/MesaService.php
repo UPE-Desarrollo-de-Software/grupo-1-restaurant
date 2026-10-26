@@ -6,25 +6,27 @@ use App\Exceptions\ApiException;
 use App\Models\DetallePedido;
 use App\Models\Mesa;
 use App\Models\Pedido;
+use App\Repositories\ConfigMesaRepository;
 use App\Repositories\DetallePedidoRepository;
 use App\Repositories\MesaRepository;
-use App\Repositories\ParametroRepository;
 use App\Repositories\PedidoRepository;
 use App\Repositories\ReservaRepository;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
  * MESA — servicio de dominio (arquitectura hexagonal: capa Service
- * sobre los Repositories Mesa/Pedido/Parametro).
+ * sobre los Repositories Mesa/Pedido/ConfigMesa).
  *
  * Reglas del rebote 2 (DER v2.2):
- *  - entidad DINÁMICA: la crea el mozo o el sistema al reservar por
- *    la web ("mozo virtual") y se DESTRUYE
- *    (borrado lógico) al terminar el servicio; `codigo_acceso` nace
- *    con la mesa y no cambia nunca;
+ *  - entidad DINÁMICA: la crea el mozo y se DESTRUYE (borrado lógico)
+ *    al cerrar la VISITA (POST /mesas/{id}/cerrar: el cliente pagó)
+ *    o con DELETE /mesas/{id} (baja administrativa del gerente);
+ *    `codigo_acceso` nace con la mesa y no cambia nunca;
  *  - AFORO: al crear, Σ capacidad(mesas vivas) + capacidad nueva ≤
- *    PARAMETRO.capacidad_total (tabla PARAMETRO);
+ *    aforo (Σ capacidad×cantidad de CONFIG_MESA); además el total de
+ *    mesas vivas + 1 no puede superar Σ cantidad;
  *  - la cuenta ya no divide por "comensal con fila en el pivot": son
  *    PARTES por pedido RAÍZ (raíz + sus hijos = lo que paga cada quien);
  *  - `ocupada_desde` sigue siendo el corte de la visita.
@@ -35,7 +37,7 @@ class MesaService
         private MesaRepository $mesas,
         private PedidoRepository $pedidos,
         private DetallePedidoRepository $detalles,
-        private ParametroRepository $parametros,
+        private ConfigMesaRepository $configMesas,
         private ReservaRepository $reservas,
     ) {}
 
@@ -62,24 +64,34 @@ class MesaService
     }
 
     /**
-     * Alta de mesa dinámica: valida el AFORO del lugar y genera el
-     * único código de acceso de la mesa (4 dígitos) ANTES de crearla.
+     * Alta de mesa dinámica: valida el AFORO del lugar y el TOPE de
+     * mesas (ambos derivados de CONFIG_MESA) y genera el único código
+     * de acceso de la mesa (4 dígitos) ANTES de crearla.
      *
      * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?}
      *
-     * @throws \Exception aforo superado
+     * @throws \Exception aforo o tope de mesas superado
      */
     public function crearMesa(array $datos): Mesa
     {
         $capacidad = (int) ($datos['capacidad'] ?? 0);
 
-        $aforo = $this->parametros->capacidadTotal();
+        $aforo = $this->configMesas->aforo();
         $ocupada = $this->mesas->capacidadOcupada();
 
         if ($ocupada + $capacidad > $aforo) {
             throw new \Exception(
                 "Se supera la capacidad del lugar: aforo {$aforo}, ocupada {$ocupada}, "
-                ."la mesa nueva necesita {$capacidad}."
+                    ."la mesa nueva necesita {$capacidad}."
+            );
+        }
+
+        $maxMesas = $this->configMesas->cantidadMaximaMesas();
+        $vivas = $this->mesas->todas()->count();
+
+        if ($vivas + 1 > $maxMesas) {
+            throw new \Exception(
+                "Se supera la cantidad de mesas permitidas: máximo {$maxMesas}, vivas {$vivas}."
             );
         }
 
@@ -111,7 +123,7 @@ class MesaService
         if (isset($datos['capacidad']) && (int) $datos['capacidad'] !== (int) $mesa->capacidad) {
             $capacidadNueva = (int) $datos['capacidad'];
             $ocupadaFutura = $this->mesas->capacidadOcupada() - (int) $mesa->capacidad + $capacidadNueva;
-            $aforo = $this->parametros->capacidadTotal();
+            $aforo = $this->configMesas->aforo();
 
             if ($ocupadaFutura > $aforo) {
                 throw new \Exception(
@@ -145,6 +157,36 @@ class MesaService
         $this->mesas->eliminar($mesa);
 
         return $canceladas;
+    }
+
+    /**
+     * Cierre de VISITA (POST /mesas/{mesa}/cerrar): el cliente pagó
+     * la cuenta y el mozo termina el servicio. Lo que cierra la mesa
+     * es el PAGO, no la finalización del ciclo de vida de un pedido:
+     * por eso exige CERO pedidos activos y NO se dispara solo.
+     *
+     * Efecto = mismo que `eliminar` (borrado lógico, el código deja
+     * de valer y se cancelan reservas pendientes legadas), pero con
+     * la validación previa y accesible para el mozo.
+     *
+     *
+     * @return int cantidad de reservas canceladas
+     *
+     * @throws ModelNotFoundException si la mesa no existe o ya se cerró
+     * @throws \Exception si quedan pedidos activos
+     */
+    public function cerrarVisita(int $id): int
+    {
+        $mesa = $this->mesas->porIdOrFail($id);
+
+        if ($this->pedidos->hayActivosDeMesa($mesa->id)) {
+            throw new \Exception(
+                'No se puede cerrar la mesa: quedan pedidos activos. '
+                    .'Cobrá la cuenta y cerrá (o cancelá) todos los pedidos primero.'
+            );
+        }
+
+        return $this->eliminar($id);
     }
 
     // ==================== SERVICIO DE LA VISITA ====================
@@ -302,6 +344,8 @@ class MesaService
                     'detalle_id' => $detalle->id,
                     'pedido_id' => $pedido->id,
                     'plato' => $detalle->plato->nombre,
+                    'descuento' => $this->descuentoDeLinea($detalle),
+                    'promocion' => $this->promocionDeLinea($detalle),
                     'cantidad' => $detalle->cantidad,
                     'subtotal' => (float) $detalle->subtotal,
                 ];
@@ -377,6 +421,7 @@ class MesaService
      */
     private function pedidoAArray(Pedido $pedido): array
     {
+
         return [
             'id' => $pedido->id,
             'pedido_padre_id' => $pedido->pedido_padre_id,
@@ -386,11 +431,32 @@ class MesaService
             'lineas' => $pedido->detalles->map(fn (DetallePedido $detalle) => [
                 'detalle_id' => $detalle->id,
                 'plato' => $detalle->plato->nombre,
+                'promocion' => $this->promocionDeLinea($detalle),
                 'cantidad' => $detalle->cantidad,
+                'descuento' => $this->descuentoDeLinea($detalle),
                 'subtotal' => (float) $detalle->subtotal,
                 'confirmado' => (bool) $detalle->confirmado,
             ])->values()->all(),
             'todas_confirmadas' => $this->detalles->sinConfirmar($pedido->id) === 0,
         ];
+    }
+
+    private function descuentoDeLinea(DetallePedido $detalle): float
+    {
+        $agregados = (float) $detalle->ingredientes->where('tipo', 'agregado')->sum('precio_adicional');
+        $bruto = ((float) $detalle->precio_lista + $agregados) * $detalle->cantidad;
+
+        return round($bruto - (float) $detalle->subtotal, 2);
+    }
+
+    private function promocionDeLinea(DetallePedido $detalle): ?array
+    {
+        return $detalle->promocion
+            ? [
+                'id' => $detalle->promocion->id,
+                'nombre' => $detalle->promocion->nombre,
+                'tipo' => $detalle->promocion->tipo,
+            ]
+            : null;
     }
 }

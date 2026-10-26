@@ -19,13 +19,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * su pedido raíz: eso reemplaza a la entidad CLIENTE (eliminada del
  * DER, rebote 2).
  *
- * Flujo de envío en dos pasos (auto-pedido):
- *   en_curso → confirmado → enviado
+ * Flujo de envío (auto-pedido):
+ *   en_curso → enviado   (automático en LOTE: cuando TODOS los pedidos
+ *                         de la mesa tienen todas sus líneas
+ *                         confirmadas, salen juntos a cocina)
+ *   en_curso → confirmado → enviado   (manual del mozo: gate/forzar y
+ *                         enviar; fallback si la mesa no se confirma)
  * `confirmado` (el estado) = el mozo validó que todas las líneas del
  * pedido tienen detalle_pedidos.confirmado = true (o forzó).
  *
- * Estados finales (cerrado/cancelado): destruyen la mesa cuando no
- * quedan pedidos activos en ella.
+ * Estados finales (cerrado/cancelado): NO tocan la mesa; la visita
+ * termina cuando el mozo la cierra tras el pago.
  */
 class Pedido extends Model
 {
@@ -40,6 +44,17 @@ class Pedido extends Model
     public function mesa(): BelongsTo
     {
         return $this->belongsTo(Mesa::class);
+    }
+
+    /**
+     * Mesa para el HISTORIAL de comandas: con trashed, porque la mesa
+     * se destruye al cerrar la visita y la comanda histórica debe
+     * poder mostrarla igual (la relación `mesa` normal la excluye el
+     * scope global de SoftDeletes).
+     */
+    public function mesaHistorial(): BelongsTo
+    {
+        return $this->belongsTo(Mesa::class, 'mesa_id')->withTrashed();
     }
 
     public function detalles(): HasMany
@@ -74,8 +89,8 @@ class Pedido extends Model
     }
 
     /**
-     * Estados finales: destruyen la mesa cuando es el último activo y
-     * no admiten cambios.
+     * Estados finales: no admiten cambios (la mesa se cierra recién
+     * con el pago, vía POST /mesas/{mesa}/cerrar).
      */
     public function estaFinalizado(): bool
     {

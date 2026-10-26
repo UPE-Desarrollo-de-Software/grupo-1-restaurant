@@ -25,10 +25,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *   mesa deja de existir (listados, aforo y validación por código la
  *   ignoran).
  *
- * Ciclo de vida: la crea el mozo (POST /mesas) o el sistema al
- * reservar por la web ("mozo virtual"), el primer pedido la pone
- * 'ocupada' y destruirla (DELETE o cierre del último pedido) la saca
- * de circulación.
+ * Ciclo de vida: la crea el mozo (POST /mesas), el primer pedido la
+ * pone 'ocupada' y se destruye (borrado lógico) al cerrar la visita
+ * (POST /mesas/{mesa}/cerrar: el cliente pagó) o con DELETE
+ * (baja administrativa del gerente).
  */
 class Mesa extends Model
 {

@@ -81,4 +81,14 @@ class EloquentMesaRepository implements MesaRepository
     {
         $mesa->delete();
     }
+
+    public function cantidadPorEstado(): array
+    {
+        return Mesa::query()
+            ->selectRaw('estado, count(*) as cantidad')
+            ->groupBy('estado')
+            ->pluck('cantidad', 'estado')
+            ->map(fn ($cantidad) => (int) $cantidad)
+            ->all();
+    }
 }

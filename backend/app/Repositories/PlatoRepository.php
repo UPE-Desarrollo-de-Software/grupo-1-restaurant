@@ -48,4 +48,6 @@ interface PlatoRepository
     public function sincronizarIngredientes(Plato $plato, array $ingredientes): void;
 
     public function desprenderIngredientes(Plato $plato): void;
+
+    public function todos();
 }

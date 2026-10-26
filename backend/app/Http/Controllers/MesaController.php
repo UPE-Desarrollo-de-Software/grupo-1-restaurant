@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Mesa;
 use App\UseCases\Mesas\ActualizarMesaUseCase;
 use App\UseCases\Mesas\AgruparMesasUseCase;
+use App\UseCases\Mesas\CerrarMesaUseCase;
 use App\UseCases\Mesas\CrearMesaUseCase;
 use App\UseCases\Mesas\DesagruparMesasUseCase;
 use App\UseCases\Mesas\EliminarMesaUseCase;
@@ -32,6 +33,7 @@ class MesaController extends Controller
         private CrearMesaUseCase $crear,
         private ActualizarMesaUseCase $actualizar,
         private EliminarMesaUseCase $eliminar,
+        private CerrarMesaUseCase $cerrarVisita,
         private OcuparMesaUseCase $ocuparMesa,
         private AgruparMesasUseCase $agruparMesas,
         private DesagruparMesasUseCase $desagruparMesas,
@@ -57,7 +59,7 @@ class MesaController extends Controller
 
     /**
      * Alta de mesa dinámica (el mozo o la reserva la crean). Valida el
-     * aforo contra PARAMETRO.capacidad_total (422 si se supera).
+     * aforo contra CONFIG_MESA (422 si se supera).
      */
     public function store(Request $request)
     {
@@ -155,6 +157,26 @@ class MesaController extends Controller
             'message' => 'Mesa ocupada. Pasale el codigo al cliente.',
             'mesa' => $resultado['mesa'],
             'codigo_acceso' => $resultado['codigo_acceso'],
+        ], 200);
+    }
+
+    /**
+     * POST /api/mesas/{mesa}/cerrar — fin de la VISITA: el cliente
+     * pagó la cuenta y el mozo termina el servicio (borrado lógico;
+     * el código deja de valer y los pedidos históricos quedan). Exige
+     * CERO pedidos activos: si quedan, 422.
+     */
+    public function cerrar(Mesa $mesa)
+    {
+        try {
+            $canceladas = ($this->cerrarVisita)($mesa->id);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'Mesa cerrada: fin de la visita (cliente pagó)',
+            'reservas_canceladas' => $canceladas,
         ], 200);
     }
 

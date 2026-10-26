@@ -15,16 +15,26 @@ use App\Repositories\PlatoRepository;
  */
 class PlatoService
 {
-    public function __construct(private PlatoRepository $platos) {}
+    public function __construct(
+        private PlatoRepository $platos,
+        private PromocionService $promociones
+    ) {}
 
     public function obtenerDisponibles()
     {
-        return $this->platos->disponiblesConCategoria();
+        return $this->platos->disponiblesConCategoria()
+            ->map(fn (Plato $plato) => $this->conPromoVigente($plato));
     }
 
-    public function obtenerConIngredientes($id): Plato
+    public function obtenerConIngredientes(int $id): Plato
     {
-        return $this->platos->conIngredientesOrFail((int) $id);
+        return $this->conPromoVigente($this->platos->conIngredientesOrFail((int) $id));
+    }
+
+    /** Listado completo (activos e inactivos) para el panel del encargado. */
+    public function todos()
+    {
+        return $this->platos->todos();
     }
 
     /**
@@ -46,22 +56,28 @@ class PlatoService
     /**
      * @param  array<string, mixed>  $datos
      */
-    public function actualizar($id, array $datos): Plato
+    public function actualizar(int $id, array $datos): Plato
     {
         $plato = $this->platos->conIngredientesOrFail((int) $id);
 
-        $ingredientes = $this->normalizarIngredientes($datos['ingredientes'] ?? []);
+        // `ingredientes` omitido o null = no tocar el pivot (el PUT puede
+        // ser solo para vincular una promoción); lista, aunque vacía, = reemplazar.
+        $reemplazar = array_key_exists('ingredientes', $datos) && is_array($datos['ingredientes']);
+
+        $ingredientes = $this->normalizarIngredientes($reemplazar ? $datos['ingredientes'] : []);
 
         unset($datos['ingredientes']);
 
         $plato = $this->platos->actualizar($plato, $datos);
 
-        $this->platos->sincronizarIngredientes($plato, $ingredientes);
+        if ($reemplazar) {
+            $this->platos->sincronizarIngredientes($plato, $ingredientes);
+        }
 
         return $plato->load('ingredientes:id,nombre,precioAdicional');
     }
 
-    public function eliminar($id): void
+    public function eliminar(int $id): void
     {
         $plato = $this->platos->conIngredientesOrFail((int) $id);
 
@@ -100,5 +116,15 @@ class PlatoService
         }
 
         return $filas;
+    }
+
+    /** La carta solo muestra ofertas vigentes: el resto, promocion = null. */
+    private function conPromoVigente(Plato $plato): Plato
+    {
+        if ($plato->promocion && ! $this->promociones->vigente($plato->promocion)) {
+            $plato->setRelation('promocion', null);
+        }
+
+        return $plato;
     }
 }

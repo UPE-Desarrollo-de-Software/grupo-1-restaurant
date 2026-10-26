@@ -6,6 +6,7 @@ use App\UseCases\Platos\ActualizarPlatoUseCase;
 use App\UseCases\Platos\CrearPlatoUseCase;
 use App\UseCases\Platos\EliminarPlatoUseCase;
 use App\UseCases\Platos\ListarPlatosUseCase;
+use App\UseCases\Platos\ListarPlatosActivosUseCase;
 use App\UseCases\Platos\ObtenerPlatoUseCase;
 use Illuminate\Http\Request;
 
@@ -16,15 +17,26 @@ class PlatoController extends Controller
 {
     public function __construct(
         private ListarPlatosUseCase $listar,
+        private ListarPlatosActivosUseCase $listarActivos,
         private ObtenerPlatoUseCase $obtener,
         private CrearPlatoUseCase $crear,
         private ActualizarPlatoUseCase $actualizar,
         private EliminarPlatoUseCase $eliminar,
     ) {}
 
-    public function index()
+    public function indexAll()
     {
         $platos = ($this->listar)();
+
+        if ($platos->isEmpty()) {
+            return response()->json(['message' => 'No se encontraron platos'], 200);
+        }
+
+        return response()->json($platos, 200);
+    }
+    public function index()
+    {
+        $platos = ($this->listarActivos)();
 
         if ($platos->isEmpty()) {
             return response()->json(['message' => 'No se encontraron platos'], 200);

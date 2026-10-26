@@ -9,7 +9,7 @@ class EloquentReservaRepository implements ReservaRepository
 {
     public function porIdOrFail(int $id): Reserva
     {
-        return Reserva::with('mesa')->findOrFail($id);
+        return Reserva::with(['mesa', 'inventario'])->findOrFail($id);
     }
 
     public function crear(array $datos): Reserva
@@ -17,18 +17,9 @@ class EloquentReservaRepository implements ReservaRepository
         return Reserva::create($datos);
     }
 
-    public function existeConflicto(int $mesaId, string $fecha, string $hora): bool
-    {
-        return Reserva::where('mesa_id', $mesaId)
-            ->where('fecha', $fecha)
-            ->where('hora', $hora)
-            ->where('estado', 'pendiente')
-            ->exists();
-    }
-
     public function filtradas(?string $estado, ?string $fecha, ?int $mesaId): Collection
     {
-        return Reserva::with('mesa')
+        return Reserva::with(['mesa', 'inventario'])
             ->when($estado !== null, fn ($q) => $q->where('estado', $estado))
             ->when($fecha !== null, fn ($q) => $q->where('fecha', $fecha))
             ->when($mesaId !== null, fn ($q) => $q->where('mesa_id', $mesaId))
@@ -37,12 +28,22 @@ class EloquentReservaRepository implements ReservaRepository
             ->get();
     }
 
-    public function hayPendienteEnFecha(int $mesaId, string $fecha): bool
+    public function pendientesDeFecha(string $fecha): Collection
     {
-        return Reserva::where('mesa_id', $mesaId)
+        // Lock: bloquea las filas del día mientras corre el alta. Ver
+        // docblock del interface (MySQL serializa; SQLite no-op).
+        return Reserva::with('inventario')
             ->where('fecha', $fecha)
             ->where('estado', 'pendiente')
-            ->exists();
+            ->lockForUpdate()
+            ->get();
+    }
+
+    public function pendientesHastaFecha(string $fecha): Collection
+    {
+        return Reserva::where('fecha', '<=', $fecha)
+            ->where('estado', 'pendiente')
+            ->get();
     }
 
     public function pendientesDeMesa(int $mesaId): Collection
@@ -50,5 +51,24 @@ class EloquentReservaRepository implements ReservaRepository
         return Reserva::where('mesa_id', $mesaId)
             ->where('estado', 'pendiente')
             ->get();
+    }
+
+    public function resumenDelDia(string $fecha): array
+    {
+        $porEstado = Reserva::where('fecha', $fecha)
+            ->selectRaw('estado, count(*) as cantidad')
+            ->groupBy('estado')
+            ->pluck('cantidad', 'estado')
+            ->map(fn ($cantidad) => (int) $cantidad)
+            ->all();
+
+        $personasPendientes = (int) Reserva::where('fecha', $fecha)
+            ->where('estado', 'pendiente')
+            ->sum('cantPersonas');
+
+        return [
+            'por_estado' => $porEstado,
+            'total_personas_pendientes' => $personasPendientes,
+        ];
     }
 }

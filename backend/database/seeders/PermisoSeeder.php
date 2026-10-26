@@ -43,6 +43,10 @@ class PermisoSeeder extends Seeder
             'tomar_pedidos',
             'ver_pedidos',
         ],
+        'reportes' => [
+            'ver_dashboard',
+            'ver_historial_comandas',
+        ],
     ];
 
     public function run(): void

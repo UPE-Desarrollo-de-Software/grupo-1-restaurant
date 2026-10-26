@@ -2,41 +2,60 @@
 
 namespace App\Services;
 
-use App\Models\Mesa;
 use App\Models\Reserva;
-use App\Repositories\MesaRepository;
+use App\Repositories\ConfigMesaRepository;
 use App\Repositories\ReservaRepository;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
  * RESERVA — servicio de dominio (arquitectura hexagonal: capa Service
- * sobre los Repositories Reserva/Mesa).
+ * sobre los Repositories Reserva/ConfigMesa).
  *
- * Reglas (DER v3.0 + decisiones del grupo):
- *  - la mesa de la reserva SIEMPRE existe: o el empleado la elige
- *    (find estricto) o, en la reserva pública sin mesa, el SISTEMA la
- *    crea como "mozo virtual" validando el aforo (nunca el cliente
- *    inserta mesas por su cuenta);
- *  - lead time: la reserva debe hacerse con al menos 2 horas de
- *    anticipación (siendo las 19:00 lo más temprano es 21:00);
- *  - conflicto: misma mesa + fecha + hora EXACTA con estado pendiente;
- *  - `cantPersonas` ≤ capacidad de la mesa;
- *  - el estado de la mesa ('reservada') solo cambia con reservas de
- *    HOY; las de otros días se consultan con GET /reservas?fecha=...;
+ * Modelo (decisión del grupo, rebote 3):
+ *  - la reserva NO es una mesa: es un HOLD sobre el INVENTARIO del
+ *    salón. Se calcula contra `CONFIG_MESA` (potencial) menos las
+ *    reservas pendientes cuyo intervalo se solapa con el pedido, y la
+ *    combinación elegida se persiste en `reserva_inventario`
+ *    (capacidades, no mesas físicas);
+ *  - el hold espera al cliente desde la hora reservada hasta
+ *    +ESPERA_MIN. Si vence sin que nadie registre la llegada, pasa a
+ *    `no_asistio` y se libera solo (vencerVencidas);
+ *  - la LLEGADA es `finalizar()`: la reserva muere, el inventario se
+ *    libera y el mozo arma las mesas con la combinación que devuelve
+ *    `inventario()`. A partir de ahí la mesa se comporta como
+ *    cualquier otra (aforo de MesaService, pedidos, destrucción);
+ *  - solo las PENDIENTES bloquean inventario (cancelada, finalizada y
+ *    no_asistio no cuentan);
+ *  - lead time: al menos 2 horas de anticipación;
  *  - transiciones: pendiente → cancelada | finalizada | no_asistio;
- *    finalizar e inasistir exigen que ya haya pasado la hora.
+ *    la inasistencia exige hora pasada; la llegada no (llegó antes,
+ *    llegó).
+ *
+ * Atómico: `crear()` corre dentro de una transacción y lee las
+ * pendientes del día con `lockForUpdate` ANTES de elegir la
+ * combinación, así dos altas simultáneas no asignan la misma
+ * capacidad (en SQLite de los tests el lock es no-op).
  */
 class ReservaService
 {
     private const LEAD_TIME_HORAS = 2;
 
+    /**
+     * Duración del hold (espera del cliente): [hora, hora + 30 min].
+     */
+    private const ESPERA_MIN = 30;
+
+    /**
+     * Inventario defensivo si CONFIG_MESA está vacía (misma defensa
+     * que aplica ConfigMesaRepository::aforo() → 100 = 25 × 4).
+     */
+    private const INV_DEFECTO = [4 => 25];
+
     public function __construct(
         private ReservaRepository $reservas,
-        private MesaRepository $mesas,
-        private MesaService $mesaService,
+        private ConfigMesaRepository $configMesas,
     ) {}
 
     // ==================== CONSULTA ====================
@@ -52,28 +71,58 @@ class ReservaService
     }
 
     /**
-     * Reserva por id con su mesa; lanza ModelNotFoundException (404).
+     * Reserva por id con su inventario; lanza ModelNotFoundException (404).
      */
     public function obtenerPorId(int $id): Reserva
     {
         return $this->reservas->porIdOrFail($id);
     }
 
+    /**
+     * Disponibilidad PÚBLICA del horario: qué capacidades quedan
+     * libres (en el sentido del hold) para ese intervalo.
+     *
+     * @return array{fecha: string, inicio: string, fin: string, disponible: list<array{capacidad: int, cantidad: int}>, aforo_disponible: int}
+     */
+    public function disponibilidad(string $fecha, string $hora): array
+    {
+        $fecha = Carbon::parse($fecha)->toDateString();
+        $hora = Carbon::parse($hora)->format('H:i:s');
+
+        return DB::transaction(function () use ($fecha, $hora) {
+            $this->vencerVencidas();
+
+            [$inicio, $fin] = $this->intervalo($hora);
+            $disponible = $this->disponiblePorCapacidad($fecha, $inicio, $fin);
+
+            $filas = [];
+            foreach ($disponible as $capacidad => $cantidad) {
+                $filas[] = ['capacidad' => $capacidad, 'cantidad' => $cantidad];
+            }
+
+            return [
+                'fecha' => $fecha,
+                'inicio' => $this->minutosAHora($inicio),
+                'fin' => $this->minutosAHora($fin),
+                'disponible' => $filas,
+                'aforo_disponible' => (int) array_sum(
+                    array_map(fn (array $fila) => $fila['capacidad'] * $fila['cantidad'], $filas)
+                ),
+            ];
+        });
+    }
+
     // ==================== ALTA ====================
 
     /**
-     * Alta de reserva.
+     * Alta de reserva: calcula la combinación de capacidades contra
+     * el inventario y guarda el hold. NO crea ni marca mesas.
      *
-     * @param  array<string, mixed>  $datos  {mesa_id?, contacto_solicitante, fecha, hora, cantPersonas}
-     * @param  bool  $esPublico  true = reserva del cliente web (puede
-     *                           venir sin mesa_id: la crea el "mozo
-     *                           virtual"); false = la toma el mozo y
-     *                           la mesa es obligatoria.
+     * @param  array<string, mixed>  $datos  {contacto_solicitante, fecha, hora, cantPersonas}
      *
-     * @throws \Exception lead time, capacidad o conflicto horario
-     * @throws ModelNotFoundException mesa inexistente
+     * @throws \Exception lead time o sin inventario para el horario
      */
-    public function crear(array $datos, bool $esPublico): Reserva
+    public function crear(array $datos): Reserva
     {
         $fecha = Carbon::parse($datos['fecha'])->toDateString();
         $hora = Carbon::parse($datos['hora'])->format('H:i:s');
@@ -81,33 +130,26 @@ class ReservaService
 
         $this->validarLeadTime($fecha, $hora);
 
-        return DB::transaction(function () use ($datos, $esPublico, $fecha, $hora, $cantPersonas) {
-            if (isset($datos['mesa_id'])) {
-                // Find ERICTO: jamás find-or-create. El cliente no
-                // puede crear mesas escribiendo un id inventado.
-                $mesa = $this->mesas->porIdOrFail((int) $datos['mesa_id']);
+        return DB::transaction(function () use ($datos, $fecha, $hora, $cantPersonas) {
+            // Primero libera lo vencido (una espera de ayer ya no
+            // debería bloquear el inventario de hoy).
+            $this->vencerVencidas();
 
-                if ($cantPersonas > (int) $mesa->capacidad) {
-                    throw new \Exception('La cantidad de personas supera capacidad de mesa');
-                }
+            [$inicio, $fin] = $this->intervalo($hora);
+            $disponible = $this->disponiblePorCapacidad($fecha, $inicio, $fin);
 
-                $this->validarConflicto($mesa, $fecha, $hora);
-            } else {
-                if (! $esPublico) {
-                    throw new \Exception('El empleado debe indicar la mesa a reservar.');
-                }
+            $combinacion = $this->combinar($cantPersonas, $disponible);
 
-                // Mozo virtual: la mesa la crea el SISTEMA con las
-                // mismas reglas de aforo que usa el mozo (la mesa es
-                // nueva, así que no puede tener conflicto horario).
-                $mesa = $this->mesaService->crearMesa([
-                    'capacidad' => $cantPersonas,
-                    'usuario_id' => null,
-                ]);
+            if ($combinacion === []) {
+                throw new \Exception(
+                    "No hay disponibilidad para {$cantPersonas} personas en ese horario."
+                );
             }
 
             $reserva = $this->reservas->crear([
-                'mesa_id' => $mesa->id,
+                // Null explícito para que la clave SIEMPRE aparezca en
+                // la respuesta (es legacy y no se llena nunca).
+                'mesa_id' => null,
                 'contacto_solicitante' => $datos['contacto_solicitante'],
                 'fecha' => $fecha,
                 'hora' => $hora,
@@ -115,20 +157,23 @@ class ReservaService
                 'estado' => 'pendiente',
             ]);
 
-            // Solo las reservas de HOY marcan la mesa; las de otros
-            // días no tocan el estado (se consultan por fecha).
-            if ($this->esDeHoy($fecha)) {
-                $mesa->Reservar();
+            // Persiste la combinación: capacidad => cantidad (una fila
+            // por capacidad, unique en la tabla).
+            foreach ($this->agrupar($combinacion) as $capacidad => $cantidad) {
+                $reserva->inventario()->create([
+                    'capacidad' => $capacidad,
+                    'cantidad' => $cantidad,
+                ]);
             }
 
-            return $reserva->load('mesa');
+            return $reserva->load('inventario');
         });
     }
 
     // ==================== TRANSICIONES DE ESTADO ====================
 
     /**
-     * pendiente a cancelada.
+     * pendiente a cancelada (el cliente avisó): el hold se libera.
      */
     public function cancelar(int $id): Reserva
     {
@@ -138,70 +183,32 @@ class ReservaService
         $reserva->estado = 'cancelada';
         $reserva->save();
 
-        $this->liberarMesaSiCorresponde($reserva);
-
-        return $reserva->load('mesa');
+        return $reserva->load(['mesa', 'inventario']);
     }
 
     /**
-     * Cancelación pública (cliente web): con el codigo_acceso de la
-     * mesa cancela TODAS sus reservas pendientes (cualquier fecha).
+     * pendiente a finalizada = LLEGADA DEL CLIENTE. Acá muere la
+     * reserva: el inventario queda libre y el mozo arma las mesas de
+     * `inventario` (que a partir de ahí son mesas comunes).
      *
-     * El código identifica la MESA (no una reserva), así que una única
-     * respuesta cubre las dos fallas: si el código no corresponde a una
-     * mesa viva o si esa mesa ya no tiene pendientes → 422 "No hay
-     * reservas pendientes con ese código" (no revela cuál fue).
-     *
-     * @return Collection<int, Reserva> las reservas canceladas, con su mesa
-     *
-     * @throws \Exception sin reservas pendientes para ese código
-     */
-    public function cancelarPorCodigoMesa(string $codigo): Collection
-    {
-        $mesa = $this->mesas->porCodigo($codigo);
-
-        $pendientes = $mesa
-            ? $this->reservas->pendientesDeMesa((int) $mesa->id)
-            : collect();
-
-        if ($pendientes->isEmpty()) {
-            throw new \Exception('No hay reservas pendientes con ese código');
-        }
-
-        $canceladas = [];
-        foreach ($pendientes as $reserva) {
-            $reserva->estado = 'cancelada';
-            $reserva->save();
-
-            // Si era de hoy, la mesa se libera recién al cerrar la
-            // última pendiente de HOY (las de otros días no la tocan).
-            $this->liberarMesaSiCorresponde($reserva);
-
-            $canceladas[] = $reserva->load('mesa');
-        }
-
-        return collect($canceladas);
-    }
-
-    /**
-     * pendiente a finalizada (el evento ya ocurrió).
+     * NO exige hora pasada: el cliente puede llegar temprano. Si nadie
+     * llega, `vencerVencidas()` la pasa a no_asistio después de la
+     * espera.
      */
     public function finalizar(int $id): Reserva
     {
         $reserva = $this->reservas->porIdOrFail($id);
         $this->exigirPendiente($reserva, 'finalizar');
-        $this->exigirHoraPasada($reserva);
 
         $reserva->estado = 'finalizada';
         $reserva->save();
 
-        $this->liberarMesaSiCorresponde($reserva);
-
-        return $reserva->load('mesa');
+        return $reserva->load(['mesa', 'inventario']);
     }
 
     /**
-     * pendiente → no_asistio (el cliente no vino).
+     * pendiente → no_asistio (pasó la espera y no vino): libera el
+     * hold.
      */
     public function marcarNoAsistio(int $id): Reserva
     {
@@ -212,9 +219,171 @@ class ReservaService
         $reserva->estado = 'no_asistio';
         $reserva->save();
 
-        $this->liberarMesaSiCorresponde($reserva);
+        return $reserva->load(['mesa', 'inventario']);
+    }
 
-        return $reserva->load('mesa');
+    // ==================== INVENTARIO ====================
+
+    /**
+     * Vencimiento: toda pendiente cuya espera terminó (fecha y hora
+     * pasadas + ESPERA_MIN) pasa a no_asistio y deja de bloquear.
+     * Se corre en cada alta y en cada consulta de disponibilidad.
+     */
+    private function vencerVencidas(): void
+    {
+        $ahora = Carbon::now();
+
+        foreach ($this->reservas->pendientesHastaFecha($ahora->toDateString()) as $reserva) {
+            $fin = Carbon::parse($reserva->fecha.' '.$reserva->hora)
+                ->addMinutes(self::ESPERA_MIN);
+
+            if ($ahora->gt($fin)) {
+                $reserva->estado = 'no_asistio';
+                $reserva->save();
+            }
+        }
+    }
+
+    /**
+     * Intervalo del hold en minutos desde 00:00: [inicio, fin).
+     * Con reserva a las 21:00 y espera de 30 → [1260, 1290).
+     *
+     * @return array{0: int, 1: int}
+     */
+    private function intervalo(string $hora): array
+    {
+        $inicio = $this->horaAMinutos($hora);
+
+        return [$inicio, $inicio + self::ESPERA_MIN];
+    }
+
+    /**
+     * Capacidades libres para el intervalo pedido:
+     * CONFIG_MESA (agregado por capacidad) − lo que toman las
+     * PENDIENTES del día cuyo intervalo [hora, hora+ESPERA) se solapa
+     * con el pedido. Solo pendientes: canceladas/finalizadas/
+     * no_asistio no bloquean.
+     *
+     * @return array<int, int> capacidad => cantidad libre (> 0)
+     */
+    private function disponiblePorCapacidad(string $fecha, int $inicio, int $fin): array
+    {
+        $disponible = [];
+
+        foreach ($this->configMesas->filas() as $fila) {
+            $capacidad = (int) $fila->capacidad;
+            $disponible[$capacidad] = ($disponible[$capacidad] ?? 0) + (int) $fila->cantidad;
+        }
+
+        if ($disponible === []) {
+            $disponible = self::INV_DEFECTO;
+        }
+
+        $pendientes = $this->reservas->pendientesDeFecha($fecha);
+
+        foreach ($pendientes as $reserva) {
+            if (! $this->solapa($reserva, $inicio, $fin)) {
+                continue;
+            }
+
+            foreach ($reserva->inventario as $hold) {
+                if (isset($disponible[$hold->capacidad])) {
+                    $disponible[$hold->capacidad] -= $hold->cantidad;
+                }
+            }
+        }
+
+        $disponible = array_filter($disponible, fn ($cantidad) => $cantidad > 0);
+        arsort($disponible);
+
+        return $disponible;
+    }
+
+    /**
+     * ¿El hold de otra reserva pisa el intervalo pedido? Ambos duran
+     * ESPERA_MIN desde su hora: solapan si a < b + ESPERA y
+     * b < a + ESPERA (comparación en minutos del mismo día).
+     *
+     * OJO: si una reserva de ~23:45 cruza la medianoche, las
+     * reservas del día siguiente (otra fecha) no se cruzan acá; es un
+     * caso borde aceptado (lead time lo vuelve rarísimo).
+     */
+    private function solapa(Reserva $reserva, int $inicio, int $fin): bool
+    {
+        $otra = $this->horaAMinutos($reserva->hora);
+
+        return $otra < $fin && $inicio < $otra + self::ESPERA_MIN;
+    }
+
+    /**
+     * Mejor combinación de mesas para $personas dentro del inventario
+     * disponible, por ORDEN DE PRIORIDAD del spec:
+     *  1. minimizar el EXCEDENTE (suma − personas);
+     *  2. con el mismo excedente, la MENOR cantidad de mesas;
+     *  3. empate total → la primera que se encontró (se procesan de
+     *     mayor a menor capacidad, así el desempate es determinista
+     *     y siempre elige las mesas grandes primero).
+     *
+     * @param  array<int, int>  $disponible  capacidad => cantidad libre
+     * @return list<int> capacidades elegidas (vacío = no hay lugar)
+     */
+    private function combinar(int $personas, array $disponible): array
+    {
+        // El inventario expandido: cada mesa individual disponible
+        // (respeta los topes por capacidad).
+        $mesas = [];
+        foreach ($disponible as $capacidad => $cantidad) {
+            for ($i = 0; $i < $cantidad; $i++) {
+                $mesas[] = $capacidad;
+            }
+        }
+
+        // Programación dinámica 0/1: suma alcanzable => el camino con
+        // MENOS mesas. Cada mesa se usa a lo sumo una vez (se itera
+        // sobre el snapshot de antes de agregarla).
+        $caminos = [0 => []];
+        foreach ($mesas as $capacidad) {
+            $anteriores = $caminos;
+            foreach ($anteriores as $suma => $camino) {
+                $nueva = $suma + $capacidad;
+                if (! isset($caminos[$nueva]) || count($camino) + 1 < count($caminos[$nueva])) {
+                    $caminos[$nueva] = [...$camino, $capacidad];
+                }
+            }
+        }
+
+        $mejor = null;
+        $mejorClave = null;
+        foreach ($caminos as $suma => $camino) {
+            if ($suma < $personas) {
+                continue;
+            }
+
+            // [excedente, cantidad de mesas]: comparación por orden lexicográfico.
+            $clave = [$suma - $personas, count($camino)];
+
+            if ($mejorClave === null || $clave < $mejorClave) {
+                $mejorClave = $clave;
+                $mejor = $camino;
+            }
+        }
+
+        return $mejor ?? [];
+    }
+
+    /**
+     * Agrupa una combinación en capacidad => cantidad, ordenada de
+     * mayor a menor capacidad (para guardar y mostrar).
+     *
+     * @param  list<int>  $combinacion
+     * @return array<int, int>
+     */
+    private function agrupar(array $combinacion): array
+    {
+        $agrupado = array_count_values($combinacion);
+        arsort($agrupado);
+
+        return $agrupado;
     }
 
     // ==================== VALIDACIONES ====================
@@ -236,48 +405,6 @@ class ReservaService
                 ." horas de anticipacion (lo mas temprano seria {$limite->format('H:i')})."
             );
         }
-    }
-
-    /**
-     * Misma mesa + fecha + hora exacta + estado pendiente.
-     *
-     * @throws \Exception
-     */
-    private function validarConflicto(Mesa $mesa, string $fecha, string $hora): void
-    {
-        if ($this->reservas->existeConflicto($mesa->id, $fecha, $hora)) {
-            throw new \Exception('Hay una reserva agendada en esa misma fecha y hora');
-        }
-    }
-
-    // ==================== ESTADO DE LA MESA ====================
-
-    /**
-     * Al cerrar una reserva (cancelar/finalizar/no_asistio): si era de
-     * HOY y la mesa quedó solo por esa reserva, vuelve a 'libre'.
-     */
-    private function liberarMesaSiCorresponde(Reserva $reserva): void
-    {
-        if (! $this->esDeHoy($reserva->fecha)) {
-            return;
-        }
-
-        $mesa = $this->mesas->porId((int) $reserva->mesa_id);
-
-        if (! $mesa || $mesa->estado !== 'reservada') {
-            return;
-        }
-
-        if ($this->reservas->hayPendienteEnFecha($mesa->id, $reserva->fecha)) {
-            return;
-        }
-
-        $mesa->expirarReserva();
-    }
-
-    private function esDeHoy(string $fecha): bool
-    {
-        return $fecha === Carbon::today()->toDateString();
     }
 
     /**
@@ -304,5 +431,28 @@ class ReservaService
         if (Carbon::now()->lt($momentoReserva)) {
             throw new \Exception('Aún no llegó la hora de la reserva');
         }
+    }
+
+    // ==================== TIEMPO ====================
+
+    /**
+     * 'H:i:s' | 'H:i' → minutos desde 00:00.
+     */
+    private function horaAMinutos(string $hora): int
+    {
+        [$horaStr, $minutoStr] = explode(':', $hora);
+
+        return ((int) $horaStr) * 60 + (int) $minutoStr;
+    }
+
+    /**
+     * Minutos desde 00:00 → 'H:i' (si el hold cruza la medianoche,
+     * da vuelta al día siguiente).
+     */
+    private function minutosAHora(int $minutos): string
+    {
+        $minutos %= 24 * 60;
+
+        return sprintf('%02d:%02d', intdiv($minutos, 60), $minutos % 60);
     }
 }

@@ -19,6 +19,6 @@ class ListarPlatosUseCase
      */
     public function __invoke(): Collection
     {
-        return $this->platos->obtenerDisponibles();
+        return $this->platos->todos();
     }
 }

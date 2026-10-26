@@ -4,6 +4,7 @@ namespace App\UseCases\Usuarios;
 
 use App\Models\Usuario;
 use App\Services\UsuarioService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * CASO DE USO: obtener un usuario empleado por id (GET /api/usuarios/{id}).
@@ -16,6 +17,10 @@ class ObtenerUsuarioUseCase
 
     public function __invoke(int $id): ?Usuario
     {
-        return $this->usuarios->obtenerPorId($id);
+        try {
+            return $this->usuarios->obtenerPorId($id);
+        } catch (ModelNotFoundException) {
+            return null;
+        }
     }
 }
