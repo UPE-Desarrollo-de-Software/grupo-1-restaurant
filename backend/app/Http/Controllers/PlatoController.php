@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\UseCases\Platos\ActualizarPlatoUseCase;
 use App\UseCases\Platos\CrearPlatoUseCase;
 use App\UseCases\Platos\EliminarPlatoUseCase;
-use App\UseCases\Platos\ListarPlatosUseCase;
 use App\UseCases\Platos\ListarPlatosActivosUseCase;
+use App\UseCases\Platos\ListarPlatosUseCase;
 use App\UseCases\Platos\ObtenerPlatoUseCase;
 use Illuminate\Http\Request;
 
@@ -34,6 +34,7 @@ class PlatoController extends Controller
 
         return response()->json($platos, 200);
     }
+
     public function index()
     {
         $platos = ($this->listarActivos)();

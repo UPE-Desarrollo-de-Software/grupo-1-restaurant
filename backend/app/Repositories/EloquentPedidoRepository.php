@@ -67,6 +67,15 @@ class EloquentPedidoRepository implements PedidoRepository
             ->get();
     }
 
+    public function todosDeVisita(int $mesaId, ?string $desde): Collection
+    {
+        return Pedido::where('mesa_id', $mesaId)
+            ->when($desde !== null, fn ($q) => $q->where('fecha', '>=', $desde))
+            ->with('detalles.plato', 'detalles.promocion', 'detalles.ingredientes.ingrediente')
+            ->orderBy('id')
+            ->get();
+    }
+
     public function ventasEntre(string $desde, string $hasta, array $estados): array
     {
         $fila = Pedido::query()

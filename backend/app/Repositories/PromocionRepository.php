@@ -31,8 +31,7 @@ interface PromocionRepository
     public function tieneDetalleHistorico(Promocion $promo): bool;
 
     /**
-     * @return Collection<int, DetallePedido>  con 'pedido' e 'ingredientes' cargados
+     * @return Collection<int, DetallePedido> con 'pedido' e 'ingredientes' cargados
      */
-
     public function detallesAplicadosEnPedidosNoFinales(Promocion $promo): Collection;
 }

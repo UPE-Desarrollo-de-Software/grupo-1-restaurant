@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\UseCases\Reservas\CancelarReservaUseCase;
-use App\UseCases\Reservas\CancelarReservaWebUseCase;
 use App\UseCases\Reservas\CrearReservaUseCase;
 use App\UseCases\Reservas\FinalizarReservaUseCase;
 use App\UseCases\Reservas\ListarReservasUseCase;

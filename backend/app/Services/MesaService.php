@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\ReservaCancelada;
 use App\Exceptions\ApiException;
 use App\Models\DetallePedido;
 use App\Models\Mesa;
@@ -64,8 +65,9 @@ class MesaService
     }
 
     /**
-     * Alta de mesa dinámica: valida el AFORO del lugar y genera el
-     * único código de acceso de la mesa (4 dígitos) ANTES de crearla.
+     * Alta de mesa dinámica: valida el AFORO del lugar y el TOPE de
+     * mesas (ambos derivados de CONFIG_MESA) y genera el único código
+     * de acceso de la mesa (4 dígitos) ANTES de crearla.
      *
      * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?}
      *
@@ -150,6 +152,9 @@ class MesaService
         foreach ($this->reservas->pendientesDeMesa($id) as $reserva) {
             $reserva->estado = 'cancelada';
             $reserva->save();
+
+            event(new ReservaCancelada($reserva));
+
             $canceladas++;
         }
 
@@ -373,9 +378,12 @@ class MesaService
     }
 
     /**
-     * RESUMEN de LECTURA de la mesa: TODOS los pedidos no finalizados
-     * con sus líneas y su gate `confirmado` por línea (el front del
-     * comensal ubica el suyo por id).
+     * RESUMEN de LECTURA de la mesa: TODOS los pedidos de la visita
+     * —activos y finalizados (cerrado/cancelado), cada uno con su
+     * `estado`— con sus líneas y su gate `confirmado` por línea (el
+     * comensal ubica el suyo por id; el mozo ve también los que ya
+     * se cerraron). El corte por `ocupada_desde` es el mismo de la
+     * cuenta.
      *
      * @return array<string, mixed>
      */
@@ -387,7 +395,7 @@ class MesaService
             return ['mesa_id' => $mesaId, 'encontrada' => false, 'pedidos' => []];
         }
 
-        $pedidos = $this->pedidos->activosDeMesa($mesaId);
+        $pedidos = $this->pedidos->todosDeVisita($mesaId, $mesa->ocupada_desde);
 
         $resumen = [
             'mesa_id' => $mesa->id,

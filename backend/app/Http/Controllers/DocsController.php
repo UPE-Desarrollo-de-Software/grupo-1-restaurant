@@ -37,6 +37,7 @@ class DocsController extends Controller
      */
     private const SECCIONES = [
         'AuthController' => 'Autenticación',
+        'BroadcastController' => 'Autenticación',
         'UsuarioController' => 'Usuarios y roles',
         'RolController' => 'Usuarios y roles',
         'CategoriaController' => 'Categorías',
@@ -55,7 +56,10 @@ class DocsController extends Controller
 
     /**
      * Descripción de cada endpoint, indexada por "Controller@método".
-     * Si falta una, la vista muestra la acción en gris para completarla.
+     * Si dos rutas comparten la misma acción (p. ej. los dos
+     * /broadcasting/auth), se desambigua con "Controller@método|uri"
+     * (la uri sin la barra inicial). Si falta, la vista muestra la
+     * acción en gris para completarla.
      *
      * @var array<string, string>
      */
@@ -63,6 +67,8 @@ class DocsController extends Controller
         'AuthController@login' => 'Iniciar sesión como empleado (email + password) y obtener un token.',
         'AuthController@logout' => 'Cerrar la sesión del empleado: borra todos sus tokens.',
         'Closure' => 'Devuelve los datos del usuario autenticado según el token enviado.',
+        'BroadcastController@authenticate|api/broadcasting/auth' => 'Firma de canales websocket (empleados): POST con Bearer token Sanctum y body { channel_name, socket_id } → { auth }. Autoriza private-empleado.pedidos / .reservas / .atencion según permiso (ver ../documentacion/CONTRATO-websockets.md).',
+        'BroadcastController@authenticate|api/cliente/broadcasting/auth' => 'Firma de canales websocket (comensal): POST con Bearer codigo_acceso y body { channel_name, socket_id } → { auth }. Autoriza SOLO private-mesa.{id} de la mesa vigente (throttle 60/min).',
         'UsuarioController@register' => 'Crear un usuario empleado con su rol (solo gerente).',
         'UsuarioController@index' => 'Listar todos los usuarios empleados, con su rol y estado.',
         'UsuarioController@show' => 'Obtener un usuario empleado por ID, con su
@@ -95,6 +101,7 @@ class DocsController extends Controller
         'MesaController@disponibles' => 'Listar las mesas libres (sin pedido activo ni reserva).',
         'MesaController@show' => 'Obtener una mesa por ID (las destruidas responden "no encontrada").',
         'MesaController@store' => 'Crear una mesa dinámica con su código de acceso (4 dígitos) y capacidad. Valida el AFORO del lugar y el TOPE de mesas (CONFIG_MESA: aforo = Σ capacidad×cantidad, máximo de mesas = Σ cantidad); la crea el mozo cuando hace falta (p. ej. al armar las mesas de una reserva que llegó).',
+        'MesaController@store' => 'Crear una mesa dinámica con su código de acceso (4 dígitos) y capacidad. Valida el AFORO del lugar y el TOPE de mesas (CONFIG_MESA: aforo = Σ capacidad×cantidad, máximo de mesas = Σ cantidad); la crea el mozo cuando hace falta (p. ej. al armar las mesas de una reserva que llegó).',
         'MesaController@update' => 'Actualizar capacidad, estado y mozo de la mesa. El código de acceso nunca cambia y la capacidad nueva vuelve a validar el aforo.',
         'MesaController@destroy' => 'Destruir la mesa (borrado lógico): para la app deja de existir y su código deja de valer; los pedidos históricos conservan su FK. Antes de destruirla cancela sus reservas PENDIENTES y responde { message, reservas_canceladas } con el conteo.',
         'CocinaController@index' => 'Cola de cocina (permiso preparar_pedidos): { pedidos: [...] } con los pedidos en "enviado" (por preparar) y "en_preparacion" (en cocción) de todas las mesas, cada uno con sus líneas (plato, ingredientes, promo aplicada) y su mesa, en orden de llegada. Los "listo" ya no aparecen: los retira el mozo.',
@@ -110,30 +117,15 @@ class DocsController extends Controller
         'MesaController@cerrar' => 'Cerrar la VISITA (permiso tomar_pedidos): el cliente pagó la cuenta y el mozo termina el servicio → borrado lógico de la mesa (su código deja de valer y se cancelan reservas PENDIENTES legadas, igual que DELETE). Exige CERO pedidos activos: si quedan → 422 "No se puede cerrar la mesa: quedan pedidos activos...". Responde { message, reservas_canceladas }. Si la mesa no existe o ya se cerró → 404.',
         'MesaController@agrupar' => 'Agrupar mesas para el resumen conjunto de lectura (no fusiona pedidos). Los códigos NO cambian: nadie tiene que re-entrar.',
         'MesaController@desagrupar' => 'Sacar las mesas del grupo de lectura.',
-        'MesaController@resumen' => 'Resumen de lectura de la mesa: TODOS sus pedidos activos con sus líneas y su confirmado por línea (incluye el grupo si la mesa tiene).',
+        'MesaController@resumen' => 'Resumen de lectura de la mesa: TODOS los pedidos de la visita (activos y finalizados, cada uno con su estado) con sus líneas y su confirmado por línea (incluye el grupo si la mesa tiene). El corte por ocupada_desde es el mismo de la cuenta.',
         'MesaController@cuenta' => 'Cuenta dividida de la mesa en PARTES por pedido raíz (raíz + sus hijos = lo que paga cada quien), cortada por ocupada_desde. Sirve aunque la mesa ya se haya destruido.',
         'ClienteController@acceder' => 'Acceso del comensal (público): valida el codigo_acceso de la mesa y la devuelve. El front guarda el código y lo manda en cada request como Bearer; no hay token de cliente.',
-        'ClienteController@pedidos' => 'Resumen de la mesa (todos sus pedidos activos con sus líneas), entrando con Bearer codigo_acceso.',
+        'ClienteController@pedidos' => 'Resumen de la mesa (todos los pedidos de la visita: activos y finalizados, cada uno con su estado, con sus líneas), entrando con Bearer codigo_acceso.',
         'ClienteController@agregar' => 'Agregar SUS líneas: crea su pedido RAÍZ, sigue uno en curso (pedido_id) o crea un HIJO de su primer pedido (pedido_padre_id). Las líneas nacen sin confirmar.',
         'ClienteController@confirmar' => 'Confirmar las líneas de SU pedido: { pedido_id, detalle_ids? } (sin detalle_ids, todas las del pedido). El pedido debe ser de la mesa del código. AUTO-ENVÍO EN LOTE: cuando TODOS los pedidos de la mesa tienen todas sus líneas confirmadas, salen juntos a cocina (estado "enviado"); si queda alguno sin confirmar, ninguno sale.',
         'ClienteController@desconfirmar' => 'Deshacer la confirmación de las líneas de SU pedido mientras siga en curso (un pedido ya enviado no admite deshacer).',
         'ClienteController@cuenta' => 'Cuenta dividida de la mesa en partes por pedido raíz: el comensal identifica SU parte con el pedido raíz que guardó en su dispositivo.',
-<<<<<<< HEAD
-<<<<<<< HEAD
-        'ReservaController@store' => 'Alta de reserva desde el restaurante (mozo/gerente). BODY JSON: { mesa_id (OBLIGATORIA, find estricto: si no existe → 404, nunca crea mesas), contacto_solicitante, fecha (YYYY-MM-DD), hora (HH:MM o HH:MM:SS), cantPersonas }. Reglas (422): al menos 2 horas de anticipación; cantPersonas ≤ capacidad de la mesa; no puede haber otra reserva PENDIENTE en la misma mesa + fecha + hora exacta. Si la reserva es de HOY, la mesa pasa a estado "reservada" (las de otros días no tocan el estado: se consultan con GET /reservas?fecha=...). Respuesta 201: { mensaje, reserva (con su mesa) }. El cliente no tiene cancelación pública: la cancela un empleado con permiso gestionar_reservas.',
-        'ReservaController@solicitarWeb' => 'Alta de reserva del cliente por la web (PÚBLICO con throttle 60/min, sin token). BODY JSON: { mesa_id (opcional), contacto_solicitante, fecha, hora, cantPersonas }. Si NO manda mesa_id, la crea el sistema como "mozo virtual": genera una mesa nueva con capacidad = cantPersonas validando el AFORO del lugar (CONFIG_MESA: aforo = Σ capacidad×cantidad; 422 si se supera); si manda mesa_id debe existir y cantPersonas ≤ capacidad. Mismas reglas de 2 horas de anticipación y conflicto de fecha+hora exacta que el alta del empleado. Respuesta 201: { mensaje, reserva } — el front debe guardar reserva.id como "código" de la reserva (el envío por mail está pendiente).',
-=======
-        'ReservaController@store' => 'Alta de reserva desde el restaurante (mozo/gerente). BODY JSON: { mesa_id (OBLIGATORIA, find estricto: si no existe → 404, nunca crea mesas), contacto_solicitante, fecha (YYYY-MM-DD), hora (HH:MM o HH:MM:SS), cantPersonas }. Reglas (422): al menos 2 horas de anticipación; cantPersonas ≤ capacidad de la mesa; no puede haber otra reserva PENDIENTE en la misma mesa + fecha + hora exacta. Si la reserva es de HOY, la mesa pasa a estado "reservada" (las de otros días no tocan el estado: se consultan con GET /reservas?fecha=...). Respuesta 201: { mensaje, reserva (con su mesa) }. Para cancelar: el cliente con el codigo_acceso de la mesa (POST /cliente/reservas/cancelar) o un empleado con permiso gestionar_reservas (PATCH /reservas/{id}/cancelar).',
-        'ReservaController@solicitarWeb' => 'Alta de reserva del cliente por la web (PÚBLICO con throttle 60/min, sin token). BODY JSON: { mesa_id (opcional), contacto_solicitante, fecha, hora, cantPersonas }. Si NO manda mesa_id, la crea el sistema como "mozo virtual": genera una mesa nueva con capacidad = cantPersonas validando el AFORO del lugar (PARAMETRO.capacidad_total; 422 si se supera); si manda mesa_id debe existir y cantPersonas ≤ capacidad. Mismas reglas de 2 horas de anticipación y conflicto de fecha+hora exacta que el alta del empleado. Respuesta 201: { mensaje, reserva (incluye su mesa con codigo_acceso de 4 dígitos) } — el front guarda reserva.id y el codigo de la mesa: con ese codigo cancela después (POST /cliente/reservas/cancelar). El envío por mail está pendiente.',
-        'ReservaController@cancelarWeb' => 'Cancelar reservas del cliente (PÚBLICO con throttle estricto 10/min: el codigo_acceso son solo 4 dígitos). BODY JSON: { codigo } = codigo_acceso de la mesa (lo que la reserva devolvió en reserva.mesa.codigo_acceso; NO es el id de la reserva). Cancela TODAS las reservas PENDIENTES de esa mesa, de cualquier fecha. Si el código no corresponde a una mesa viva o no tiene pendientes → 422 "No hay reservas pendientes con ese código" (misma respuesta en ambos casos: no revela cuál fue el problema). Si era de hoy y era la última pendiente, la mesa vuelve a "libre". Respuesta 200: { mensaje, reservas: [...] }.',
->>>>>>> 260a168a6dd73e3049bccdc30551275a33c0ad76
-        'ReservaController@mesasParaElegir' => 'Mesas precreadas para el mapa de elección tipo cine (PÚBLICO con throttle): devuelve solo id, capacidad y estado (libre|reservada). NUNCA expone el codigo_acceso. El cliente elige una mesa del mapa y la manda en mesa_id del POST /cliente/reservas; si no elige ninguna, el sistema crea la mesa como mozo virtual.',
-        'ReservaController@index' => 'Agenda de reservas (empleado con permiso gestionar_reservas) con filtros opcionales combinables: ?estado=pendiente|cancelada|finalizada|no_asistio&fecha=YYYY-MM-DD&mesa_id=N. Respuesta 200: array de reservas con su mesa; si no hay nada: 200 {"message":"No se encontraron reservas"}. La fecha con formato distinto a YYYY-MM-DD responde 422.',
-        'ReservaController@show' => 'Detalle de una reserva con su mesa. 200: reserva completa; si no existe: 404 { "message": "Reserva no encontrada" }.',
-        'ReservaController@cancelar' => 'Cancelar una reserva (empleado con permiso gestionar_reservas). PATCH sin body. Transición pendiente → cancelada: cualquier reserva PENDIENTE se puede cancelar a cualquier hora (incluso antes de la hora reservada). Si ya no está pendiente → 422 "Solo se pueden cancelar reservas con estado pendiente". Si la reserva era de HOY y es la última pendiente de esa mesa, la mesa vuelve a "libre". Respuesta 200: { mensaje: "Reserva cancelada correctamente", reserva }.',
-        'ReservaController@finalizar' => 'Finalizar una reserva (empleado con permiso gestionar_reservas): pendiente → finalizada (el cliente vino y cumplió). PATCH sin body. Exige estado PENDIENTE (si no → 422) Y que ya haya pasado la hora de la reserva (si no → 422 "Aún no llegó la hora de la reserva"). Si era de HOY y era la última pendiente de la mesa, la mesa vuelve a "libre". Respuesta 200: { mensaje: "Reserva finalizada correctamente", reserva }.',
-        'ReservaController@inasistio' => 'Registrar inasistencia (empleado con permiso gestionar_reservas): pendiente → no_asistio (el cliente no vino). PATCH sin body. Mismas reglas que finalizar: exige estado PENDIENTE y que ya haya pasado la hora. Si era de HOY y era la última pendiente de la mesa, la mesa vuelve a "libre". Respuesta 200: { mensaje: "Inasistencia registrada", reserva }.',
-=======
+        'ClienteController@llamar' => 'Llamar al mozo: emite el evento websocket mesa.atencion a los empleados y a la propia mesa. Rate limit manual de 1 intento cada 60 s por mesa → 429 "Ya pediste atención..." si se repite. 200 { mensaje }.',
         'ReservaController@store' => 'Alta de reserva desde el restaurante (mozo/gerente). BODY JSON: { contacto_solicitante, fecha (YYYY-MM-DD), hora (HH:MM o HH:MM:SS), cantPersonas }. NO lleva mesa: el sistema elige la combinación de capacidades contra el inventario (CONFIG_MESA menos las reservas PENDIENTES cuyo intervalo [hora, hora+30min] se solapa con el pedido) y la guarda en reserva_inventario. Reglas (422): al menos 2 horas de anticipación; si no hay combinación que aloje a cantPersonas → "No hay disponibilidad para N personas en ese horario". Respuesta 201: { mensaje, reserva (con su inventario) }. El cliente no tiene cancelación pública: la cancela un empleado con permiso gestionar_reservas.',
         'ReservaController@solicitarWeb' => 'Alta de reserva del cliente por la web (PÚBLICO con throttle 60/min, sin token). BODY JSON: { contacto_solicitante, fecha, hora, cantPersonas } (sin mesa_id: no existe elección de mesa). Misma lógica que el alta del empleado: combinación de capacidades contra el inventario y misma regla de 2 horas de anticipación; 422 "No hay disponibilidad para N personas en ese horario" si no entra. Respuesta 201: { mensaje, reserva } — el front debe guardar reserva.id (el envío por mail está pendiente).',
         'ReservaController@disponibilidad' => 'Disponibilidad de un horario (PÚBLICO con throttle). Query: ?fecha=YYYY-MM-DD&hora=HH:MM. Respuesta 200: { fecha, inicio, fin (ventana de 30 min), disponible: [{capacidad, cantidad}] (capacidades libres después de los holds pendientes solapados), aforo_disponible (Σ capacidad×cantidad). Antes de responder vence las reservas vencidas (pasan a no_asistio). Reemplaza al antiguo GET /cliente/reservas/mesas.',
@@ -173,10 +165,13 @@ class DocsController extends Controller
             $seccion = self::SECCIONES[Str::before($accion, '@')] ?? 'Otras';
             $acceso = $this->acceso($ruta->gatherMiddleware());
 
+            // Override por URI para rutas que comparten acción.
+            $clave = $accion.'|'.$ruta->uri();
+
             $porSeccion[$seccion][] = [
                 'metodo' => $metodos[0],
                 'uri' => '/'.$ruta->uri(),
-                'descripcion' => self::DESCRIPCIONES[$accion] ?? null,
+                'descripcion' => self::DESCRIPCIONES[$clave] ?? self::DESCRIPCIONES[$accion] ?? null,
                 'accion' => $accion,
                 'acceso' => $acceso['texto'],
                 'accesoClase' => $acceso['clase'],

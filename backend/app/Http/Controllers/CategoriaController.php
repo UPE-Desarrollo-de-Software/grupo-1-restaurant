@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\UseCases\Categorias\ActualizarCategoriaUseCase;
 use App\UseCases\Categorias\CrearCategoriaUseCase;
 use App\UseCases\Categorias\EliminarCategoriaUseCase;
+use App\UseCases\Categorias\ListarCategoriasActivasUseCase;
 use App\UseCases\Categorias\ListarCategoriasUseCase;
 use App\UseCases\Categorias\ObtenerCategoriaUseCase;
-use App\UseCases\Categorias\ListarCategoriasActivasUseCase;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 

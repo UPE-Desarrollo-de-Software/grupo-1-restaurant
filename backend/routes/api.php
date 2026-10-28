@@ -15,6 +15,7 @@ use App\Http\Controllers\PromocionController;
 use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\UsuarioController;
+use Illuminate\Broadcasting\BroadcastController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -75,7 +76,8 @@ Route::post('/acceso', [ClienteController::class, 'acceder'])
 
 Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(function () {
 
-    // Resumen de lectura: todos los pedidos activos de la mesa.
+    // Resumen de lectura: todos los pedidos de la visita (activos y
+    // finalizados, cada uno con su estado).
     Route::get('/pedidos', [ClienteController::class, 'pedidos']);
 
     // Agrega SUS líneas: crea su pedido raíz, sigue uno en curso
@@ -88,6 +90,15 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
 
     // Cuenta dividida en partes por pedido raíz.
     Route::get('/cuenta', [ClienteController::class, 'cuenta']);
+
+    // "Llamar al mozo": emite el broadcast mesa.atencion (rate limit
+    // manual por mesa, 1/min, adentro del controller).
+    Route::post('/llamar', [ClienteController::class, 'llamar']);
+
+    // Autenticación de canales websocket (Reverb): valida el codigo de
+    // acceso y firma private-mesa.{id}. El front la usa como
+    // authEndpoint de Echo (Bearer: codigo_acceso).
+    Route::post('/broadcasting/auth', [BroadcastController::class, 'authenticate']);
 });
 
 // RESERVAS DEL CLIENTE WEB (públicas con throttle):
@@ -99,7 +110,7 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
 Route::post('/cliente/reservas', [ReservaController::class, 'solicitarWeb'])
     ->middleware('throttle:60,1');
 
-Route::get('/cliente/reservas/mesas', [ReservaController::class, 'mesasParaElegir'])
+Route::get('/cliente/reservas/disponibilidad', [ReservaController::class, 'disponibilidad'])
     ->middleware('throttle:60,1');
 
 // ==================== CUALQUIER EMPLEADO AUTENTICADO ====================
@@ -107,6 +118,11 @@ Route::get('/cliente/reservas/mesas', [ReservaController::class, 'mesasParaElegi
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Autenticación de canales websocket (Reverb): firma los canales
+    // private-empleado.* con el Bearer token del empleado (Echo lo usa
+    // como authEndpoint por defecto: /api/broadcasting/auth).
+    Route::post('/broadcasting/auth', [BroadcastController::class, 'authenticate']);
 
     // Mesas: cualquier empleado puede verlas (el mozo las necesita para
     // tomar pedidos); el CRUD es del gerente (permiso gestionar_mesas).

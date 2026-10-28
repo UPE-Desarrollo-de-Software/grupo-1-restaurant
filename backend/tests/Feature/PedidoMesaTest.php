@@ -259,6 +259,49 @@ test('no se puede cerrar la mesa con pedidos activos', function () {
     expect(Mesa::find($mesa->id))->toBeNull();
 });
 
+test('el resumen de la mesa muestra tambien los pedidos finalizados de la visita', function () {
+    autenticarMozo();
+
+    $mesa = Mesa::factory()->create();
+    ['plato' => $plato] = platoDePrueba();
+
+    // Tres raíces en la misma visita: A, B y C.
+    foreach (range(1, 3) as $i) {
+        $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+            'platos' => [['plato_id' => $plato->id, 'cantidad' => 1]],
+        ])->assertStatus(201);
+    }
+    [$cancelado, $cerrado, $activo] = $mesa->pedidos()->orderBy('id')->pluck('id');
+
+    // A: el mozo lo cancela.
+    $this->putJson("/api/pedidos/{$cancelado}/estado", ['estado' => 'cancelado'])
+        ->assertStatus(200);
+
+    // B: pasa por cocina y queda cerrado.
+    $this->postJson("/api/pedidos/{$cerrado}/confirmar")->assertStatus(200);
+    $this->postJson("/api/pedidos/{$cerrado}/enviar")->assertStatus(200);
+    foreach (['en_preparacion', 'listo'] as $estado) {
+        conCocina($this, tokenCocina())
+            ->putJson("/api/cocina/pedidos/{$cerrado}/estado", ['estado' => $estado])
+            ->assertStatus(200);
+    }
+    autenticarMozo();
+    foreach (['entregado', 'cerrado'] as $estado) {
+        $this->putJson("/api/pedidos/{$cerrado}/estado", ['estado' => $estado])
+            ->assertStatus(200);
+    }
+
+    // El resumen ya no es "solo activos": trae los tres, en orden y
+    // con sus estados (C sigue en curso), y las líneas siguen ahí.
+    $pedidos = $this->getJson("/api/mesas/{$mesa->id}/pedidos")
+        ->assertStatus(200)
+        ->json('pedidos');
+
+    expect(collect($pedidos)->pluck('id')->all())->toBe([$cancelado, $cerrado, $activo])
+        ->and(collect($pedidos)->pluck('estado')->all())->toBe(['cancelado', 'cerrado', 'en_curso'])
+        ->and($pedidos[0]['lineas'])->toHaveCount(1);
+});
+
 test('cerrar la mesa exige tomar_pedidos', function () {
     $mesa = Mesa::factory()->create();
 

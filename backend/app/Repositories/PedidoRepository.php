@@ -64,6 +64,16 @@ interface PedidoRepository
     public function pedidosDeVisita(int $mesaId, ?string $desde): Collection;
 
     /**
+     * Todos los pedidos de la visita para el resumen de lectura:
+     * activos Y finalizados (incluidos los cancelados), cortados por
+     * `ocupada_desde` como la cuenta (la cuenta solo excluye los
+     * cancelados porque no se cobran; acá se muestran igual).
+     *
+     * @return Collection<int, Pedido>
+     */
+    public function todosDeVisita(int $mesaId, ?string $desde): Collection;
+
+    /**
      * Ventas de un período (dashboard): cantidad y suma de `total`
      * de los pedidos en los estados indicados (ESTADOS_VENTA).
      *
