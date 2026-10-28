@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Events\ReservaCancelada;
+use App\Events\ReservaCreada;
 use App\Models\Reserva;
 use App\Repositories\ConfigMesaRepository;
 use App\Repositories\ReservaRepository;
@@ -166,7 +168,11 @@ class ReservaService
                 ]);
             }
 
-            return $reserva->load('inventario');
+            $reserva = $reserva->load('inventario');
+
+            event(new ReservaCreada($reserva));
+
+            return $reserva;
         });
     }
 
@@ -182,6 +188,8 @@ class ReservaService
 
         $reserva->estado = 'cancelada';
         $reserva->save();
+
+        event(new ReservaCancelada($reserva));
 
         return $reserva->load(['mesa', 'inventario']);
     }

@@ -32,7 +32,7 @@ beforeEach(function () {
  */
 
 /**
- * Mesa viva con su codigo_acceso de 6 dígitos (lo reparte el mozo).
+ * Mesa viva con su codigo_acceso de 4 dígitos (lo reparte el mozo).
  */
 function mesaVisita(): Mesa
 {
@@ -104,7 +104,7 @@ test('el acceso valida el codigo y devuelve la mesa', function () {
         ->assertJsonPath('mesa.codigo_acceso', $mesa->codigo_acceso);
 
     // Código que no corresponde a ninguna mesa.
-    $this->postJson('/api/acceso', ['codigo' => '000000'])->assertStatus(401);
+    $this->postJson('/api/acceso', ['codigo' => '0000'])->assertStatus(401);
 
     // Destruída la mesa, su código deja de valer.
     $mesa->destruir();

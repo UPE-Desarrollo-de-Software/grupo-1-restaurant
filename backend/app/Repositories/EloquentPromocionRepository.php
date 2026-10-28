@@ -55,7 +55,7 @@ class EloquentPromocionRepository implements PromocionRepository
     {
         return $promo->detalles()
             ->with('pedido', 'ingredientes')
-            ->whereHas('pedido', fn($q) => $q->whereNotIn('estado', self::FINALES))
+            ->whereHas('pedido', fn ($q) => $q->whereNotIn('estado', self::FINALES))
             ->get();
     }
 }

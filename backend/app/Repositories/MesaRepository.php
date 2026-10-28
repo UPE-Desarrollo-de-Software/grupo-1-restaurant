@@ -73,7 +73,7 @@ interface MesaRepository
     public function codigoExiste(string $codigo): bool;
 
     /**
-     * Código de acceso libre: 6 dígitos, generado al crear la mesa y
+     * Código de acceso libre: 4 dígitos, generado al crear la mesa y
      * único entre todas las filas.
      */
     public function nuevoCodigoAcceso(): string;

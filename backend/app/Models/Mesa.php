@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * MESA (DER v2.2: entidad dinámica).
  *
  * `usuario_id`: mozo responsable (DER: USUARIO "atiende" MESA).
- * `codigo_acceso`: ÚNICO código de la mesa, nace con ella (6 dígitos,
+ * `codigo_acceso`: ÚNICO código de la mesa, nace con ella (4 dígitos,
  *   lo genera el mozo o el sistema al crearla) y no
  *   cambia nunca: es la credencial del cliente (Authorization:
  *   Bearer {codigo_acceso}) hasta que la mesa se destruye.

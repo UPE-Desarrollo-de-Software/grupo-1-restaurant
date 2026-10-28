@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\ReservaCancelada;
 use App\Exceptions\ApiException;
 use App\Models\DetallePedido;
 use App\Models\Mesa;
@@ -66,7 +67,7 @@ class MesaService
     /**
      * Alta de mesa dinámica: valida el AFORO del lugar y el TOPE de
      * mesas (ambos derivados de CONFIG_MESA) y genera el único código
-     * de acceso de la mesa (6 dígitos) ANTES de crearla.
+     * de acceso de la mesa (4 dígitos) ANTES de crearla.
      *
      * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?}
      *
@@ -151,6 +152,9 @@ class MesaService
         foreach ($this->reservas->pendientesDeMesa($id) as $reserva) {
             $reserva->estado = 'cancelada';
             $reserva->save();
+
+            event(new ReservaCancelada($reserva));
+
             $canceladas++;
         }
 

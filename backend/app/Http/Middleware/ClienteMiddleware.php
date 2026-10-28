@@ -57,6 +57,13 @@ class ClienteMiddleware
         // El controller evita volver a resolver la mesa.
         $request->attributes->set('cliente_mesa', $mesa);
 
+        // El auth de canales (PusherBroadcaster, driver reverb) exige un
+        // "usuario" truthy para FIRMAR cualquier canal private-* antes de
+        // llegar al callback; el comensal no es un usuario, así que la
+        // MESA ocupa ese papel (routes/channels.php ignora el primer
+        // parámetro y la identidad real sigue saliendo de cliente_mesa).
+        $request->setUserResolver(fn () => $mesa);
+
         return $next($request);
     }
 }

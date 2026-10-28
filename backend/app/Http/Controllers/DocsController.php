@@ -37,6 +37,7 @@ class DocsController extends Controller
      */
     private const SECCIONES = [
         'AuthController' => 'Autenticación',
+        'BroadcastController' => 'Autenticación',
         'UsuarioController' => 'Usuarios y roles',
         'RolController' => 'Usuarios y roles',
         'CategoriaController' => 'Categorías',
@@ -55,7 +56,10 @@ class DocsController extends Controller
 
     /**
      * Descripción de cada endpoint, indexada por "Controller@método".
-     * Si falta una, la vista muestra la acción en gris para completarla.
+     * Si dos rutas comparten la misma acción (p. ej. los dos
+     * /broadcasting/auth), se desambigua con "Controller@método|uri"
+     * (la uri sin la barra inicial). Si falta, la vista muestra la
+     * acción en gris para completarla.
      *
      * @var array<string, string>
      */
@@ -63,6 +67,8 @@ class DocsController extends Controller
         'AuthController@login' => 'Iniciar sesión como empleado (email + password) y obtener un token.',
         'AuthController@logout' => 'Cerrar la sesión del empleado: borra todos sus tokens.',
         'Closure' => 'Devuelve los datos del usuario autenticado según el token enviado.',
+        'BroadcastController@authenticate|api/broadcasting/auth' => 'Firma de canales websocket (empleados): POST con Bearer token Sanctum y body { channel_name, socket_id } → { auth }. Autoriza private-empleado.pedidos / .reservas / .atencion según permiso (ver ../documentacion/CONTRATO-websockets.md).',
+        'BroadcastController@authenticate|api/cliente/broadcasting/auth' => 'Firma de canales websocket (comensal): POST con Bearer codigo_acceso y body { channel_name, socket_id } → { auth }. Autoriza SOLO private-mesa.{id} de la mesa vigente (throttle 60/min).',
         'UsuarioController@register' => 'Crear un usuario empleado con su rol (solo gerente).',
         'UsuarioController@index' => 'Listar todos los usuarios empleados, con su rol y estado.',
         'UsuarioController@show' => 'Obtener un usuario empleado por ID, con su
@@ -94,7 +100,7 @@ class DocsController extends Controller
         'MesaController@index' => 'Listar todas las mesas vivas, con su mozo responsable y estado.',
         'MesaController@disponibles' => 'Listar las mesas libres (sin pedido activo ni reserva).',
         'MesaController@show' => 'Obtener una mesa por ID (las destruidas responden "no encontrada").',
-        'MesaController@store' => 'Crear una mesa dinámica con su código de acceso (6 dígitos) y capacidad. Valida el AFORO del lugar y el TOPE de mesas (CONFIG_MESA: aforo = Σ capacidad×cantidad, máximo de mesas = Σ cantidad); la crea el mozo cuando hace falta (p. ej. al armar las mesas de una reserva que llegó).',
+        'MesaController@store' => 'Crear una mesa dinámica con su código de acceso (4 dígitos) y capacidad. Valida el AFORO del lugar y el TOPE de mesas (CONFIG_MESA: aforo = Σ capacidad×cantidad, máximo de mesas = Σ cantidad); la crea el mozo cuando hace falta (p. ej. al armar las mesas de una reserva que llegó).',
         'MesaController@update' => 'Actualizar capacidad, estado y mozo de la mesa. El código de acceso nunca cambia y la capacidad nueva vuelve a validar el aforo.',
         'MesaController@destroy' => 'Destruir la mesa (borrado lógico): para la app deja de existir y su código deja de valer; los pedidos históricos conservan su FK. Antes de destruirla cancela sus reservas PENDIENTES y responde { message, reservas_canceladas } con el conteo.',
         'CocinaController@index' => 'Cola de cocina (permiso preparar_pedidos): { pedidos: [...] } con los pedidos en "enviado" (por preparar) y "en_preparacion" (en cocción) de todas las mesas, cada uno con sus líneas (plato, ingredientes, promo aplicada) y su mesa, en orden de llegada. Los "listo" ya no aparecen: los retira el mozo.',
@@ -118,6 +124,7 @@ class DocsController extends Controller
         'ClienteController@confirmar' => 'Confirmar las líneas de SU pedido: { pedido_id, detalle_ids? } (sin detalle_ids, todas las del pedido). El pedido debe ser de la mesa del código. AUTO-ENVÍO EN LOTE: cuando TODOS los pedidos de la mesa tienen todas sus líneas confirmadas, salen juntos a cocina (estado "enviado"); si queda alguno sin confirmar, ninguno sale.',
         'ClienteController@desconfirmar' => 'Deshacer la confirmación de las líneas de SU pedido mientras siga en curso (un pedido ya enviado no admite deshacer).',
         'ClienteController@cuenta' => 'Cuenta dividida de la mesa en partes por pedido raíz: el comensal identifica SU parte con el pedido raíz que guardó en su dispositivo.',
+        'ClienteController@llamar' => 'Llamar al mozo: emite el evento websocket mesa.atencion a los empleados y a la propia mesa. Rate limit manual de 1 intento cada 60 s por mesa → 429 "Ya pediste atención..." si se repite. 200 { mensaje }.',
         'ReservaController@store' => 'Alta de reserva desde el restaurante (mozo/gerente). BODY JSON: { contacto_solicitante, fecha (YYYY-MM-DD), hora (HH:MM o HH:MM:SS), cantPersonas }. NO lleva mesa: el sistema elige la combinación de capacidades contra el inventario (CONFIG_MESA menos las reservas PENDIENTES cuyo intervalo [hora, hora+30min] se solapa con el pedido) y la guarda en reserva_inventario. Reglas (422): al menos 2 horas de anticipación; si no hay combinación que aloje a cantPersonas → "No hay disponibilidad para N personas en ese horario". Respuesta 201: { mensaje, reserva (con su inventario) }. El cliente no tiene cancelación pública: la cancela un empleado con permiso gestionar_reservas.',
         'ReservaController@solicitarWeb' => 'Alta de reserva del cliente por la web (PÚBLICO con throttle 60/min, sin token). BODY JSON: { contacto_solicitante, fecha, hora, cantPersonas } (sin mesa_id: no existe elección de mesa). Misma lógica que el alta del empleado: combinación de capacidades contra el inventario y misma regla de 2 horas de anticipación; 422 "No hay disponibilidad para N personas en ese horario" si no entra. Respuesta 201: { mensaje, reserva } — el front debe guardar reserva.id (el envío por mail está pendiente).',
         'ReservaController@disponibilidad' => 'Disponibilidad de un horario (PÚBLICO con throttle). Query: ?fecha=YYYY-MM-DD&hora=HH:MM. Respuesta 200: { fecha, inicio, fin (ventana de 30 min), disponible: [{capacidad, cantidad}] (capacidades libres después de los holds pendientes solapados), aforo_disponible (Σ capacidad×cantidad). Antes de responder vence las reservas vencidas (pasan a no_asistio). Reemplaza al antiguo GET /cliente/reservas/mesas.',
@@ -156,10 +163,13 @@ class DocsController extends Controller
             $seccion = self::SECCIONES[Str::before($accion, '@')] ?? 'Otras';
             $acceso = $this->acceso($ruta->gatherMiddleware());
 
+            // Override por URI para rutas que comparten acción.
+            $clave = $accion.'|'.$ruta->uri();
+
             $porSeccion[$seccion][] = [
                 'metodo' => $metodos[0],
                 'uri' => '/'.$ruta->uri(),
-                'descripcion' => self::DESCRIPCIONES[$accion] ?? null,
+                'descripcion' => self::DESCRIPCIONES[$clave] ?? self::DESCRIPCIONES[$accion] ?? null,
                 'accion' => $accion,
                 'acceso' => $acceso['texto'],
                 'accesoClase' => $acceso['clase'],
