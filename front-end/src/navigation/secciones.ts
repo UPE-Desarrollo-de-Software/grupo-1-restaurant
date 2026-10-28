@@ -5,8 +5,9 @@ export const SECCIONES_SUBNAV: SeccionNav[] = [
         prefijo: '/gerente/carta',
         roles: ['Gerente'],
         opciones: [
-            { to: '/gerente/carta/productos', label: 'Productos', end: true },
-            { to: '/gerente/carta/disponibilidad', label: 'Disponibilidad', end: true },
+            { to: '/gerente/carta/platos', label: 'Platos', end: true },
+            { to: '/gerente/carta/categorias', label: 'Categorías', end: true },
+            { to: '/gerente/carta/ingredientes', label: 'Ingredientes', end: true },
             { to: '/gerente/carta/promociones', label: 'Promociones', end: true },
         ],
     },
@@ -15,6 +16,7 @@ export const SECCIONES_SUBNAV: SeccionNav[] = [
         roles: ['Gerente'],
         opciones: [
             { to: '/gerente/mesas/gestion', label: 'Gestión de mesas', end: true },
+            { to: '/gerente/mesas/configuracion', label: 'Configuración', end: true },
             { to: '/gerente/mesas/qr', label: 'Códigos QR', end: true },
             { to: '/gerente/mesas/comandas', label: 'Comandas', end: true },
         ],

@@ -17,7 +17,7 @@ export function SubNavbar() {
                             end={end}
                             className={({ isActive }) => isActive ? `${s.tab} ${s.activo}` : s.tab}
                         >
-                            <span className="text-label-lg">{label}</span>
+                            <span className="text-label-md">{label}</span>
                         </NavLink>
                     </li>
                 ))}

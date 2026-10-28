@@ -1,0 +1,53 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: var(--space-xs);
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm) var(--space-xs);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xs);
+  text-align: center;
+}
+
+.valor {
+  margin: 0;
+  color: var(--color-on-surface);
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin: 0;
+  color: var(--color-on-surface-variant);
+}
+
+.punto {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.puntoTotales {
+  background-color: var(--color-primary);
+}
+
+.puntoDisponibles {
+  background-color: var(--color-secondary);
+}
+
+.puntoPausados {
+  background-color: var(--color-error);
+}
+
+.puntoReservadas {
+  background-color: var(--color-tertiary);
+}

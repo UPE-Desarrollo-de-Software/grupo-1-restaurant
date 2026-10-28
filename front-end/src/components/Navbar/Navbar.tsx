@@ -2,15 +2,19 @@ import { Navbar, Container, Modal, Button, CloseButton } from "react-bootstrap"
 import { Link } from 'react-router-dom'
 import logo from '../../assets/logo/gastroapp-logo-256x256.png'
 import s from './navbar.module.css'
-import { getUsuario, logoutSesion } from "../../api/auth"
+import { logoutSesion } from "../../api/auth"
 import { useNavigate } from "react-router-dom"
 import { useState } from "react"
+import { useRol } from "../../context/RolesContext/useRol"
+import { INICIO_POR_ROL } from "../../navigation/inicios"
 
 export function NavbarComponent(){
   const navigate = useNavigate()
   const [showPerfil, setShowPerfil] = useState(false)
-  const usuario = getUsuario()
+  const { usuario, nombreRol } = useRol()
   const esStaff = usuario !== null
+  // Staff: el logo lleva al panel de su rol. Cliente (sin sesión staff): al landing.
+  const inicio = (nombreRol && INICIO_POR_ROL[nombreRol]) ?? '/'
 
   async function handleLogout(){
     await logoutSesion()
@@ -21,7 +25,7 @@ export function NavbarComponent(){
     return(
     <Navbar className={s.barra}>
       <Container className="d-flex justify-content-between align-items-center">
-        <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
+        <Navbar.Brand as={Link} to={inicio} className="d-flex align-items-center">
           <img
             alt="Logo GastroApp"
             src={logo}

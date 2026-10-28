@@ -1,0 +1,78 @@
+.afiche {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  text-align: center;
+  padding: var(--space-sm) 0;
+  break-inside: avoid;
+}
+
+.logo {
+  width: 4rem;
+  height: auto;
+}
+
+.titulo {
+  color: var(--color-on-surface);
+  margin: 0;
+}
+
+.subtitulo {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+.qr {
+  padding: var(--space-xs);
+  background-color: #ffffff;
+  border-radius: var(--radius-md);
+}
+
+.codigo {
+  color: var(--color-on-surface);
+  letter-spacing: 0.3em;
+  margin: 0;
+  user-select: all;
+}
+
+.ayuda {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+.url {
+  color: var(--color-on-surface-variant);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  margin: 0;
+  user-select: all;
+  word-break: break-all;
+}
+
+.nota {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+@media print {
+  /* El modal se imprime como afiche de mesa, sin chrome de la UI. */
+  :global(.modal) {
+    position: static;
+    background: none;
+  }
+
+  :global(.modal-backdrop) {
+    display: none;
+  }
+
+  :global(.modal-dialog) {
+    margin: 0;
+    max-width: none;
+  }
+
+  :global(.modal-content) {
+    border: none;
+    box-shadow: none;
+  }
+}
