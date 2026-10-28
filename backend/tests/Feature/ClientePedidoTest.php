@@ -390,14 +390,22 @@ test('la cuenta corta por ocupada_desde y sigue tras destruir la mesa', function
     expect((float) $cuenta['total'])->toBe(800.0)
         ->and(collect($cuenta['partes'])->pluck('pedido_id'))->not->toContain($pedidoViejo->id);
 
-    // El mozo lleva el pedido al estado final: la mesa NO se
-    // destruye sola, la visita sigue hasta el pago.
+    // El mozo lo envía a cocina...
     $mzo = tokenMozo();
     conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/confirmar", ['forzar' => true])->assertOk();
     conMozo($this, $mzo)->postJson("/api/pedidos/{$pedidoId}/enviar")->assertOk();
-    foreach (['en_preparacion', 'entregado', 'cerrado'] as $estado) {
-        conMozo($this, $mzo)->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => $estado])->assertOk();
+
+    // ...cocina lo prepara y lo deja listo (preparar_pedidos)...
+    foreach (['en_preparacion', 'listo'] as $estado) {
+        conCocina($this, tokenCocina())
+            ->putJson("/api/cocina/pedidos/{$pedidoId}/estado", ['estado' => $estado])
+            ->assertOk();
     }
+
+    // ...y el mozo lo entrega y lo cierra: la mesa NO se destruye
+    // sola, la visita sigue hasta el pago.
+    conMozo($this, $mzo)->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'entregado'])->assertOk();
+    conMozo($this, $mzo)->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'cerrado'])->assertOk();
 
     // El pedido quedó finalizado pero el código SIGUE valiendo: la
     // visita no terminó hasta que el cliente pague.

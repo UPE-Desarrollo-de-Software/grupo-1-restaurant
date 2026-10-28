@@ -31,7 +31,7 @@ class HistorialComandaController extends Controller
         $datos = $request->validate([
             'desde' => 'sometimes|nullable|date_format:Y-m-d',
             'hasta' => 'sometimes|nullable|date_format:Y-m-d',
-            'estado' => 'sometimes|nullable|in:en_curso,confirmado,enviado,en_preparacion,entregado,cerrado,cancelado',
+            'estado' => 'sometimes|nullable|in:en_curso,confirmado,enviado,en_preparacion,listo,entregado,cerrado,cancelado',
             'mesa_id' => 'sometimes|nullable|integer',
             'page' => 'sometimes|integer|min:1',
             'per_page' => 'sometimes|integer|min:1|max:100',

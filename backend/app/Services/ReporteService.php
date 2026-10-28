@@ -30,7 +30,7 @@ class ReporteService
     private const ESTADOS_VENTA = ['entregado', 'cerrado'];
 
     /**
-     * Los 7 estados del DER, en flujo.
+     * Los 8 estados del DER, en flujo.
      *
      * @var list<string>
      */
@@ -39,6 +39,7 @@ class ReporteService
         'confirmado',
         'enviado',
         'en_preparacion',
+        'listo',
         'entregado',
         'cerrado',
         'cancelado',

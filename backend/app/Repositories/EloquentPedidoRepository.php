@@ -49,6 +49,14 @@ class EloquentPedidoRepository implements PedidoRepository
             ->exists();
     }
 
+    public function pendientesDeCocina(): Collection
+    {
+        return Pedido::whereIn('estado', ['enviado', 'en_preparacion'])
+            ->with('mesa', 'detalles.plato', 'detalles.promocion', 'detalles.ingredientes.ingrediente')
+            ->orderBy('id')
+            ->get();
+    }
+
     public function pedidosDeVisita(int $mesaId, ?string $desde): Collection
     {
         return Pedido::where('mesa_id', $mesaId)

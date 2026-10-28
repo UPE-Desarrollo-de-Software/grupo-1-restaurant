@@ -170,7 +170,17 @@ test('la visita termina cuando el mozo cierra la mesa tras el pago', function ()
     $this->postJson("/api/pedidos/{$pedido->id}/enviar")->assertStatus(422);
     $this->postJson("/api/pedidos/{$pedido->id}/confirmar")->assertStatus(200);
     $this->postJson("/api/pedidos/{$pedido->id}/enviar")->assertStatus(200);
-    foreach (['en_preparacion', 'entregado', 'cerrado'] as $estado) {
+
+    // Cocina la prepara y la deja lista (permiso preparar_pedidos)...
+    foreach (['en_preparacion', 'listo'] as $estado) {
+        conCocina($this, tokenCocina())
+            ->putJson("/api/cocina/pedidos/{$pedido->id}/estado", ['estado' => $estado])
+            ->assertStatus(200);
+    }
+
+    // ...y recién ahí el mozo la entrega y la cierra.
+    autenticarMozo();
+    foreach (['entregado', 'cerrado'] as $estado) {
         $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => $estado])
             ->assertStatus(200);
     }
