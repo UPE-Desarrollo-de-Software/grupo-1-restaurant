@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\UseCases\Reservas\CancelarReservaUseCase;
-use App\UseCases\Reservas\CancelarReservaWebUseCase;
 use App\UseCases\Reservas\CrearReservaUseCase;
 use App\UseCases\Reservas\FinalizarReservaUseCase;
 use App\UseCases\Reservas\ListarReservasUseCase;
@@ -30,7 +29,6 @@ class ReservaController extends Controller
     public function __construct(
         private CrearReservaUseCase $crear,
         private SolicitarReservaWebUseCase $solicitarWeb,
-        private CancelarReservaWebUseCase $cancelarWeb,
         private VerDisponibilidadReservaUseCase $disponibilidad,
         private ListarReservasUseCase $listar,
         private ObtenerReservaUseCase $obtener,
@@ -90,29 +88,7 @@ class ReservaController extends Controller
     }
 
     /**
-     * POST /api/cliente/reservas/cancelar (público con throttle
-     * estricto): el codigo_acceso de la mesa cancela todas sus reservas
-     * pendientes. Un mismo 422 responde si el código no vale o si no
-     * hay pendientes (no revela cuál fue el problema).
-     */
-    public function cancelarWeb(Request $request)
-    {
-        $datos = $request->validate([
-            'codigo' => 'required|string|size:4',
-        ]);
-
-        try {
-            $reservas = ($this->cancelarWeb)($datos['codigo']);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
-
-        return response()->json([
-            'mensaje' => 'Reservas canceladas correctamente',
-            'reservas' => $reservas,
-        ], 200);
-    }
-     /* GET /api/cliente/reservas/disponibilidad?fecha=&hora= (público
+     * GET /api/cliente/reservas/disponibilidad?fecha=&hora= (público
      * con throttle): qué capacidades quedan libres para ese intervalo
      * (reemplaza al mapa de elección de mesas).
      */

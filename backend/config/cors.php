@@ -21,7 +21,7 @@ return [
 
     'allowed_origins' => [
         'http://localhost:5173',
-        'https://gastroapp-front.vercel.app'
+        'https://gastroapp-front.vercel.app',
     ],
 
     'allowed_origins_patterns' => [],

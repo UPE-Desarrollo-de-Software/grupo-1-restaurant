@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\ReservaCancelada;
 use App\Exceptions\ApiException;
 use App\Models\DetallePedido;
 use App\Models\Mesa;
@@ -151,6 +152,9 @@ class MesaService
         foreach ($this->reservas->pendientesDeMesa($id) as $reserva) {
             $reserva->estado = 'cancelada';
             $reserva->save();
+
+            event(new ReservaCancelada($reserva));
+
             $canceladas++;
         }
 

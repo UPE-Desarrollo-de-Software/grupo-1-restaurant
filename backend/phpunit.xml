@@ -21,7 +21,17 @@
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
+        <!-- REVERB_* fija valores de prueba: los tests que autentican
+             canales cambian el default a 'reverb' (firma HMAC local,
+             sin red). El default sigue siendo null para que los jobs
+             broadcast de la cola se resuelvan sin salir a la red. -->
         <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="REVERB_APP_ID" value="100000"/>
+        <env name="REVERB_APP_KEY" value="exampleappkeylocal00"/>
+        <env name="REVERB_APP_SECRET" value="exampleappsecretlo00"/>
+        <env name="REVERB_HOST" value="localhost"/>
+        <env name="REVERB_PORT" value="8080"/>
+        <env name="REVERB_SCHEME" value="http"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>

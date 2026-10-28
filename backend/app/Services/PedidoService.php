@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Events\PedidoCreado;
+use App\Events\PedidoEstadoCambiado;
 use App\Models\Mesa;
 use App\Models\Pedido;
 use App\Repositories\DetallePedidoRepository;
@@ -83,6 +85,7 @@ class PedidoService
             }
 
             $pedido = $this->resolverPedidoDestino($mesa, $pedidoId, $pedidoPadreId);
+            $pedidoNuevo = false;
 
             if (! $pedido) {
                 // Pedido nuevo (raíz o hijo): ocupamos la mesa ANTES de
@@ -97,6 +100,7 @@ class PedidoService
                     'total' => 0,
                     'fecha' => now(),
                 ]);
+                $pedidoNuevo = true;
             }
 
             $confirmado = ! $origenCliente;
@@ -107,7 +111,13 @@ class PedidoService
 
             $pedido->save();
 
-            return $this->pedidos->conDetallesOrFail($pedido->id);
+            $pedidoConDetalles = $this->pedidos->conDetallesOrFail($pedido->id);
+
+            if ($pedidoNuevo) {
+                event(new PedidoCreado($pedidoConDetalles));
+            }
+
+            return $pedidoConDetalles;
         });
     }
 
@@ -340,6 +350,8 @@ class PedidoService
         foreach ($listos as $pedido) {
             $pedido->estado = 'enviado';
             $pedido->save();
+
+            event(new PedidoEstadoCambiado($pedido, 'en_curso'));
         }
 
         return $listos;
@@ -395,6 +407,8 @@ class PedidoService
             $pedido->estado = 'confirmado';
             $pedido->save();
 
+            event(new PedidoEstadoCambiado($pedido, 'en_curso'));
+
             return $this->pedidos->conDetallesOrFail($pedido->id);
         });
     }
@@ -420,6 +434,8 @@ class PedidoService
 
             $pedido->estado = 'enviado';
             $pedido->save();
+
+            event(new PedidoEstadoCambiado($pedido, 'confirmado'));
 
             return $this->pedidos->conDetallesOrFail($pedidoId);
         });
@@ -450,6 +466,8 @@ class PedidoService
 
             $permitidos = $transiciones[$pedido->estado] ?? [];
 
+            $estadoAnterior = $pedido->estado;
+
             if (! in_array($nuevoEstado, $permitidos, true)) {
                 throw new \Exception(
                     "No se puede pasar de '{$pedido->estado}' a '{$nuevoEstado}'."
@@ -458,6 +476,8 @@ class PedidoService
 
             $pedido->estado = $nuevoEstado;
             $pedido->save();
+
+            event(new PedidoEstadoCambiado($pedido, $estadoAnterior));
 
             return $this->pedidos->conDetallesOrFail($pedidoId);
         });
