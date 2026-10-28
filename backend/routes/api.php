@@ -75,7 +75,8 @@ Route::post('/acceso', [ClienteController::class, 'acceder'])
 
 Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(function () {
 
-    // Resumen de lectura: todos los pedidos activos de la mesa.
+    // Resumen de lectura: todos los pedidos de la visita (activos y
+    // finalizados, cada uno con su estado).
     Route::get('/pedidos', [ClienteController::class, 'pedidos']);
 
     // Agrega SUS líneas: crea su pedido raíz, sigue uno en curso

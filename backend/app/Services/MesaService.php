@@ -374,9 +374,12 @@ class MesaService
     }
 
     /**
-     * RESUMEN de LECTURA de la mesa: TODOS los pedidos no finalizados
-     * con sus líneas y su gate `confirmado` por línea (el front del
-     * comensal ubica el suyo por id).
+     * RESUMEN de LECTURA de la mesa: TODOS los pedidos de la visita
+     * —activos y finalizados (cerrado/cancelado), cada uno con su
+     * `estado`— con sus líneas y su gate `confirmado` por línea (el
+     * comensal ubica el suyo por id; el mozo ve también los que ya
+     * se cerraron). El corte por `ocupada_desde` es el mismo de la
+     * cuenta.
      *
      * @return array<string, mixed>
      */
@@ -388,7 +391,7 @@ class MesaService
             return ['mesa_id' => $mesaId, 'encontrada' => false, 'pedidos' => []];
         }
 
-        $pedidos = $this->pedidos->activosDeMesa($mesaId);
+        $pedidos = $this->pedidos->todosDeVisita($mesaId, $mesa->ocupada_desde);
 
         $resumen = [
             'mesa_id' => $mesa->id,

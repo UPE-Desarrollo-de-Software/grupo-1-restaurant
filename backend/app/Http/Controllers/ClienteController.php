@@ -52,7 +52,7 @@ class ClienteController extends Controller
         ]);
 
         // Throttle por IP: evita adivinar los 6 dígitos del código.
-        $llave = 'acceso:' . ip2long($request->ip());
+        $llave = 'acceso:'.ip2long($request->ip());
         if (RateLimiter::tooManyAttempts($llave, 10)) {
             return response()->json([
                 'message' => 'Demasiados intentos: espera un momento y volvé a intentar.',
@@ -74,9 +74,10 @@ class ClienteController extends Controller
     }
 
     /**
-     * GET /cliente/pedidos — resumen de lectura de la mesa: todos los
-     * pedidos activos con sus líneas y su `confirmado` por línea (el
-     * front ubica el suyo por el pedido_id guardado).
+     * GET /cliente/pedidos — resumen de lectura de la mesa: TODOS los
+     * pedidos de la visita con sus líneas y su `confirmado` por línea
+     * (activos y también los cerrados/cancelados, con su `estado`;
+     * el front ubica el suyo por el pedido_id guardado).
      */
     public function pedidos(Request $request)
     {
@@ -189,5 +190,6 @@ class ClienteController extends Controller
             'pedido' => $pedido,
         ], 200);
     }
+
     public function enviarPedido(Request $request) {}
 }
