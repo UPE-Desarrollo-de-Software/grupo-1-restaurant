@@ -3,17 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Mesas.module.css'
 import { mesaSchema } from '../../../schemas/mesas'
-import { deleteMesa, getMesa, updateMesa } from '../../../api/mesas'
+import { getMesa, updateMesa } from '../../../api/mesas'
+import { getConfiguracion } from '../../../api/configuracion'
 import { getUsuarios } from '../../../api/usuarios'
-import { ZonaPeligro } from '../../../components/ZonaPeligro/ZonaPeligro'
+import { CerrarMesaModal } from '../../../components/Mesas/CerrarMesaModal'
 import type { Usuario } from '../../../types/Auth'
-import type { EstadoMesa } from '../../../types/Mesa'
-
-const ESTADOS: { value: EstadoMesa; label: string }[] = [
-    { value: 'libre', label: 'Libre' },
-    { value: 'ocupada', label: 'Ocupada' },
-    { value: 'reservada', label: 'Reservada' },
-]
 
 export function EditarMesaPage() {
     const { id } = useParams()
@@ -21,10 +15,14 @@ export function EditarMesaPage() {
     const navigate = useNavigate()
 
     const [capacidad, setCapacidad] = useState('')
-    const [estado, setEstado] = useState<EstadoMesa>('libre')
+    // Estado vigente de la mesa: no se muestra en la UI, pero PUT /mesas
+    // lo exige en el payload (se conserva el que trae el GET).
+    const [estadoActual, setEstadoActual] = useState('ocupada')
     const [usuarioId, setUsuarioId] = useState('')
     const [codigo, setCodigo] = useState<string | null>(null)
     const [copiado, setCopiado] = useState(false)
+    const [aforoInfo, setAforoInfo] = useState<string | null>(null)
+    const [modalCerrar, setModalCerrar] = useState(false)
 
     const [usuarios, setUsuarios] = useState<Usuario[]>([])
     const [cargandoUsuarios, setCargandoUsuarios] = useState(true)
@@ -32,7 +30,6 @@ export function EditarMesaPage() {
 
     const [cargando, setCargando] = useState(true)
     const [enviando, setEnviando] = useState(false)
-    const [eliminando, setEliminando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
     const [exito, setExito] = useState<string | null>(null)
     const [tocado, setTocado] = useState(false)
@@ -42,7 +39,7 @@ export function EditarMesaPage() {
         getMesa(mesaId, controller.signal)
             .then(mesa => {
                 setCapacidad(String(mesa.capacidad))
-                setEstado(mesa.estado as EstadoMesa)
+                setEstadoActual(mesa.estado)
                 setUsuarioId(mesa.usuario_id == null ? '' : String(mesa.usuario_id))
                 setCodigo(mesa.codigo_acceso)
             })
@@ -72,8 +69,20 @@ export function EditarMesaPage() {
         return () => controller.abort()
     }, [])
 
+    useEffect(() => {
+        const controller = new AbortController()
+        getConfiguracion(controller.signal)
+            .then(config => {
+                setAforoInfo(`Salón: aforo ${config.aforo} personas · hasta ${config.mesas_maximas} mesas`)
+            })
+            .catch(() => {
+                // Sin aforo de referencia no se bloquea la edición.
+            })
+        return () => controller.abort()
+    }, [])
+
     const errores: Record<string, string> = {}
-    const resultados = mesaSchema.safeParse({ capacidad, estado, usuario_id: usuarioId })
+    const resultados = mesaSchema.safeParse({ capacidad, estado: estadoActual, usuario_id: usuarioId })
     if (!resultados.success) {
         for (const issue of resultados.error.issues) {
             const campo = issue.path[0]
@@ -100,23 +109,6 @@ export function EditarMesaPage() {
             setErrorApi(err instanceof Error ? err.message : 'Error desconocido al actualizar la mesa')
         } finally {
             setEnviando(false)
-        }
-    }
-
-    async function handlerEliminar() {
-        setEliminando(true)
-        setErrorApi(null)
-        setExito(null)
-        try {
-            const { reservas_canceladas } = await deleteMesa(mesaId)
-            const aviso = reservas_canceladas > 0
-                ? `Mesa eliminada. Se cancelaron ${reservas_canceladas} reservas pendientes.`
-                : 'Mesa eliminada exitosamente'
-            navigate('/gerente/mesas/gestion', { state: { aviso } })
-        } catch (err) {
-            setErrorApi(err instanceof Error ? err.message : 'Error desconocido al eliminar la mesa')
-        } finally {
-            setEliminando(false)
         }
     }
 
@@ -151,8 +143,13 @@ export function EditarMesaPage() {
             <Card className={s.card}>
                 <h1 className={`text-headline-md ${s.title}`}>Editar mesa</h1>
                 <p className={`text-body-sm ${s.subtitle}`}>
-                    Modificá la capacidad, el estado o el mozo responsable. El código de acceso no se puede cambiar.
+                    Modificá la cantidad de personas o el mozo responsable. El código de
+                    acceso no se puede cambiar y bajar la capacidad por debajo de lo que
+                    ya está ocupado da error (422 de aforo).
                 </p>
+                {aforoInfo && (
+                    <p className={`text-body-sm ${s.subtitle}`}>{aforoInfo}</p>
+                )}
 
                 {exito && (
                     <Alert variant='success' className='text-body-md d-flex flex-wrap align-items-center justify-content-between gap-2'>
@@ -191,36 +188,19 @@ export function EditarMesaPage() {
                 )}
 
                 <Form onSubmit={handlerSubmit} noValidate>
-                    <div className={s.row}>
-                        <Form.Group className={s.field} controlId='editar-mesa-capacidad'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Capacidad (lugares)</Form.Label>
-                            <Form.Control
-                                className={s.input}
-                                type='number'
-                                min={1}
-                                step={1}
-                                value={capacidad}
-                                onChange={(e) => setCapacidad(e.target.value)}
-                                isInvalid={tocado && !!errores.capacidad}
-                            />
-                            <Form.Control.Feedback type='invalid'>{errores.capacidad}</Form.Control.Feedback>
-                        </Form.Group>
-
-                        <Form.Group className={s.field} controlId='editar-mesa-estado'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Estado</Form.Label>
-                            <Form.Select
-                                className={s.input}
-                                value={estado}
-                                onChange={(e) => setEstado(e.target.value as EstadoMesa)}
-                                isInvalid={tocado && !!errores.estado}
-                            >
-                                {ESTADOS.map(opcion => (
-                                    <option value={opcion.value} key={opcion.value}>{opcion.label}</option>
-                                ))}
-                            </Form.Select>
-                            <Form.Control.Feedback type='invalid'>{errores.estado}</Form.Control.Feedback>
-                        </Form.Group>
-                    </div>
+                    <Form.Group className={s.field} controlId='editar-mesa-capacidad'>
+                        <Form.Label className={`text-label-md ${s.label}`}>Cantidad de personas</Form.Label>
+                        <Form.Control
+                            className={s.input}
+                            type='number'
+                            min={1}
+                            step={1}
+                            value={capacidad}
+                            onChange={(e) => setCapacidad(e.target.value)}
+                            isInvalid={tocado && !!errores.capacidad}
+                        />
+                        <Form.Control.Feedback type='invalid'>{errores.capacidad}</Form.Control.Feedback>
+                    </Form.Group>
 
                     <Form.Group className={s.field} controlId='editar-mesa-usuario'>
                         <Form.Label className={`text-label-md ${s.label}`}>Mozo responsable (opcional)</Form.Label>
@@ -261,13 +241,28 @@ export function EditarMesaPage() {
             </Card>
 
             <div className={s.zonaWrap}>
-                <ZonaPeligro
-                    descripcion='Eliminar esta mesa la borra del sistema de forma permanente: su código deja de valer, los pedidos históricos quedan intactos y se cancelan sus reservas pendientes.'
-                    textoBoton='Eliminar mesa'
-                    eliminando={eliminando}
-                    onEliminar={handlerEliminar}
-                />
+                <Button
+                    variant='outline-danger'
+                    className='text-label-md'
+                    type='button'
+                    onClick={() => setModalCerrar(true)}
+                >
+                    <i className='bi bi-door-open me-1' aria-hidden='true' />
+                    Cerrar visita
+                </Button>
+                <p className={`text-body-sm ${s.subtitle} mb-0`}>
+                    Si el cliente ya pagó, cerrá la visita: la mesa se elimina del sistema, su
+                    código deja de valer y se cancelan sus reservas pendientes.
+                </p>
             </div>
+
+            <CerrarMesaModal
+                visible={modalCerrar}
+                mesaId={mesaId}
+                numeroMesa={mesaId}
+                onCancelar={() => setModalCerrar(false)}
+                onCerrada={(aviso) => navigate('/gerente/mesas/gestion', { state: { aviso } })}
+            />
         </div>
     )
 }

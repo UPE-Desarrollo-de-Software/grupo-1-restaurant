@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
-import { mesasReservaWeb, solicitarReservaWeb } from '../../api/cliente'
+import { disponibilidadReservaWeb, solicitarReservaWeb } from '../../api/cliente'
 import { hoyLocal, reservaWebSchema } from '../../schemas/cliente'
-import type { MesaReservaWeb, Reserva } from '../../types/Reserva'
+import type { DisponibilidadReservaWeb, Reserva } from '../../types/Reserva'
 import s from './ReservasClientePage.module.css'
 
 function formatearFechaLarga(fecha: string): string {
@@ -12,20 +12,24 @@ function formatearFechaLarga(fecha: string): string {
 }
 
 // Reservas del cliente (público, sin login): POST /cliente/reservas.
-// Elegís una mesa del mapa (GET /cliente/reservas/mesas) o, si no
-// elegís, el sistema crea la mesa como "mozo virtual" validando el
-// aforo. La reserva queda PENDIENTE hasta que el local la confirme.
+// NO se elige mesa: es por personas + fecha + horario y el backend
+// asigna una combinación de capacidades del CONFIG_MESA. La reserva
+// queda PENDIENTE hasta que el local la confirme.
 export function ReservasClientePage() {
     const [nombreApellido, setNombreApellido] = useState('')
     const [telefono, setTelefono] = useState('')
     const [fecha, setFecha] = useState('')
     const [hora, setHora] = useState('')
     const [cantPersonas, setCantPersonas] = useState('')
-    const [mesaId, setMesaId] = useState('')
 
-    const [mesas, setMesas] = useState<MesaReservaWeb[]>([])
-    const [cargandoMesas, setCargandoMesas] = useState(true)
-    const [errorMesas, setErrorMesas] = useState<string | null>(null)
+    // Disponibilidad del CONFIG_MESA para el intervalo elegido
+    // (referencia; el alta no depende de que cargue). Se guarda con la
+    // clave del intervalo para derivar el estado de carga en cada render.
+    const [dispo, setDispo] = useState<{
+        clave: string
+        datos: DisponibilidadReservaWeb | null
+        error: string | null
+    } | null>(null)
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
@@ -44,20 +48,33 @@ export function ReservasClientePage() {
         }
     }
 
+    // Intervalo válido solo cuando fecha y hora ya están completas.
+    const intervalo = fecha && /^([01]\d|2[0-3]):[0-5]\d$/.test(hora) ? `${fecha}|${hora}` : null
+    const dispoActual = intervalo !== null && dispo?.clave === intervalo ? dispo : null
+    const cargandoDisponibilidad = intervalo !== null && dispoActual === null
+    const disponibilidad = dispoActual?.datos ?? null
+    const errorDisponibilidad = dispoActual?.error ?? null
+
     useEffect(() => {
+        if (!intervalo) return
         const controller = new AbortController()
-        mesasReservaWeb(controller.signal)
-            .then(setMesas)
+        disponibilidadReservaWeb(fecha, hora, controller.signal)
+            .then(datos => {
+                setDispo({ clave: intervalo, datos, error: null })
+            })
             .catch(err => {
                 if (!controller.signal.aborted) {
-                    setErrorMesas(err instanceof Error ? err.message : 'No se pudieron cargar las mesas')
+                    setDispo({
+                        clave: intervalo,
+                        datos: null,
+                        error: err instanceof Error
+                            ? err.message
+                            : 'No se pudo consultar la disponibilidad',
+                    })
                 }
             })
-            .finally(() => {
-                if (!controller.signal.aborted) setCargandoMesas(false)
-            })
         return () => controller.abort()
-    }, [])
+    }, [intervalo, fecha, hora])
 
     async function manejarSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
@@ -72,20 +89,17 @@ export function ReservasClientePage() {
                 fecha: resultados.data.fecha,
                 hora: resultados.data.hora,
                 cantPersonas: resultados.data.cantPersonas,
-                ...(mesaId !== '' ? { mesa_id: Number(mesaId) } : {}),
             })
             setReservaCreada(creada)
         } catch (err) {
-            // Reglas del backend (422): 2 horas de anticipación, aforo o
-            // conflicto de fecha+hora; 404 si la mesa no existe.
+            // Reglas del backend (422): 2 horas de anticipación, aforo
+            // insuficiente o conflicto de fecha+hora.
             setErrorApi(err instanceof Error ? err.message : 'No se pudo solicitar la reserva')
         } finally {
             setEnviando(false)
         }
     }
 
-    // Cerrar el modal de éxito limpia el formulario (mesaId se lee en el
-    // modal, por eso se resetea recién acá y no al enviar).
     function cerrarExito() {
         setReservaCreada(null)
         setNombreApellido('')
@@ -93,7 +107,7 @@ export function ReservasClientePage() {
         setFecha('')
         setHora('')
         setCantPersonas('')
-        setMesaId('')
+        setDispo(null)
         setTocado(false)
     }
 
@@ -105,19 +119,14 @@ export function ReservasClientePage() {
                 </span>
                 <h1 className='text-headline-md'>Reservá tu mesa</h1>
                 <p className={`text-body-md ${s.intro}`}>
-                    Pedí la reserva en el día con al menos 2 horas de anticipación. Queda
-                    pendiente hasta que el local te la confirme por teléfono.
+                    Pedís la reserva por personas, fecha y horario —no se elige mesa—, con
+                    al menos 2 horas de anticipación. El local arma las mesas según el
+                    aforo disponible y te la confirma por teléfono.
                 </p>
             </header>
 
             <section className={s.tarjeta}>
                 {errorApi && <Alert variant='danger' className='text-body-md alerta'>{errorApi}</Alert>}
-                {errorMesas && (
-                    <Alert variant='warning' className='text-body-sm alerta'>
-                        {errorMesas} Igual podés pedir la reserva: si no elegís mesa, el local
-                        te asigna una.
-                    </Alert>
-                )}
 
                 <Form onSubmit={manejarSubmit} noValidate>
                     <div className={s.fila}>
@@ -185,27 +194,47 @@ export function ReservasClientePage() {
                         </Form.Group>
                     </div>
 
-                    <Form.Group className={s.campo} controlId='reserva-cliente-mesa'>
-                        <Form.Label className='text-label-md'>Mesa (opcional)</Form.Label>
-                        <Form.Select
-                            value={mesaId}
-                            onChange={e => setMesaId(e.target.value)}
-                            disabled={cargandoMesas}
-                        >
-                            <option value=''>
-                                {cargandoMesas ? 'Cargando mesas…' : 'Que el local me asigne una'}
-                            </option>
-                            {mesas.map(mesa => (
-                                <option key={mesa.id} value={mesa.id}>
-                                    Mesa #{mesa.id} · {mesa.capacidad} lugares
-                                    {mesa.estado === 'reservada' ? ' · reservada' : ''}
-                                </option>
-                            ))}
-                        </Form.Select>
-                        <Form.Text className='text-body-sm'>
-                            Si no elegís, el sistema crea una mesa nueva según la cantidad de
-                            personas.
-                        </Form.Text>
+                    <Form.Group className={s.campo} controlId='reserva-cliente-disponibilidad'>
+                        <Form.Label className='text-label-md'>Disponibilidad del salón</Form.Label>
+                        {!intervalo && (
+                            <Form.Text className='text-body-sm'>
+                                Completá fecha y hora para ver el aforo libre de ese horario.
+                            </Form.Text>
+                        )}
+                        {intervalo && cargandoDisponibilidad && (
+                            <p className='text-body-sm mb-0 d-flex align-items-center gap-2'>
+                                <Spinner size='sm' animation='border' />
+                                Consultando disponibilidad…
+                            </p>
+                        )}
+                        {intervalo && errorDisponibilidad && (
+                            <Form.Text className='text-body-sm'>
+                                {errorDisponibilidad} Igual podés pedir la reserva: el local
+                                valida el aforo cuando la reciba.
+                            </Form.Text>
+                        )}
+                        {disponibilidad && (
+                            <>
+                                <Form.Text className='text-body-sm d-block'>
+                                    Aforo libre para ese horario:{' '}
+                                    <strong>{disponibilidad.aforo_disponible} personas</strong>
+                                </Form.Text>
+                                {disponibilidad.disponible.length > 0 ? (
+                                    <ul className='text-body-sm mb-0 ps-3'>
+                                        {disponibilidad.disponible.map(fila => (
+                                            <li key={fila.capacidad}>
+                                                Combinaciones de {fila.capacidad} lugares × {fila.cantidad}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <Form.Text className='text-body-sm d-block'>
+                                        No quedan combinaciones libres para ese horario; probá
+                                        con otro.
+                                    </Form.Text>
+                                )}
+                            </>
+                        )}
                     </Form.Group>
 
                     <Button
@@ -257,10 +286,8 @@ export function ReservasClientePage() {
                                     <strong>{reservaCreada.cantPersonas}</strong>
                                 </li>
                                 <li className='text-body-sm'>
-                                    <span>Mesa</span>
-                                    <strong>
-                                        {mesaId !== '' ? `#${mesaId} (elegida)` : 'Nosotros asignamos una'}
-                                    </strong>
+                                    <span>Mesas</span>
+                                    <strong>El local arma según aforo</strong>
                                 </li>
                             </ul>
                             <p className={`text-body-sm ${s.exitoNota}`}>

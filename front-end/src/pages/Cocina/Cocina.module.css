@@ -1,0 +1,134 @@
+.page {
+  padding: var(--space-xl) var(--gutter-mobile);
+}
+
+.hub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.titulo {
+  color: var(--color-on-surface);
+  margin: 0;
+}
+
+.subtitulo {
+  color: var(--color-on-surface-variant);
+  margin: var(--space-2xs) 0 0;
+}
+
+.vacio {
+  color: var(--color-on-surface-variant);
+  text-align: center;
+  margin: 0;
+}
+
+/* ============ TARJETA DE PEDIDO EN LA COLA ============ */
+
+.card {
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-level-1);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.cardTitulo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  flex: 1;
+  min-width: 0;
+  color: var(--color-on-surface);
+}
+
+.pedidoId {
+  color: var(--color-on-surface-variant);
+}
+
+.badgeEstado,
+.badgeListo {
+  border-radius: var(--radius-full);
+  padding: var(--space-2xs) var(--space-xs);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badgeEstado {
+  background-color: var(--color-outline-variant);
+  color: var(--color-on-surface-variant);
+}
+
+.badgeListo {
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.lineas {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.linea {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs);
+}
+
+.lineaPlato {
+  color: var(--color-on-surface);
+  font-weight: 600;
+}
+
+.promoTag {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2xs);
+}
+
+.personalizaciones {
+  color: var(--color-error);
+  flex: 1;
+  min-width: 0;
+}
+
+.lineaMonto {
+  color: var(--color-on-surface);
+  margin-left: auto;
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.esperando {
+  color: var(--color-on-surface-variant);
+}

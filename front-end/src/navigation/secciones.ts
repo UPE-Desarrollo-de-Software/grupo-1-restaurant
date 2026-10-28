@@ -16,6 +16,7 @@ export const SECCIONES_SUBNAV: SeccionNav[] = [
         roles: ['Gerente'],
         opciones: [
             { to: '/gerente/mesas/gestion', label: 'Gestión de mesas', end: true },
+            { to: '/gerente/mesas/configuracion', label: 'Configuración', end: true },
             { to: '/gerente/mesas/qr', label: 'Códigos QR', end: true },
             { to: '/gerente/mesas/comandas', label: 'Comandas', end: true },
         ],

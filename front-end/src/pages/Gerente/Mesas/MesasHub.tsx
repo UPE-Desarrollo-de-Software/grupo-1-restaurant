@@ -14,6 +14,12 @@ export function MesasHubPage() {
                     <p className={`text-body-sm ${s.cardDesc}`}>Alta, edición y baja de mesas</p>
                 </Link>
 
+                <Link to='/gerente/mesas/configuracion' className={s.card}>
+                    <i className={`bi bi-sliders ${s.icon}`} aria-hidden="true" />
+                    <h2 className={`text-headline-sm ${s.cardTitle}`}>Configuración</h2>
+                    <p className={`text-body-sm ${s.cardDesc}`}>Aforo y composición del salón</p>
+                </Link>
+
                 <Link to='/gerente/mesas/qr' className={s.card}>
                     <i className={`bi bi-qr-code ${s.icon}`} aria-hidden="true" />
                     <h2 className={`text-headline-sm ${s.cardTitle}`}>Códigos QR</h2>

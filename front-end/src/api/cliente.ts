@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "../config/env"
 import type { ClienteMesa } from "../types/Cliente"
 import type { CuentaMesa, ResumenMesa } from "../types/Mesa"
-import type { MesaReservaWeb, Reserva, ReservaResponse, ReservaWebAlta } from "../types/Reserva"
+import type { DisponibilidadReservaWeb, Reserva, ReservaResponse, ReservaWebAlta } from "../types/Reserva"
 import type { AltaPedidosMesa } from "./pedidos"
 
 // Auto-pedido del comensal: NO usa Sanctum. La credencial es el
@@ -125,25 +125,54 @@ export async function getCuentaCliente(codigo: string, signal?: AbortSignal): Pr
     return data as CuentaMesa
 }
 
-// GET /cliente/reservas/mesas — mapa de mesas para elegir (PÚBLICO con
-// throttle): solo id/capacidad/estado; el codigo_acceso nunca se expone.
-export async function mesasReservaWeb(signal?: AbortSignal): Promise<MesaReservaWeb[]> {
-    const response = await fetch(`${API_BASE_URL}/cliente/reservas/mesas`, {
+// POST /cliente/llamar — "llamar al mozo": sin body. Rate limit del
+// backend de 1/min por mesa → 429 "Ya pediste atención: el mozo ya fue
+// avisado." (message en español). El aviso al mozo (websocket
+// empleado.atencion) se verá cuando el front integre Reverb; hoy el
+// cliente sólo recibe su confirmación.
+export async function llamarMozo(codigo: string): Promise<{ mensaje: string }> {
+    const response = await fetch(`${API_BASE_URL}/cliente/llamar`, {
+        method: 'POST',
+        headers: cabecera(codigo),
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(
+            mensajeCliente(response.status, data, `Error ${response.status} al pedir atención`),
+            response.status,
+        )
+    }
+    return { mensaje: String((data as { mensaje?: string } | null)?.mensaje ?? 'El mozo fue avisado.') }
+}
+
+// GET /cliente/reservas/disponibilidad?fecha=&hora= — (PÚBLICO con
+// throttle) capacidades del CONFIG_MESA que quedan libres para el
+// intervalo (las pendientes del día que solapan hacen hold).
+export async function disponibilidadReservaWeb(
+    fecha: string,
+    hora: string,
+    signal?: AbortSignal,
+): Promise<DisponibilidadReservaWeb> {
+    const params = new URLSearchParams({ fecha, hora })
+    const response = await fetch(`${API_BASE_URL}/cliente/reservas/disponibilidad?${params.toString()}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
         signal,
     })
     const data = await response.json().catch(() => null)
     if (!response.ok) {
-        throw new ErrorCliente(`Error ${response.status} al consultar las mesas disponibles`, response.status)
+        throw new ErrorCliente(
+            `Error ${response.status} al consultar la disponibilidad`,
+            response.status,
+        )
     }
-    return Array.isArray(data) ? (data as MesaReservaWeb[]) : []
+    return data as DisponibilidadReservaWeb
 }
 
 // POST /cliente/reservas — alta de reserva del cliente (PÚBLICO con
-// throttle). Sin mesa_id el sistema crea la mesa como "mozo virtual"
-// validando el aforo; 422 con {message} (anticipación mínima, aforo o
-// conflicto de fecha+hora) y 404 si la mesa no existe. Respuesta 201
+// throttle). NO hay mesa que elegir: el backend asigna una combinación
+// de capacidades del CONFIG_MESA. 422 con {message} (anticipación
+// mínima, aforo insuficiente o conflicto de fecha+hora). Respuesta 201
 // { mensaje, reserva }.
 export async function solicitarReservaWeb(datos: ReservaWebAlta): Promise<Reserva> {
     const response = await fetch(`${API_BASE_URL}/cliente/reservas`, {

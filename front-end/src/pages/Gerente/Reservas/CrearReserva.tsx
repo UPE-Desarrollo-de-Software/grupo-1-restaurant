@@ -4,23 +4,22 @@ import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Reservas.module.css'
 import { reservaSchema } from '../../../schemas/reserva'
 import { createReserva } from '../../../api/reservas'
-import { getMesas } from '../../../api/mesas'
+import { getConfiguracion } from '../../../api/configuracion'
 import { baseReservas } from '../../../navigation/rutas'
-import type { Mesa } from '../../../types/Mesa'
 
 export function CrearReservaPage() {
     const navigate = useNavigate()
     // Se sirve bajo /gerente/reservas (Gerente) y /mozo/reservas (Mozo).
     const base = baseReservas(useLocation().pathname)
-    const [mesaId, setMesaId] = useState('')
     const [contacto, setContacto] = useState('')
     const [fecha, setFecha] = useState('')
     const [hora, setHora] = useState('')
     const [cantPersonas, setCantPersonas] = useState('')
 
-    const [mesas, setMesas] = useState<Mesa[]>([])
-    const [cargandoMesas, setCargandoMesas] = useState(true)
-    const [errorMesas, setErrorMesas] = useState<string | null>(null)
+    // No hay mesa que elegir: el backend asigna la combinación de
+    // capacidades del CONFIG_MESA. Solo se muestra el aforo como
+    // referencia (tolerante a fallo).
+    const [aforoInfo, setAforoInfo] = useState<string | null>(null)
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
@@ -29,7 +28,6 @@ export function CrearReservaPage() {
 
     const errores: Record<string, string> = {}
     const resultados = reservaSchema.safeParse({
-        mesa_id: mesaId,
         contacto_solicitante: contacto,
         fecha,
         hora,
@@ -46,15 +44,12 @@ export function CrearReservaPage() {
 
     useEffect(() => {
         const controller = new AbortController()
-        getMesas(controller.signal)
-            .then(setMesas)
-            .catch(err => {
-                if (!controller.signal.aborted) {
-                    setErrorMesas(err instanceof Error ? err.message : 'Error desconocido al cargar las mesas')
-                }
+        getConfiguracion(controller.signal)
+            .then(config => {
+                setAforoInfo(`Salón: aforo ${config.aforo} personas · hasta ${config.mesas_maximas} mesas`)
             })
-            .finally(() => {
-                if (!controller.signal.aborted) setCargandoMesas(false)
+            .catch(() => {
+                // Sin aforo de referencia no se bloquea el alta.
             })
         return () => controller.abort()
     }, [])
@@ -71,15 +66,14 @@ export function CrearReservaPage() {
         try {
             await createReserva(resultados.data)
             setExito('Reserva creada exitosamente')
-            setMesaId('')
             setContacto('')
             setFecha('')
             setHora('')
             setCantPersonas('')
             setTocado(false)
         } catch (err) {
-            // Reglas de negocio del backend (422): lead time, capacidad
-            // de la mesa, conflicto horario o "Mesa no encontrada" (404).
+            // Reglas de negocio del backend (422): anticipación mínima,
+            // aforo insuficiente o conflicto de fecha+hora.
             setErrorApi(err instanceof Error ? err.message : 'Error desconocido al crear la reserva')
         } finally {
             setEnviando(false)
@@ -90,7 +84,14 @@ export function CrearReservaPage() {
         <div className={s.page}>
             <Card className={s.card}>
                 <h1 className={`text-headline-md ${s.title}`}>Nueva reserva</h1>
-                <p className={`text-body-sm ${s.subtitle}`}>La reserva queda pendiente hasta que se cancele, finalice o se registre la inasistencia.</p>
+                <p className={`text-body-sm ${s.subtitle}`}>
+                    La reserva es por personas + fecha y horario; el local arma las mesas
+                    según la configuración del salón. Queda pendiente hasta que se cancele,
+                    finalice o se registre la inasistencia.
+                </p>
+                {aforoInfo && (
+                    <p className={`text-body-sm ${s.subtitle}`}>{aforoInfo}</p>
+                )}
 
                 {exito && (
                     <Alert variant='success' className='text-body-md d-flex flex-wrap align-items-center justify-content-between gap-2'>
@@ -107,29 +108,9 @@ export function CrearReservaPage() {
                     </Alert>
                 )}
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
-                {errorMesas && <Alert variant='danger' className='text-body-md'>{errorMesas}</Alert>}
 
                 <Form onSubmit={handlerSubmit} noValidate>
                     <div className={s.row}>
-                        <Form.Group className={s.field} controlId='crear-reserva-mesa'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Mesa</Form.Label>
-                            <Form.Select
-                                className={s.input}
-                                value={mesaId}
-                                onChange={(e) => setMesaId(e.target.value)}
-                                isInvalid={tocado && !!errores.mesa_id}
-                                disabled={cargandoMesas}
-                            >
-                                <option value='' disabled={true}>{cargandoMesas ? 'Cargando mesas...' : 'Seleccioná una mesa'}</option>
-                                {mesas.map(mesa => (
-                                    <option value={mesa.id} key={mesa.id}>
-                                        Mesa #{mesa.id} · {mesa.capacidad} lugares · {mesa.estado}
-                                    </option>
-                                ))}
-                            </Form.Select>
-                            <Form.Control.Feedback type='invalid'>{errores.mesa_id}</Form.Control.Feedback>
-                        </Form.Group>
-
                         <Form.Group className={s.field} controlId='crear-reserva-contacto'>
                             <Form.Label className={`text-label-md ${s.label}`}>Contacto del solicitante</Form.Label>
                             <Form.Control

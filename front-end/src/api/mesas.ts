@@ -55,9 +55,12 @@ export async function getMesa(id: number, signal?: AbortSignal): Promise<MesaCon
     return { ...normalizarMesa(data), codigo_acceso: String(data.codigo_acceso) }
 }
 
-// POST /mesas: alta con aforo contra PARAMETRO.capacidad_total
-// (422 si se supera, mensaje tal cual del backend).
-export async function createMesa(mesa: MesaInput): Promise<Mesa> {
+// POST /mesas: alta contra el aforo del CONFIG_MESA (Σ capacidad×cantidad;
+// 422 si se supera, mensaje tal cual del backend). La mesa nace ocupada
+// (flujo del equipo: el mozo la crea cuando el cliente se sienta).
+// Además de la mesa normalizada, devuelve el codigo_acceso (va embebido
+// en el QR que se genera al crearla).
+export async function createMesa(mesa: MesaInput): Promise<MesaConCodigo> {
     const response = await fetch(`${API_BASE_URL}/mesas`, {
         method: 'POST',
         headers: {
@@ -73,7 +76,10 @@ export async function createMesa(mesa: MesaInput): Promise<Mesa> {
     if (!data?.mesa) {
         throw new Error(mensajeDe(data, 'No se pudo crear la mesa'))
     }
-    return normalizarMesa(data.mesa)
+    if (data.mesa.codigo_acceso === undefined || data.mesa.codigo_acceso === null) {
+        throw new Error('La mesa se creó pero no devolvió el código de acceso')
+    }
+    return { ...normalizarMesa(data.mesa), codigo_acceso: String(data.mesa.codigo_acceso) }
 }
 
 // PUT /mesas/{id}: capacidad y estado son requeridos; el codigo_acceso
@@ -97,81 +103,24 @@ export async function updateMesa(id: number, mesa: MesaInput): Promise<Mesa> {
     return normalizarMesa(data.mesa)
 }
 
-// DELETE /mesas/{id}: borrado lógico. Devuelve cuántas reservas
-// pendientes se cancelaron junto con la mesa.
-export async function deleteMesa(id: number): Promise<{ message: string; reservas_canceladas: number }> {
-    const response = await fetch(`${API_BASE_URL}/mesas/${id}`, {
-        method: 'DELETE',
+// POST /mesas/{id}/cerrar: fin de la VISITA (el cliente pagó): borrado
+// lógico de la mesa (el PIN deja de valer y se cancelan reservas
+// pendientes). Exige CERO pedidos activos (422 con el mensaje del back).
+export async function cerrarMesa(id: number): Promise<{ message: string; reservas_canceladas: number }> {
+    const response = await fetch(`${API_BASE_URL}/mesas/${id}/cerrar`, {
+        method: 'POST',
         headers: { 'Authorization': `Bearer ${getToken()}` },
     })
     const data = await response.json().catch(() => null)
     if (!response.ok) {
-        throw new Error(mensajeErrorApi(response.status, data, 'Error al eliminar la mesa'))
+        throw new Error(mensajeErrorApi(response.status, data, 'No se pudo cerrar la mesa'))
     }
     if (data?.reservas_canceladas === undefined) {
-        // 200 {message} sin detalle = "Mesa no encontrada".
-        throw new Error(mensajeDe(data, 'Mesa no encontrada'))
+        throw new Error(mensajeDe(data, 'No se pudo cerrar la mesa'))
     }
     return {
-        message: mensajeDe(data, 'Mesa eliminada exitosamente'),
+        message: mensajeDe(data, 'Mesa cerrada: fin de la visita'),
         reservas_canceladas: Number(data.reservas_canceladas),
-    }
-}
-
-// POST /mesas/{id}/ocupar: NO regenera el código; devuelve el PIN
-// estable de la mesa para pasárselo al cliente.
-export async function ocuparMesa(id: number): Promise<{ codigo_acceso: string }> {
-    const response = await fetch(`${API_BASE_URL}/mesas/${id}/ocupar`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${getToken()}` },
-    })
-    const data = await response.json().catch(() => null)
-    if (!response.ok) {
-        throw new Error(mensajeErrorApi(response.status, data, 'No se pudo ocupar la mesa'))
-    }
-    if (!data?.codigo_acceso) {
-        throw new Error(mensajeDe(data, 'No se pudo ocupar la mesa'))
-    }
-    return { codigo_acceso: String(data.codigo_acceso) }
-}
-
-// POST /mesas/agrupar: ≥2 mesas, todas ocupadas (422 del backend si
-// no). Los códigos de acceso no cambian.
-export async function agruparMesas(mesaIds: number[]): Promise<{ grupo_codigo: number }> {
-    const response = await fetch(`${API_BASE_URL}/mesas/agrupar`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({ mesa_ids: mesaIds }),
-    })
-    const data = await response.json().catch(() => null)
-    if (!response.ok) {
-        throw new Error(mensajeErrorApi(response.status, data, 'No se pudieron agrupar las mesas'))
-    }
-    if (data?.grupo_codigo === undefined) {
-        throw new Error(mensajeDe(data, 'No se pudieron agrupar las mesas'))
-    }
-    return { grupo_codigo: Number(data.grupo_codigo) }
-}
-
-// POST /mesas/desagrupar: saca las mesas indicadas de su grupo.
-export async function desagruparMesas(mesaIds: number[]): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/mesas/desagrupar`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({ mesa_ids: mesaIds }),
-    })
-    const data = await response.json().catch(() => null)
-    if (!response.ok) {
-        throw new Error(mensajeErrorApi(response.status, data, 'No se pudieron desagrupar las mesas'))
-    }
-    if (!Array.isArray(data?.mesas)) {
-        throw new Error(mensajeDe(data, 'No se pudieron desagrupar las mesas'))
     }
 }
 

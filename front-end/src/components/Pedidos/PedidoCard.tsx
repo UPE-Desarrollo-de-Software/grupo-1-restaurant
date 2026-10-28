@@ -6,15 +6,18 @@ import s from './PedidoCard.module.css'
 
 // Tarjeta de un pedido activo de la mesa con las acciones del mozo.
 // Matriz de transiciones espejo de PedidoService::cambiarEstado():
-//   en_curso → (confirmar) → confirmado → (enviar) → enviado →
-//   en_preparacion → entregado → cerrado; cancelado desde cualquiera
-//   no final; confirmado → en_curso deshace la confirmación.
+//   en_curso → (confirmar) → confirmado → (enviar) → enviado;
+//   la COCINA avanza enviado → en_preparacion → listo (PUT
+//   /cocina/pedidos/{id}/estado); el mozo cierra listo → entregado →
+//   cerrado y cancela desde cualquier no final (en enviado y
+//   en_preparacion sólo cancel); confirmado → en_curso deshace.
 
 const ETIQUETAS_ESTADO: Record<EstadoPedido, string> = {
     en_curso: 'En curso',
     confirmado: 'Confirmado',
     enviado: 'Enviado',
     en_preparacion: 'En preparación',
+    listo: 'Listo',
     entregado: 'Entregado',
     cerrado: 'Cerrado',
     cancelado: 'Cancelado',
@@ -25,9 +28,24 @@ const CLASES_ESTADO: Record<EstadoPedido, string> = {
     confirmado: 'badgeConfirmado',
     enviado: 'badgeEnviado',
     en_preparacion: 'badgePreparacion',
+    listo: 'badgeListo',
     entregado: 'badgeEntregado',
     cerrado: 'badgeCerrado',
     cancelado: 'badgeCancelado',
+}
+
+// Estado al que lleva cada acción (matriz de PedidoService::cambiarEstado).
+// Mientras la acción corre, el badge y los botones se renderizan desde el
+// destino: feedback inmediato en prod (la req puede tardar). Si falla,
+// `accion` se limpia al instante y vuelve a renderizarse el estado real.
+const DESTINO: Record<Accion, EstadoPedido> = {
+    confirmar: 'confirmado',
+    forzar: 'confirmado',
+    enviar: 'enviado',
+    reabrir: 'en_curso',
+    cancelar: 'cancelado',
+    entregado: 'entregado',
+    cerrar: 'cerrado',
 }
 
 const formatearPrecio = (precio: number): string =>
@@ -46,13 +64,16 @@ function AuxiliarLinea({ descuento, promocion }: { descuento: number; promocion:
 
 // No se exporta: react-refresh/only-export-components.
 function BotonAccion({
-    etiqueta, icono, variant, ocupado, deshabilitado, onClick,
+    etiqueta, icono, variant, proceso, bloqueado, onClick,
 }: {
     etiqueta: string
     icono: string
     variant: string
-    ocupado: boolean
-    deshabilitado?: boolean
+    // Es la acción que está corriendo: muestra el spinner.
+    proceso: boolean
+    // Hay una acción en curso (cualquiera): deshabilita todos los botones
+    // para no disparar transiciones encadenadas.
+    bloqueado: boolean
     onClick: () => void
 }) {
     return (
@@ -61,10 +82,10 @@ function BotonAccion({
             variant={variant}
             className='text-label-md'
             type='button'
-            disabled={ocupado || deshabilitado}
+            disabled={bloqueado}
             onClick={onClick}
         >
-            {ocupado
+            {proceso
                 ? <><Spinner size='sm' animation='border' className='me-1' />{etiqueta}...</>
                 : <><i className={`bi ${icono} me-1`} aria-hidden='true' />{etiqueta}</>}
         </Button>
@@ -72,12 +93,13 @@ function BotonAccion({
 }
 
 type Accion = 'confirmar' | 'forzar' | 'enviar' | 'reabrir' | 'cancelar'
-    | 'preparacion' | 'entregado' | 'cerrar'
+    | 'entregado' | 'cerrar'
 
 interface PedidoCardProps {
     pedido: PedidoResumen
-    // Refetch del resumen de la mesa tras cualquier acción exitosa.
-    onCambio: () => void
+    // Refetch del resumen de la mesa tras cualquier acción exitosa;
+    // puede esperarse con await para que el spinner cubra el refetch.
+    onCambio: () => void | Promise<void>
     // "Agregar líneas" (habilitado solo para pedidos en curso).
     onAgregar?: () => void
 }
@@ -90,6 +112,10 @@ export function PedidoCard({ pedido, onCambio, onAgregar }: PedidoCardProps) {
     const [permiteForzar, setPermiteForzar] = useState(false)
 
     const estado = (ETIQUETAS_ESTADO[pedido.estado as EstadoPedido] ? pedido.estado : 'en_curso') as EstadoPedido
+    // UI optimista: mientras la acción corre se muestra el estado destino
+    // (badge y acciones) sin esperar al refetch. Al terminar, `accion` se
+    // limpia recién con el resumen ya refrescado (sin flash de vuelta).
+    const estadoRender = accion !== null ? DESTINO[accion] : estado
 
     async function correr(tipo: Accion, tarea: () => Promise<{ mensaje: string }>) {
         setAccion(tipo)
@@ -99,7 +125,7 @@ export function PedidoCard({ pedido, onCambio, onAgregar }: PedidoCardProps) {
             const { mensaje } = await tarea()
             setExito(mensaje)
             setPermiteForzar(false)
-            onCambio()
+            await onCambio()
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'No se pudo completar la operación'
             setErrorApi(msg)
@@ -115,10 +141,10 @@ export function PedidoCard({ pedido, onCambio, onAgregar }: PedidoCardProps) {
         <article className={s.card}>
             <div className={s.header}>
                 <span className={`text-headline-sm ${s.titulo}`}>Pedido #{pedido.id}</span>
-                <span className={`text-label-sm ${s[CLASES_ESTADO[estado]]}`}>
-                    {ETIQUETAS_ESTADO[estado]}
+                <span className={`text-label-sm ${s[CLASES_ESTADO[estadoRender]]}`}>
+                    {ETIQUETAS_ESTADO[estadoRender]}
                 </span>
-                {(estado === 'en_curso' || estado === 'confirmado') && (
+                {(estadoRender === 'en_curso' || estadoRender === 'confirmado') && (
                     <span className={`text-label-sm ${pedido.todas_confirmadas ? s.badgeOk : s.badgePendiente}`}>
                         {pedido.todas_confirmadas ? 'Todas confirmadas' : 'Faltan confirmar'}
                     </span>
@@ -171,88 +197,101 @@ export function PedidoCard({ pedido, onCambio, onAgregar }: PedidoCardProps) {
             )}
 
             <div className={s.acciones}>
-                {estado === 'en_curso' && (
+                {estadoRender === 'en_curso' && (
                     <>
                         <BotonAccion
                             etiqueta='Confirmar' icono='bi-check2-circle' variant='primary'
-                            ocupado={accion === 'confirmar'}
+                            proceso={accion === 'confirmar'} bloqueado={ocupado}
                             onClick={() => correr('confirmar', () => confirmarPedido(pedido.id))}
                         />
                         {onAgregar && (
                             <BotonAccion
                                 etiqueta='Agregar líneas' icono='bi-plus-lg' variant='outline-primary'
-                                ocupado={false}
+                                proceso={false} bloqueado={false}
                                 onClick={onAgregar}
                             />
                         )}
                         <BotonAccion
                             etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
-                            ocupado={accion === 'cancelar'}
+                            proceso={accion === 'cancelar'} bloqueado={ocupado}
                             onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
                         />
                     </>
                 )}
 
-                {estado === 'confirmado' && (
+                {estadoRender === 'confirmado' && (
                     <>
                         <BotonAccion
                             etiqueta='Enviar a cocina' icono='bi-send' variant='primary'
-                            ocupado={accion === 'enviar'}
+                            proceso={accion === 'enviar'} bloqueado={ocupado}
                             onClick={() => correr('enviar', () => enviarPedido(pedido.id))}
                         />
                         <BotonAccion
                             etiqueta='Reabrir' icono='bi-arrow-counterclockwise' variant='outline-secondary'
-                            ocupado={accion === 'reabrir'}
+                            proceso={accion === 'reabrir'} bloqueado={ocupado}
                             onClick={() => correr('reabrir', () => cambiarEstadoPedido(pedido.id, 'en_curso'))}
                         />
                         <BotonAccion
                             etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
-                            ocupado={accion === 'cancelar'}
+                            proceso={accion === 'cancelar'} bloqueado={ocupado}
                             onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
                         />
                     </>
                 )}
 
-                {estado === 'enviado' && (
+                {estadoRender === 'enviado' && (
                     <>
-                        <BotonAccion
-                            etiqueta='Pasar a preparación' icono='bi-fire' variant='outline-primary'
-                            ocupado={accion === 'preparacion'}
-                            onClick={() => correr('preparacion', () => cambiarEstadoPedido(pedido.id, 'en_preparacion'))}
-                        />
+                        <span className={`text-body-sm ${s.enCocina}`}>
+                            <i className='bi bi-fire me-1' aria-hidden='true' />
+                            En la cocina: la preparación la avanza el personal de cocina.
+                        </span>
                         <BotonAccion
                             etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
-                            ocupado={accion === 'cancelar'}
+                            proceso={accion === 'cancelar'} bloqueado={ocupado}
                             onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
                         />
                     </>
                 )}
 
-                {estado === 'en_preparacion' && (
+                {estadoRender === 'en_preparacion' && (
+                    <>
+                        <span className={`text-body-sm ${s.enCocina}`}>
+                            <i className='bi bi-fire me-1' aria-hidden='true' />
+                            En preparación: la cocina avanza hasta marcarlo listo.
+                        </span>
+                        <BotonAccion
+                            etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
+                            proceso={accion === 'cancelar'} bloqueado={ocupado}
+                            onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
+                        />
+                    </>
+                )}
+
+                {estadoRender === 'listo' && (
                     <>
                         <BotonAccion
                             etiqueta='Marcar entregado' icono='bi-bag-check' variant='outline-primary'
-                            ocupado={accion === 'entregado'}
+                            proceso={accion === 'entregado'} bloqueado={ocupado}
                             onClick={() => correr('entregado', () => cambiarEstadoPedido(pedido.id, 'entregado'))}
                         />
                         <BotonAccion
                             etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
-                            ocupado={accion === 'cancelar'}
+                            proceso={accion === 'cancelar'} bloqueado={ocupado}
                             onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
                         />
                     </>
                 )}
 
-                {estado === 'entregado' && (
+                {estadoRender === 'entregado' && (
                     <>
                         <BotonAccion
                             etiqueta='Cerrar pedido' icono='bi-check2-square' variant='primary'
-                            ocupado={accion === 'cerrar'}
+                            proceso={accion === 'cerrar'} bloqueado={ocupado}
                             onClick={() => correr('cerrar', () => cambiarEstadoPedido(pedido.id, 'cerrado'))}
                         />
                         <BotonAccion
                             etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
-                            ocupado={accion === 'cancelar'}
+                            proceso={accion === 'cancelar'} bloqueado={ocupado}
                             onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
                         />
                     </>

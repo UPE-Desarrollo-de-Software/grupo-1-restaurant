@@ -18,8 +18,15 @@
 
 .encabezado {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.encabezadoAcciones {
+    display: flex;
+    align-items: center;
     gap: var(--space-sm);
 }
 

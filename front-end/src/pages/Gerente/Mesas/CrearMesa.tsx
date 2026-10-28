@@ -4,16 +4,12 @@ import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Mesas.module.css'
 import { mesaSchema } from '../../../schemas/mesas'
 import { createMesa } from '../../../api/mesas'
+import { getConfiguracion } from '../../../api/configuracion'
 import { getUsuarios } from '../../../api/usuarios'
 import { getUsuario } from '../../../api/auth'
+import { QrMesaModal } from '../../../components/Mesas/QrMesaModal'
 import type { Usuario } from '../../../types/Auth'
-import type { EstadoMesa } from '../../../types/Mesa'
-
-const ESTADOS: { value: EstadoMesa; label: string }[] = [
-    { value: 'libre', label: 'Libre' },
-    { value: 'ocupada', label: 'Ocupada' },
-    { value: 'reservada', label: 'Reservada' },
-]
+import type { MesaConCodigo } from '../../../types/Mesa'
 
 interface CrearMesaProps {
     // Dónde vuelven Volver/Cancelar (default: panel del gerente).
@@ -26,7 +22,6 @@ interface CrearMesaProps {
 export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesion = false }: CrearMesaProps) {
     const navigate = useNavigate()
     const [capacidad, setCapacidad] = useState('')
-    const [estado, setEstado] = useState<EstadoMesa>('libre')
     const [usuarioId, setUsuarioId] = useState(() =>
         soloSesion ? String(getUsuario()?.id ?? '') : ''
     )
@@ -36,9 +31,15 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
     const [cargandoUsuarios, setCargandoUsuarios] = useState(!soloSesion)
     const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null)
 
+    // Aforo del CONFIG_MESA como referencia (tolerante a fallo: si no
+    // carga, el alta no se rompe).
+    const [aforoInfo, setAforoInfo] = useState<string | null>(null)
+
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
     const [exito, setExito] = useState<string | null>(null)
+    // Mesa creada: al éxito se abre el modal con el QR de la visita.
+    const [mesaCreada, setMesaCreada] = useState<MesaConCodigo | null>(null)
     const [tocado, setTocado] = useState(false)
 
     useEffect(() => {
@@ -57,8 +58,20 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
         return () => controller.abort()
     }, [soloSesion])
 
+    useEffect(() => {
+        const controller = new AbortController()
+        getConfiguracion(controller.signal)
+            .then(config => {
+                setAforoInfo(`Salón: aforo ${config.aforo} personas · hasta ${config.mesas_maximas} mesas`)
+            })
+            .catch(() => {
+                // Sin aforo de referencia no se bloquea el alta.
+            })
+        return () => controller.abort()
+    }, [])
+
     const errores: Record<string, string> = {}
-    const resultados = mesaSchema.safeParse({ capacidad, estado, usuario_id: usuarioId })
+    const resultados = mesaSchema.safeParse({ capacidad, estado: 'ocupada', usuario_id: usuarioId })
     if (!resultados.success) {
         for (const issue of resultados.error.issues) {
             const campo = issue.path[0]
@@ -78,10 +91,10 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
 
         setEnviando(true)
         try {
-            await createMesa(resultados.data)
+            const creada = await createMesa(resultados.data)
+            setMesaCreada(creada)
             setExito('Mesa creada exitosamente')
             setCapacidad('')
-            setEstado('libre')
             setUsuarioId(soloSesion ? String(getUsuario()?.id ?? '') : '')
             setTocado(false)
         } catch (err) {
@@ -102,8 +115,12 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
             <Card className={s.card}>
                 <h1 className={`text-headline-md ${s.title}`}>Nueva mesa</h1>
                 <p className={`text-body-sm ${s.subtitle}`}>
-                    El código de acceso (PIN) se genera solo y es estable hasta eliminar la mesa.
+                    La mesa nace ocupada (el cliente ya se sentó). El código de acceso
+                    (PIN de 4 dígitos) se genera solo y es estable hasta cerrar la visita.
                 </p>
+                {aforoInfo && (
+                    <p className={`text-body-sm ${s.subtitle}`}>{aforoInfo}</p>
+                )}
 
                 {exito && (
                     <Alert variant='success' className='text-body-md d-flex flex-wrap align-items-center justify-content-between gap-2'>
@@ -125,7 +142,7 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
                 <Form onSubmit={handlerSubmit} noValidate>
                     <div className={s.row}>
                         <Form.Group className={s.field} controlId='crear-mesa-capacidad'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Capacidad (lugares)</Form.Label>
+                            <Form.Label className={`text-label-md ${s.label}`}>Cantidad de personas para la mesa</Form.Label>
                             <Form.Control
                                 className={s.input}
                                 type='number'
@@ -137,21 +154,6 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
                                 isInvalid={tocado && !!errores.capacidad}
                             />
                             <Form.Control.Feedback type='invalid'>{errores.capacidad}</Form.Control.Feedback>
-                        </Form.Group>
-
-                        <Form.Group className={s.field} controlId='crear-mesa-estado'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Estado</Form.Label>
-                            <Form.Select
-                                className={s.input}
-                                value={estado}
-                                onChange={(e) => setEstado(e.target.value as EstadoMesa)}
-                                isInvalid={tocado && !!errores.estado}
-                            >
-                                {ESTADOS.map(opcion => (
-                                    <option value={opcion.value} key={opcion.value}>{opcion.label}</option>
-                                ))}
-                            </Form.Select>
-                            <Form.Control.Feedback type='invalid'>{errores.estado}</Form.Control.Feedback>
                         </Form.Group>
                     </div>
 
@@ -201,6 +203,8 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
                     </div>
                 </Form>
             </Card>
+
+            <QrMesaModal mesa={mesaCreada} onCerrar={() => setMesaCreada(null)} />
         </div>
     )
 }

@@ -24,6 +24,7 @@
 .badgeConfirmado,
 .badgeEnviado,
 .badgePreparacion,
+.badgeListo,
 .badgeEntregado,
 .badgeCerrado,
 .badgeCancelado {
@@ -51,6 +52,17 @@
 .badgePreparacion {
   background-color: var(--color-inverse-surface);
   color: var(--color-inverse-on-surface);
+}
+
+.badgeListo {
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+/* Aviso de tramo en manos de la cocina (enviado / en_preparacion):
+   el mozo sólo cancela en esos estados. */
+.enCocina {
+  color: var(--color-on-surface-variant);
 }
 
 .badgeEntregado {

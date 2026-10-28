@@ -42,9 +42,6 @@ export async function getDashboard(signal?: AbortSignal): Promise<DashboardDatos
         })),
         ocupacion_actual: {
             mesas: {
-                libres: Number(ocupacion.mesas.libres),
-                ocupadas: Number(ocupacion.mesas.ocupadas),
-                reservadas: Number(ocupacion.mesas.reservadas),
                 total: Number(ocupacion.mesas.total),
             },
             cubiertos_ocupados: Number(ocupacion.cubiertos_ocupados),

@@ -19,9 +19,6 @@ export interface DashboardDatos {
   }[]
   ocupacion_actual: {
     mesas: {
-      libres: number
-      ocupadas: number
-      reservadas: number
       total: number
     }
     cubiertos_ocupados: number

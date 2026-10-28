@@ -5,8 +5,6 @@
 import z from "zod";
 import type { mesaSchema } from "../schemas/mesas";
 
-export type EstadoMesa = 'libre' | 'ocupada' | 'reservada'
-
 export type MesaInput = z.infer<typeof mesaSchema>
 
 export interface Mesa {
@@ -71,14 +69,17 @@ export interface LineaPedidoResumen {
     confirmado: boolean
 }
 
-// Estados del DER para PEDIDO. Flujo del mozo: en_curso → (confirmar)
-// → confirmado → (enviar) → enviado → en_preparacion → entregado →
-// cerrado; cancelado desde cualquier estado no final.
+// Estados del DER para PEDIDO (8). Tramo del mozo: en_curso →
+// (confirmar) → confirmado → (enviar) → enviado; luego la COCINA avanza
+// enviado → en_preparacion → listo (PUT /cocina/pedidos/{id}/estado);
+// y el mozo cierra listo → entregado → cerrado. Cancelado desde
+// cualquier estado no final (exclusivo del mozo).
 export type EstadoPedido =
     | 'en_curso'
     | 'confirmado'
     | 'enviado'
     | 'en_preparacion'
+    | 'listo'
     | 'entregado'
     | 'cerrado'
     | 'cancelado'
@@ -105,4 +106,30 @@ export interface ResumenMesa {
     encontrada: boolean
     pedidos: PedidoResumen[]
     grupo?: HermanaResumen[]
+}
+
+// ==== Cola de cocina (GET /cocina/pedidos) ====
+// Espejo de ListarPedidosCocinaUseCase: pedidos `enviado` y
+// `en_preparacion` de todas las mesas, con sus líneas (líneas ya
+// normalizadas por la capa de API: números y nombres planos).
+
+export interface LineaCocina {
+    detalle_id: number
+    plato: string
+    promocion: PromocionLinea | null
+    cantidad: number
+    subtotal: number
+    // Personalizaciones por línea: "Sin lechuga", "Extra cheddar"…
+    excluir: string[]
+    agregar: string[]
+}
+
+export interface PedidoCocina {
+    id: number
+    mesa_id: number
+    estado: EstadoPedido
+    total: number
+    fecha: string
+    mesa_capacidad: number
+    lineas: LineaCocina[]
 }

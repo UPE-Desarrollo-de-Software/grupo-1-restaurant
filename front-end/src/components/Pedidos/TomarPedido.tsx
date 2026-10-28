@@ -22,8 +22,9 @@ interface TomarPedidoProps {
     mesaId: number
     // Pedido en curso al que se suman las líneas; null → raíz nueva.
     pedidoId?: number | null
-    // Refetch del resumen de la mesa tras un alta exitosa.
-    onAlta: () => void
+    // Refetch del resumen de la mesa tras un alta exitosa; puede
+    // esperarse con await para que el spinner cubra el refetch.
+    onAlta: () => void | Promise<void>
 }
 
 export function TomarPedido({ mesaId, pedidoId, onAlta }: TomarPedidoProps) {
@@ -114,7 +115,7 @@ export function TomarPedido({ mesaId, pedidoId, onAlta }: TomarPedidoProps) {
             setExpandido(null)
             setDetalle(null)
             setCantidad(1)
-            onAlta()
+            await onAlta()
         } catch (err) {
             setErrorApi(err instanceof Error ? err.message : 'No se pudo agregar el plato al pedido')
         } finally {

@@ -14,22 +14,34 @@ const formatearPrecio = (precio: number): string =>
 
 interface PlatoCardProps {
   plato: PlatoListar
-  // Recarga de la lista del hub tras un cambio (useDatos.recargar).
-  onCambio?: () => void
+  // Recarga de la lista del hub tras un cambio (useDatos.recargar);
+  // puede esperarse con await para que el spinner cubra el refetch.
+  onCambio?: () => void | Promise<void>
 }
 
 export function PlatoCard({ plato, onCambio }: PlatoCardProps) {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const disponible = plato.disponible
+  // UI optimista: al tocar el switch el valor nuevo se muestra al instante
+  // (en prod la req puede tardar). El optimista gana sólo mientras el prop
+  // del server siga en `base`; cuando llega el refetch, el prop lo pisa
+  // solo (sin flash, sin useEffect). Si el server responde otro valor
+  // (error u otro usuario), gana el server.
+  const [optimista, setOptimista] = useState<{ deseado: boolean; base: boolean } | null>(null)
+  const disponible = optimista && plato.disponible === optimista.base
+    ? optimista.deseado
+    : plato.disponible
 
   async function alternarDisponible() {
+    setOptimista({ deseado: !disponible, base: plato.disponible })
     setGuardando(true)
     setError(null)
     try {
       await cambiarDisponibilidad(plato, !disponible)
-      onCambio?.()
+      await onCambio?.()
     } catch (err) {
+      // Revierte al valor real del server (optimista = null).
+      setOptimista(null)
       setError(err instanceof Error ? err.message : 'Error desconocido al cambiar la disponibilidad')
     } finally {
       setGuardando(false)

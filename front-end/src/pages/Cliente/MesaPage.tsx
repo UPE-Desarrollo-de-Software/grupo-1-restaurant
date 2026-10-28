@@ -1,23 +1,85 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Alert, Button, Form, Spinner } from 'react-bootstrap'
-import { Link } from 'react-router-dom'
+import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
+import { Link, useSearchParams } from 'react-router-dom'
 import { acceder } from '../../api/cliente'
 import { useCliente } from '../../context/ClienteContext/useCliente'
 import { codigoMesaSchema } from '../../schemas/cliente'
+import type { ClienteMesa } from '../../types/Cliente'
 import s from './MesaPage.module.css'
 
-// Identificación de la mesa con el código de 4 dígitos que reparte el
-// mozo (POST /acceso). Es de un solo uso: al validar, la página queda
-// directamente en la tarjeta "Mesa identificada" (no se puede cambiar
-// el código desde acá).
+// Resultado del último intento de acceso por QR, claveado por el código
+// de la URL para derivar el estado de carga en cada render.
+type ResultadoQr =
+    | { codigo: string; tipo: 'entrada'; encontrada: ClienteMesa }
+    | { codigo: string; tipo: 'cambio'; encontrada: ClienteMesa }
+    | { codigo: string; tipo: 'error'; error: string }
+
+// Identificación de la mesa: con el QR de la visita (URL
+// /mesa?codigo=XXXX) valida sola vía POST /acceso; si no, con el código
+// de 4 dígitos que reparte el mozo. Es de un solo uso por visita: al
+// validar, la página queda en la tarjeta "Mesa identificada".
 export function MesaPage() {
-    const { mesa, aplicarIdentificacion } = useCliente()
+    const { mesa, borrador, aplicarIdentificacion } = useCliente()
 
     const [codigo, setCodigo] = useState('')
     const [errorCampo, setErrorCampo] = useState<string | null>(null)
     const [errorApi, setErrorApi] = useState<string | null>(null)
     const [validando, setValidando] = useState(false)
+
+    // QR en la URL (?codigo=XXXX): se procesa una sola vez (al terminar
+    // se limpia el parámetro con replace, así un refresh no reintenta).
+    const [parametros, setParametros] = useSearchParams()
+    const codigoQr = parametros.get('codigo') ?? ''
+    const codigoQrValido = /^\d{4}$/.test(codigoQr) ? codigoQr : null
+    const [rtaQr, setRtaQr] = useState<ResultadoQr | null>(null)
+    const entrandoQr = codigoQrValido !== null && (rtaQr === null || rtaQr.codigo !== codigoQrValido)
+
+    // La sesión vigente al entrar al efecto (para detectar cambio de
+    // mesa) se lee de un ref: el resultado del fetch no debe redepender
+    // de un re-render posterior.
+    const mesaRef = useRef(mesa)
+    useEffect(() => {
+        mesaRef.current = mesa
+    }, [mesa])
+
+    useEffect(() => {
+        if (!codigoQrValido) return
+        const controller = new AbortController()
+        acceder(codigoQrValido, controller.signal)
+            .then(encontrada => {
+                const actual = mesaRef.current
+                if (actual && actual.id !== encontrada.id) {
+                    // Escaneó la mesa de otra visita: pide confirmación.
+                    setRtaQr({ codigo: codigoQrValido, tipo: 'cambio', encontrada })
+                } else {
+                    aplicarIdentificacion(encontrada)
+                    setRtaQr({ codigo: codigoQrValido, tipo: 'entrada', encontrada })
+                }
+                setParametros({}, { replace: true })
+            })
+            .catch(err => {
+                if (controller.signal.aborted) return
+                const mensaje = err instanceof Error
+                    ? err.message
+                    : 'No se pudo validar el código de la mesa'
+                setRtaQr({ codigo: codigoQrValido, tipo: 'error', error: mensaje })
+                // Se limpia el parámetro: el fallback es el formulario
+                // manual (y un refresh no debe reintentar contra el throttle).
+                setParametros({}, { replace: true })
+            })
+        return () => controller.abort()
+    }, [codigoQrValido, aplicarIdentificacion, setParametros])
+
+    // Un solo lugar para el error del QR: se muestra con el del form.
+    const errorVisible = errorApi ?? (rtaQr?.tipo === 'error' ? rtaQr.error : null)
+
+    function confirmarCambio() {
+        if (rtaQr?.tipo === 'cambio') {
+            aplicarIdentificacion(rtaQr.encontrada)
+        }
+        setRtaQr(null)
+    }
 
     async function confirmarCodigo(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault()
@@ -57,12 +119,57 @@ export function MesaPage() {
                     <div>
                         <p className='text-headline-sm'>Mesa #{mesa.id} identificada</p>
                         <p className={`text-body-sm ${s.textoIdentificada}`}>
-                            Estado: {mesa.estado}. Ya podés armar tu pedido.
+                            Ya podés armar tu pedido.
                         </p>
                     </div>
                     <div className={s.accionesIdentificada}>
                         <Link to='/carta' className='btn btn-primary text-label-md'>Ir a la Carta</Link>
                         <Link to='/pedido' className='btn btn-outline-primary text-label-md'>Mi pedido</Link>
+                    </div>
+                </section>
+
+                <Modal
+                    show={rtaQr?.tipo === 'cambio'}
+                    onHide={() => setRtaQr(null)}
+                    centered
+                    aria-labelledby='cambiar-mesa-titulo'
+                >
+                    <Modal.Header closeButton>
+                        <Modal.Title id='cambiar-mesa-titulo' className='text-headline-sm'>
+                            Cambiar de mesa
+                        </Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        <p className='text-body-md mb-2'>
+                            Ya estabas identificado en la mesa #{mesa.id}. Escaneaste el QR de
+                            la mesa #{rtaQr?.tipo === 'cambio' ? rtaQr.encontrada.id : ''}.
+                        </p>
+                        <p className='text-body-sm mb-0'>
+                            {borrador.length > 0
+                                ? 'Si cambiás, se descarta el pedido sin enviar de esta mesa.'
+                                : 'Si cambiás, pasás a pedir en la mesa nueva.'}
+                        </p>
+                    </Modal.Body>
+                    <Modal.Footer>
+                        <Button variant='outline-secondary' className='text-label-md' type='button' onClick={() => setRtaQr(null)}>
+                            Quedarme en la mesa #{mesa.id}
+                        </Button>
+                        <Button variant='primary' className='text-label-md' type='button' onClick={confirmarCambio}>
+                            Cambiar a la mesa nueva
+                        </Button>
+                    </Modal.Footer>
+                </Modal>
+            </div>
+        )
+    }
+
+    if (entrandoQr) {
+        return (
+            <div className={s.pagina}>
+                <section className={s.tarjeta} aria-live='polite'>
+                    <div className='d-flex flex-column align-items-center gap-3 py-3'>
+                        <Spinner animation='border' />
+                        <p className='text-body-md mb-0'>Entrando a tu mesa…</p>
                     </div>
                 </section>
             </div>
@@ -77,9 +184,7 @@ export function MesaPage() {
                 </span>
                 <h1 className='text-headline-lg'>Identificá tu mesa</h1>
                 <p className={`text-body-md ${s.intro}`}>
-                    Con el código de tu mesa activás el auto-pedido: vas a poder
-                    agregar platos desde la Carta, armar tu pedido y enviarlo
-                    cuando estés listo.
+                    Para comenzar tu pedido, pedile a tu mozo el código o el QR para entrar directo
                 </p>
             </header>
 
@@ -90,7 +195,6 @@ export function MesaPage() {
 
                 <Form onSubmit={confirmarCodigo} noValidate>
                     <Form.Group controlId='codigo-mesa'>
-                        <Form.Label className='text-label-md'>Código de 4 dígitos</Form.Label>
                         <Form.Control
                             type='text'
                             inputMode='numeric'
@@ -108,7 +212,7 @@ export function MesaPage() {
                         </Form.Control.Feedback>
                     </Form.Group>
 
-                    {errorApi && <Alert variant='danger' className={`text-body-sm ${s.alerta}`}>{errorApi}</Alert>}
+                    {errorVisible && <Alert variant='danger' className={`text-body-sm ${s.alerta}`}>{errorVisible}</Alert>}
 
                     <Button
                         type='submit'
@@ -121,20 +225,6 @@ export function MesaPage() {
                             : <><i className='bi bi-box-arrow-in-right me-2' aria-hidden='true' />Confirmar código</>}
                     </Button>
                 </Form>
-
-                <div id='codigo-ayuda' className={s.ayuda}>
-                    <p className={`text-body-sm ${s.ayudaTitulo}`}>
-                        <i className='bi bi-info-circle me-1' aria-hidden='true' />
-                        ¿Cómo funciona?
-                    </p>
-                    <p className='text-body-sm'>
-                        <strong>El código te lo proporciona tu mozo</strong> al sentarte
-                        (son 4 dígitos). El sistema lo valida, identifica tu mesa y a
-                        partir de ahí quedás habilitado para armar tu pedido desde la
-                        Carta. Sin el código podés seguir viendo la carta, pero no
-                        agregar platos.
-                    </p>
-                </div>
             </section>
         </div>
     )

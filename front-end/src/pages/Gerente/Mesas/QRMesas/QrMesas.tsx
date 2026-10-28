@@ -9,7 +9,7 @@ import s from './QrMesas.module.css'
 // Se genera con el origin actual: imprimirlo desde el dominio real.
 
 export function QrMesasPage() {
-    const destino = window.location.origin
+    const destino = `${window.location.origin}/carta`
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
     function handlerDescargar() {

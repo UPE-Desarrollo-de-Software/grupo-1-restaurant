@@ -1,13 +1,12 @@
 import type { ItemLista, Tipo } from '../../hooks/useDatos'
 import type { Categoria, PlatoListar, Promocion } from '../../types/Menu'
 import type { Reserva } from '../../types/Reserva'
-import type { Mesa } from '../../types/Mesa'
 import type { Usuario } from '../../types/Auth'
 import s from './Resumen.module.css'
 
 // Los ingredientes no tienen estado (el modelo del backend solo tiene
 // nombre y precioAdicional), por eso solo muestran el conteo de totales.
-// Las mesas tienen 3 estados y se resuelven aparte en calcularStats.
+// Las mesas tampoco muestran estados en la UI: solo el total.
 const ETIQUETAS: Record<Tipo, { activos?: string; pausados?: string }> = {
   plato: { activos: 'Disponibles', pausados: 'Pausados' },
   categoria: { activos: 'Activas', pausados: 'Inactivas' },
@@ -35,19 +34,6 @@ function contarActivos(items: ItemLista[], tipo: Tipo): number {
 
 // No se exporta: react-refresh/only-export-components.
 function calcularStats(items: ItemLista[], tipo: Tipo) {
-  // Las mesas tienen 3 estados (libre/ocupada/reservada), no el par
-  // activo/pausado del resto: Totales + uno por estado.
-  if (tipo === 'mesa') {
-    const contar = (estado: string) =>
-      items.filter(item => (item as Mesa).estado === estado).length
-    return [
-      { label: 'Totales', valor: items.length, punto: 'puntoTotales' },
-      { label: 'Libres', valor: contar('libre'), punto: 'puntoDisponibles' },
-      { label: 'Ocupadas', valor: contar('ocupada'), punto: 'puntoPausados' },
-      { label: 'Reservadas', valor: contar('reservada'), punto: 'puntoReservadas' },
-    ]
-  }
-
   const stats = [
     { label: 'Totales', valor: items.length, punto: 'puntoTotales' },
   ]

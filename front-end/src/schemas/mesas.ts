@@ -1,9 +1,11 @@
 import {z} from "zod";
 
 // Espejo de las reglas de POST/PUT /mesas (MesaController): capacidad
-// entera ≥1 y estado del enum. El aforo total contra
-// PARAMETRO.capacidad_total lo valida el backend (422) y se muestra
+// entera ≥1 y estado del enum. El aforo total contra el CONFIG_MESA
+// (Σ capacidad×cantidad) lo valida el backend (422) y se muestra
 // tal cual en la Alert. `capacidad` llega del form como string.
+// El alta del flujo del equipo siempre envía estado 'ocupada' (la mesa
+// nace con el cliente sentado); la edición conserva el estado vigente.
 export const mesaSchema = z.object({
     capacidad: z.preprocess(
         (valor) => (valor === '' || valor === undefined ? undefined : valor),

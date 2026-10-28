@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Spinner } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
-import { getCuentaCliente } from '../../api/cliente'
+import { getCuentaCliente, llamarMozo } from '../../api/cliente'
 import { useCliente } from '../../context/ClienteContext/useCliente'
 import type { LineaBorrador } from '../../types/Cliente'
 import type { EstadoPedido, ParteCuenta, PedidoResumen } from '../../types/Mesa'
@@ -24,6 +24,7 @@ const COLOR_ESTADO: Record<EstadoPedido, string> = {
     confirmado: 'info',
     enviado: 'primary',
     en_preparacion: 'secondary',
+    listo: 'primary',
     entregado: 'success',
     cerrado: 'dark',
     cancelado: 'danger',
@@ -87,6 +88,12 @@ export function PedidoPage() {
     const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
     const [exitoEnvio, setExitoEnvio] = useState<string | null>(null)
     const [errorResumen, setErrorResumen] = useState<string | null>(null)
+    // "Llamar al mozo" (POST /cliente/llamar): tras un aviso exitoso el
+    // botón queda deshabilitado (el back sólo acepta 1 cada 60 s por
+    // mesa y responde 429 con mensaje en español si se repite).
+    const [avisando, setAvisando] = useState(false)
+    const [avisoEnviado, setAvisoEnviado] = useState(false)
+    const [errorAviso, setErrorAviso] = useState<string | null>(null)
 
     // Pedidos enviados por ESTE comensal (el resumen trae todos los de
     // la mesa, incluidos los de otros comensales en sesiones de grupo).
@@ -159,6 +166,22 @@ export function PedidoPage() {
         }
     }
 
+    async function pedirAtencion() {
+        if (!mesa?.codigo_acceso || avisando || avisoEnviado) return
+        setAvisando(true)
+        setErrorAviso(null)
+        try {
+            await llamarMozo(mesa.codigo_acceso)
+            // Éxito: el botón queda deshabilitado (el back sólo acepta
+            // 1 aviso cada 60 s por mesa; 429 en el reintento).
+            setAvisoEnviado(true)
+        } catch (err) {
+            setErrorAviso(err instanceof Error ? err.message : 'No se pudo avisar al mozo. Probá de nuevo.')
+        } finally {
+            setAvisando(false)
+        }
+    }
+
     // Revalidación inicial del código guardado: no mostrar nada antes.
     if (revalidando) {
         return (
@@ -195,11 +218,34 @@ export function PedidoPage() {
         <div className={s.pagina}>
             <header className={s.encabezado}>
                 <h1 className='text-headline-md'>Mi pedido</h1>
-                <span className={`text-label-md ${s.mesa}`}>
-                    <i className='bi bi-table me-1' aria-hidden='true' />
-                    Mesa {mesa?.id}
-                </span>
+                <div className={s.encabezadoAcciones}>
+                    <span className={`text-label-md ${s.mesa}`}>
+                        <i className='bi bi-table me-1' aria-hidden='true' />
+                        Mesa {mesa?.id}
+                    </span>
+                    <Button
+                        size='sm'
+                        className='text-label-md'
+                        variant={avisoEnviado ? 'success' : 'outline-secondary'}
+                        type='button'
+                        disabled={!mesaIdentificada || avisando || avisoEnviado}
+                        title={avisoEnviado ? 'Ya avisaste al mozo en los últimos segundos' : undefined}
+                        onClick={pedirAtencion}
+                    >
+                        {avisando
+                            ? <><Spinner size='sm' animation='border' className='me-1' />Avisando…</>
+                            : avisoEnviado
+                                ? <><i className='bi bi-check2-circle me-1' aria-hidden='true' />Mozo avisado</>
+                                : <><i className='bi bi-bell me-1' aria-hidden='true' />Llamar al mozo</>}
+                    </Button>
+                </div>
             </header>
+
+            {errorAviso && (
+                <Alert variant='warning' className='text-body-md' dismissible onClose={() => setErrorAviso(null)}>
+                    {errorAviso}
+                </Alert>
+            )}
 
             <div className={s.vistaToggle}>
                 <Button

@@ -40,30 +40,6 @@
   margin-bottom: var(--space-2xs);
 }
 
-.badgeLibre {
-  background-color: var(--color-secondary-container);
-  color: var(--color-on-secondary-container);
-  border-radius: var(--radius-full);
-  padding: var(--space-2xs) var(--space-xs);
-  white-space: nowrap;
-}
-
-.badgeOcupada {
-  background-color: var(--color-error-container);
-  color: var(--color-on-error-container);
-  border-radius: var(--radius-full);
-  padding: var(--space-2xs) var(--space-xs);
-  white-space: nowrap;
-}
-
-.badgeReservada {
-  background-color: var(--color-tertiary-container);
-  color: var(--color-on-tertiary-container);
-  border-radius: var(--radius-full);
-  padding: var(--space-2xs) var(--space-xs);
-  white-space: nowrap;
-}
-
 .badgeGrupo {
   background-color: var(--color-outline-variant);
   color: var(--color-on-surface-variant);

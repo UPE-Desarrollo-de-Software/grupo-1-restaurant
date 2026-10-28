@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
 import { ClienteProvider } from './context/ClienteContext/ClienteProvider'
-import { CartaPage } from './pages/Carta'
+import { CartaPage } from './pages/Cliente/Carta'
 import { MesaPage } from './pages/Cliente/MesaPage'
 import { DetallePlatoPage } from './pages/Cliente/DetallePlatoPage'
 import { PedidoPage } from './pages/Cliente/PedidoPage'
@@ -18,6 +18,7 @@ import { CrearPromocionPage } from './pages/Gerente/Carta/Promociones/CrearPromo
 import { EditarPromocionPage } from './pages/Gerente/Carta/Promociones/EditarPromocion'
 import { MesasHubPage } from './pages/Gerente/Mesas/MesasHub'
 import { GestionMesasPage } from './pages/Gerente/Mesas/GestionMesas'
+import { ConfiguracionMesaPage } from './pages/Gerente/Mesas/ConfiguracionMesa'
 import { CrearMesaPage } from './pages/Gerente/Mesas/CrearMesa'
 import { EditarMesaPage } from './pages/Gerente/Mesas/EditarMesa'
 import { QrMesasPage } from './pages/Gerente/Mesas/QRMesas/QrMesas'
@@ -76,6 +77,7 @@ function App() {
                 <Route path='/gerente/mesas/gestion' element={<GestionMesasPage/>}/>
                 <Route path='/gerente/mesas/gestion/crear' element={<CrearMesaPage/>}/>
                 <Route path='/gerente/mesas/gestion/:id/editar' element={<EditarMesaPage/>}/>
+                <Route path='/gerente/mesas/configuracion' element={<ConfiguracionMesaPage/>}/>
                 <Route path='/gerente/mesas/qr' element={<QrMesasPage/>}/>
                 <Route path='/gerente/mesas/comandas' element={<ComandasPage/>}/>
                 <Route path='/gerente/reservas' element={<ReservasHubPage/>}/>

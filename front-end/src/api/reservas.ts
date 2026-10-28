@@ -61,8 +61,8 @@ export async function createReserva(reserva: ReservaInput): Promise<ReservaRespo
     })
     const data = await response.json().catch(() => null)
     if (!response.ok) {
-        // 404 "Mesa no encontrada" y 422 de reglas de negocio
-        // (lead time, capacidad, conflicto horario) salen por acá.
+        // 422 de reglas de negocio (lead time, aforo insuficiente,
+        // conflicto horario) salen por acá.
         throw new Error(mensajeErrorApi(response.status, data, `Error ${response.status} al crear la reserva`))
     }
     if (!data?.reserva) {

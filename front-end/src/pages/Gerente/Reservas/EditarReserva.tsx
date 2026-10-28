@@ -144,13 +144,20 @@ export function EditarReservaPage() {
 
                     <div className={s.row}>
                         <Form.Group className={s.field} controlId='ver-reserva-mesa'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Mesa</Form.Label>
+                            <Form.Label className={`text-label-md ${s.label}`}>Mesas</Form.Label>
                             <Form.Control
                                 className={s.input}
                                 type='text'
-                                value={`Mesa #${reserva.mesa_id}${reserva.mesa ? ` · ${reserva.mesa.capacidad} lugares` : ''}`}
+                                value={
+                                    reserva.mesa_id == null
+                                        ? 'A armar según aforo'
+                                        : `Mesa #${reserva.mesa_id}${reserva.mesa ? ` · ${reserva.mesa.capacidad} lugares` : ''}`
+                                }
                                 readOnly
                             />
+                            <Form.Text className='text-body-sm'>
+                                El local arma las mesas al llegar el grupo según la configuración del salón.
+                            </Form.Text>
                         </Form.Group>
 
                         <Form.Group className={s.field} controlId='ver-reserva-fecha'>

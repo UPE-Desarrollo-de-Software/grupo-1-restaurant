@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getPlatosTodos } from "../api/platos";
 import { getIngredientes } from "../api/ingredientes";
 import type { Categoria, Ingrediente, PlatoListar, Promocion } from "../types/Menu";
@@ -31,13 +31,13 @@ export function useDatos(tipo: Tipo) {
   const [items, setItems] = useState<ItemLista[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  // Recarga puntual tras una acción (ocupar, agrupar, eliminar…):
-  // vuelve a pedir la misma lista sin cambiar de tipo.
-  const [nonce, setNonce] = useState(0)
 
-  useEffect(() => {
-    const controller = new AbortController()
-    FETCHERS[tipo](controller.signal)
+  // Extraída del effect para poder esperarla (recargar() → Promise):
+  // los sets van siempre en callbacks (regla react-hooks/set-state-in-effect).
+  // Resuelva como resuelva (los errores caen al estado `error`); así un
+  // `await onCambio()` después de una mutación exitosa nunca la hace fallar.
+  const cargar = useCallback((signal?: AbortSignal): Promise<void> => {
+    return FETCHERS[tipo](signal)
       // El success limpia errores de corridas anteriores (recargar()).
       .then(lista => {
         setItems(lista)
@@ -48,10 +48,18 @@ export function useDatos(tipo: Tipo) {
         setError(err instanceof Error ? err.message : 'Error desconocido al cargar la lista')
       })
       .finally(() => setLoading(false))
-    return () => controller.abort()
-  }, [tipo, nonce])
+  }, [tipo])
 
-  const recargar = () => setNonce(n => n + 1)
+  useEffect(() => {
+    const controller = new AbortController()
+    cargar(controller.signal)
+    return () => controller.abort()
+  }, [cargar])
+
+  // Recarga puntual tras una acción (ocupar, agrupar, alternar…):
+  // vuelve a pedir la lista y puede esperarse con await. No toca `loading`
+  // (la lista ya está en pantalla; sin flash de "Cargando…").
+  const recargar = (): Promise<void> => cargar()
 
   return { items, loading, error, recargar }
 }

@@ -13,13 +13,14 @@ const formatearPrecio = (precio: number): string =>
         minimumFractionDigits: 0,
     }).format(precio)
 
-// Los 7 estados del DER siempre vienen en la respuesta; el orden es el
+// Los 8 estados del DER siempre vienen en la respuesta; el orden es el
 // del flujo del backend (ReporteService::ESTADOS_TODOS).
 const ESTADOS: Record<string, string> = {
     en_curso: 'En curso',
     confirmado: 'Confirmado',
     enviado: 'Enviado',
     en_preparacion: 'En preparación',
+    listo: 'Listo',
     entregado: 'Entregado',
     cerrado: 'Cerrado',
     cancelado: 'Cancelado',
@@ -113,18 +114,6 @@ export function DashboardPage() {
                     <section className={s.section}>
                         <h2 className={`text-headline-sm ${s.sectionTitle}`}>Ocupación actual</h2>
                         <div className={s.statGrid}>
-                            <div className={s.statCard}>
-                                <span className={s.statValue}>{datos.ocupacion_actual.mesas.libres}</span>
-                                <span className={s.statLabel}>Mesas libres</span>
-                            </div>
-                            <div className={s.statCard}>
-                                <span className={s.statValue}>{datos.ocupacion_actual.mesas.ocupadas}</span>
-                                <span className={s.statLabel}>Mesas ocupadas</span>
-                            </div>
-                            <div className={s.statCard}>
-                                <span className={s.statValue}>{datos.ocupacion_actual.mesas.reservadas}</span>
-                                <span className={s.statLabel}>Mesas reservadas</span>
-                            </div>
                             <div className={s.statCard}>
                                 <span className={s.statValue}>{datos.ocupacion_actual.porcentaje_aforo}%</span>
                                 <span className={s.statLabel}>Aforo ocupado</span>

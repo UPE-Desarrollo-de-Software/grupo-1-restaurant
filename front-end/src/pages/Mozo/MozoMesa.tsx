@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Alert, Button, Card, Spinner } from 'react-bootstrap'
 import { getCuentaMesa, getMesa, getResumenMesa } from '../../api/mesas'
+import { CerrarMesaModal } from '../../components/Mesas/CerrarMesaModal'
 import { PedidoCard } from '../../components/Pedidos/PedidoCard'
 import { TomarPedido } from '../../components/Pedidos/TomarPedido'
 import type { CuentaMesa, MesaConCodigo, ParteCuenta, ResumenMesa } from '../../types/Mesa'
@@ -9,10 +10,11 @@ import s from './MozoMesa.module.css'
 
 // Atención de una mesa desde el rol Mozo: comanda con acciones de estado
 // (espejo de Comandas del gerente, pero operativa) + alta de líneas
-// (TomarPedido) + cuenta de la visita. Si la mesa quedó borrada (al
-// cerrar el último pedido final el backend la destruye), getMesa falla
-// pero la comanda/cuenta siguen disponibles (MesaService::cuenta usa
-// conTrashed): se avisa y se sigue mostrando todo.
+// (TomarPedido) + cuenta de la visita. La mesa ya no se destruye sola:
+// el mozo cierra la visita tras el pago (POST /mesas/{id}/cerrar,
+// borrado lógico). Si la mesa quedó borrada, getMesa falla y MozoMesa
+// muestra la comanda/cuenta igual (MesaService::cuenta usa conTrashed):
+// se avisa y se sigue mostrando todo.
 
 type Vista = 'comanda' | 'cuenta'
 
@@ -60,6 +62,7 @@ function BloqueParte({ parte, indice }: { parte: ParteCuenta; indice: number }) 
 export function MozoMesaPage() {
     const { id } = useParams()
     const mesaId = Number(id)
+    const navigate = useNavigate()
 
     const [mesa, setMesa] = useState<MesaConCodigo | null>(null)
     const [mesaError, setMesaError] = useState<string | null>(null)
@@ -69,64 +72,73 @@ export function MozoMesaPage() {
     const [errorDetalle, setErrorDetalle] = useState<string | null>(null)
     const [mostrarTomar, setMostrarTomar] = useState(false)
     const [copiado, setCopiado] = useState(false)
-    // Cada alta/acción exitosa incrementa el nonce y refetchea todo.
-    const [nonce, setNonce] = useState(0)
-    // La página está cargando mientras la combinación (mesa, vista, nonce)
+    const [modalCerrar, setModalCerrar] = useState(false)
+    // La página está cargando mientras la combinación (mesa, vista)
     // actual no se haya resuelto: deriva del estado en vez de hacer
     // setState síncrono dentro del effect (regla react-hooks/set-state-in-effect).
     const [cargadoDe, setCargadoDe] = useState<string | null>(null)
 
-    const clave = `${mesaId}-${vista}-${nonce}`
+    const clave = `${mesaId}-${vista}`
     const cargando = Number.isFinite(mesaId) && cargadoDe !== clave
 
-    useEffect(() => {
-        if (!Number.isFinite(mesaId)) return
-        const controller = new AbortController()
+    // Extraída del effect para poder esperarla (recargar() → Promise):
+    // los sets van siempre en callbacks (regla set-state-in-effect) y
+    // resuelve siempre; los errores caen a mesaError/errorDetalle.
+    const cargar = useCallback((signal?: AbortSignal): Promise<void> => {
+        if (!Number.isFinite(mesaId)) return Promise.resolve()
 
-        const pedirMesa = getMesa(mesaId, controller.signal)
+        const pedirMesa = getMesa(mesaId, signal)
             .then(data => {
-                if (!controller.signal.aborted) {
+                if (!signal?.aborted) {
                     setMesa(data)
                     setMesaError(null)
                 }
             })
             .catch(err => {
-                if (!controller.signal.aborted) {
+                if (!signal?.aborted) {
                     setMesa(null)
                     setMesaError(err instanceof Error ? err.message : 'No se pudo cargar la mesa')
                 }
             })
 
         const pedirDatos = vista === 'comanda'
-            ? getResumenMesa(mesaId, controller.signal)
+            ? getResumenMesa(mesaId, signal)
                 .then(data => {
-                    if (!controller.signal.aborted) {
+                    if (!signal?.aborted) {
                         setComanda(data)
                         setErrorDetalle(null)
                     }
                 })
-            : getCuentaMesa(mesaId, controller.signal)
+            : getCuentaMesa(mesaId, signal)
                 .then(data => {
-                    if (!controller.signal.aborted) {
+                    if (!signal?.aborted) {
                         setCuenta(data)
                         setErrorDetalle(null)
                     }
                 })
 
         const manejarError = (err: unknown) => {
-            if (controller.signal.aborted) return
-            setErrorDetalle(err instanceof Error ? err.message : 'Error desconocido al cargar el detalle')
+            if (!signal?.aborted) {
+                setErrorDetalle(err instanceof Error ? err.message : 'Error desconocido al cargar el detalle')
+            }
         }
 
-        Promise.all([pedirMesa, pedirDatos.catch(manejarError)])
+        return Promise.all([pedirMesa, pedirDatos.catch(manejarError)])
             .then(() => {
-                if (!controller.signal.aborted) setCargadoDe(clave)
+                if (!signal?.aborted) setCargadoDe(`${mesaId}-${vista}`)
             })
+    }, [mesaId, vista])
 
+    useEffect(() => {
+        const controller = new AbortController()
+        cargar(controller.signal)
         return () => controller.abort()
-    }, [mesaId, vista, nonce, clave])
+    }, [cargar])
 
-    const recargar = () => setNonce(n => n + 1)
+    // Recarga puntual tras una acción: refetchea mesa + datos y puede
+    // esperarse con await. No cambia `clave` (sin flash del spinner de
+    // página completa: el refresh es in-place).
+    const recargar = (): Promise<void> => cargar()
 
     async function copiarPin() {
         const pin = mesa?.codigo_acceso ?? comanda?.codigo_acceso ?? cuenta?.codigo_acceso
@@ -170,7 +182,7 @@ export function MozoMesaPage() {
                     </h2>
                     <p className={`text-body-sm ${s.detalleSub}`}>
                         {mesa
-                            ? `${mesa.capacidad} lugares · ${mesa.estado.replace(/_/g, ' ')}`
+                            ? `${mesa.capacidad} lugares`
                             : cargando ? 'Cargando datos de la mesa…' : 'Mesa no disponible'}
                     </p>
                 </div>
@@ -306,6 +318,19 @@ export function MozoMesaPage() {
                         <p className='text-price-display'>{formatearPrecio(cuenta.total)}</p>
                     </div>
 
+                    <div>
+                        <Button
+                            size='sm'
+                            variant='outline-primary'
+                            className='text-label-md'
+                            type='button'
+                            onClick={() => setModalCerrar(true)}
+                        >
+                            <i className='bi bi-door-open me-1' aria-hidden='true' />
+                            Cerrar visita
+                        </Button>
+                    </div>
+
                     {cuenta.partes.length === 0 ? (
                         <p className={`text-body-md text-center ${s.vacio}`}>Sin pedidos en esta visita.</p>
                     ) : (
@@ -340,9 +365,17 @@ export function MozoMesaPage() {
             ) : null}
 
             <p className={`text-body-sm ${s.nota}`}>
-                Se muestra la visita actual de la mesa. Al confirmar todos los pedidos del grupo
-                se cierra la sesión y la mesa queda libre.
+                Se muestra la visita actual de la mesa. Cuando el cliente pague, usá "Cerrar visita"
+                en la vista Cuenta para finalizarla.
             </p>
+
+            <CerrarMesaModal
+                visible={modalCerrar}
+                mesaId={mesaId}
+                numeroMesa={mesaId}
+                onCancelar={() => setModalCerrar(false)}
+                onCerrada={(aviso) => navigate('/mozo', { state: { aviso } })}
+            />
         </div>
     )
 }

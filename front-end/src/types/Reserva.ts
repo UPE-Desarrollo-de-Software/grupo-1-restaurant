@@ -7,7 +7,10 @@ export type EstadoReserva = 'pendiente' | 'cancelada' | 'finalizada' | 'no_asist
 
 export interface Reserva {
     id: number
-    mesa_id: number
+    // La reserva ya no elige mesa: el back asigna una combinación de
+    // capacidades del CONFIG_MESA y el mozo arma las mesas al llegar
+    // el grupo; queda null hasta entonces.
+    mesa_id: number | null
     // Viene eager en el listado y el detalle (with('mesa')); el POST la
     // devuelve sin la relación cargada.
     mesa?: Mesa | null
@@ -28,18 +31,21 @@ export type ReservaResponse = {
 
 // ==== Reserva web del cliente (rutas PÚBLICAS, sin token) ====
 
-// GET /cliente/reservas/mesas — mapa de elección estilo cine: SOLO
-// id/capacidad/estado (el codigo_acceso nunca sale en ruta pública).
-export interface MesaReservaWeb {
-    id: number
-    capacidad: number
-    estado: string
+// GET /cliente/reservas/disponibilidad?fecha=&hora= — capacidades del
+// CONFIG_MESA que quedan libres para el intervalo (las pendientes del
+// día que solapan hacen hold). Reemplaza al viejo mapa de elección de
+// mesas.
+export interface DisponibilidadReservaWeb {
+    fecha: string
+    inicio: string
+    fin: string
+    disponible: { capacidad: number; cantidad: number }[]
+    aforo_disponible: number
 }
 
-// POST /cliente/reservas — alta; sin mesa_id el sistema crea la mesa
-// como "mozo virtual" validando el aforo.
+// POST /cliente/reservas — alta; NO hay mesa que elegir: el backend
+// asigna la combinación de capacidades del CONFIG_MESA.
 export interface ReservaWebAlta {
-    mesa_id?: number
     contacto_solicitante: string
     fecha: string
     hora: string

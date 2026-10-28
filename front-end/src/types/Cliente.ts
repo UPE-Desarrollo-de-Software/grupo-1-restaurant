@@ -2,7 +2,6 @@
 export interface ClienteMesa {
     id: number
     codigo_acceso: string
-    estado: string
 }
 
 // Snapshot mínimo del plato dentro del borrador: permite renderizar y

@@ -3,22 +3,11 @@ import { Link, useLocation } from 'react-router-dom'
 import type { Mesa } from '../../types/Mesa'
 import s from './MesaCard.module.css'
 
-// Solo lectura + acción principal (patrón de los hubs del proyecto): las
-// acciones de servicio (ocupar, agrupar) viven en el hub vía modales.
+// Solo lectura + acción principal (patrón de los hubs del proyecto): el
+// cierre de visita vive en la mesa concreta (EditarMesa del gerente o
+// MozoMesa del mozo).
 // El botón del footer depende de la sección: en el panel del gerente
 // edita la mesa; en /mozo la "atende" (detalle de pedidos).
-
-const ETIQUETAS_ESTADO: Record<string, string> = {
-  libre: 'Libre',
-  ocupada: 'Ocupada',
-  reservada: 'Reservada',
-}
-
-const badgeEstadoClass = (estado: string): string => {
-  if (estado === 'ocupada') return s.badgeOcupada
-  if (estado === 'reservada') return s.badgeReservada
-  return s.badgeLibre
-}
 
 // "2026-10-19 20:15:00" (del backend) → fecha corta local.
 const formatearFecha = (fecha: string): string => {
@@ -36,14 +25,11 @@ export function MesaCard({ mesa }: { mesa: Mesa }) {
           <span className={`text-label-sm ${s.indice}`}>#{String(mesa.id).padStart(2, '0')}</span>
 
           <div className={s.info}>
-            <div className={s.badges}>
-              <span className={`text-label-sm ${badgeEstadoClass(mesa.estado)}`}>
-                {ETIQUETAS_ESTADO[mesa.estado] ?? mesa.estado}
-              </span>
-              {mesa.grupo_codigo != null && (
+            {mesa.grupo_codigo != null && (
+              <div className={s.badges}>
                 <span className={`text-label-sm ${s.badgeGrupo}`}>Grupo {mesa.grupo_codigo}</span>
-              )}
-            </div>
+              </div>
+            )}
             <h3 className={`text-headline-sm ${s.titulo}`}>{mesa.capacidad} lugares</h3>
             <p className={`text-body-sm ${s.detalle}`}>
               {mesa.ocupada_desde

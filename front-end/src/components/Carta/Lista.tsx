@@ -14,7 +14,7 @@ import { MesaCard } from '../Mesas/MesaCard'
 import s from './Lista.module.css'
 
 type Config = {
-  Card: (props: { item: ItemLista; onCambio?: () => void }) => ReactNode
+  Card: (props: { item: ItemLista; onCambio?: () => void | Promise<void> }) => ReactNode
   cargando: string
   vacio: string
 }
@@ -112,8 +112,9 @@ type ListaProps = {
   // Cantidad antes de aplicar los chips de filtro (para distinguir
   // "filtro sin resultados" de "no hay nada cargado").
   total?: number
-  // Se pasa a las cards que lo usan (PlatoCard) para refrescar la lista.
-  onItemCambiado?: () => void
+  // Se pasa a las cards que lo usan (PlatoCard) para refrescar la lista;
+  // puede ser awaitable (useDatos.recargar).
+  onItemCambiado?: () => void | Promise<void>
 }
 
 export function Lista({ tipo, items, loading, error, busqueda, total, onItemCambiado }: ListaProps) {
