@@ -102,32 +102,6 @@ class ClienteController extends Controller
     }
 
     /**
-     * POST /cliente/llamar — el comensal pide atención. Sin body.
-     * Rate limit manual por MESA (1 cada 60 s): evita spam del botón
-     * de "llamar al mozo". El evento avisa a los mozos y confirma en
-     * la mesa.
-     */
-    public function llamar(Request $request)
-    {
-        /** @var Mesa $mesa */
-        $mesa = $request->attributes->get('cliente_mesa');
-
-        $llave = 'llamar:' . $mesa->id;
-        if (RateLimiter::tooManyAttempts($llave, 1)) {
-            return response()->json([
-                'message' => 'Ya pediste atención: el mozo ya fue avisado.',
-            ], 429);
-        }
-        RateLimiter::hit($llave, 60);
-
-        ($this->llamarMozo)($mesa);
-
-        return response()->json([
-            'mensaje' => 'El mozo fue avisado. En un momento se acerca a tu mesa.',
-        ], 200);
-    }
-
-    /**
      * GET /cliente/pedidos — resumen de lectura de la mesa: TODOS los
      * pedidos de la visita con sus líneas y su `confirmado` por línea
      * (activos y también los cerrados/cancelados, con su `estado`;
@@ -244,6 +218,4 @@ class ClienteController extends Controller
             'pedido' => $pedido,
         ], 200);
     }
-
-    public function enviarPedido(Request $request) {}
 }

@@ -195,8 +195,10 @@ test('avanzar el flujo emite pedido.estado con el estado anterior', function () 
 
     Queue::fake();
 
-    empleadoBroadcast($this, $token)
-        ->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'en_preparacion'])
+    // enviado → en_preparacion es el tramo de la COCINA
+    // (permiso preparar_pedidos); el mozo ya no lo puede avanzar.
+    empleadoBroadcast($this, tokenBroadcast('Cocina'))
+        ->putJson("/api/cocina/pedidos/{$pedidoId}/estado", ['estado' => 'en_preparacion'])
         ->assertOk();
 
     Queue::assertPushed(BroadcastEvent::class, function ($job) use ($mesa, $pedidoId) {
@@ -219,10 +221,12 @@ test('un cambio de estado invalido responde 422 y no emite pedido.estado', funct
 
     Queue::fake();
 
+    // 'entregado' pasa la validación del endpoint (in:…) pero viola la
+    // regla de negocio: desde 'en_curso' solo se puede cancelar.
     empleadoBroadcast($this, $token)
-        ->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'enviado'])
+        ->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'entregado'])
         ->assertStatus(422)
-        ->assertJsonPath('message', "No se puede pasar de 'en_curso' a 'enviado'.");
+        ->assertJsonPath('message', "No se puede pasar de 'en_curso' a 'entregado'.");
 
     expect(
         eventosBroadcastPushed()

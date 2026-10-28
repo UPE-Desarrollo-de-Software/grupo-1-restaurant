@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Página-1" id="S4Gc6wlJ-PN7Ujk5XOB0">
-        <mxGraphModel dx="3519" dy="1228" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="3181" dy="980" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -101,7 +101,7 @@
                     <mxGeometry height="60" width="200" x="-440" y="1074" as="geometry"/>
                 </mxCell>
                 <mxCell id="uc_ae2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Validar disponibilidad y conflictos de reservas" vertex="1">
-                    <mxGeometry height="60" width="200" x="-651" y="417" as="geometry"/>
+                    <mxGeometry height="60" width="200" x="-643" y="413" as="geometry"/>
                 </mxCell>
                 <mxCell id="uc_ae3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Ver dashboard de estadísticas" vertex="1">
                     <mxGeometry height="60" width="200" x="-475" y="1224" as="geometry"/>
