@@ -1,4 +1,4 @@
-import type { PedidoCocina, LineaCocina, PromocionLinea } from "../types/Mesa";
+import type { PedidoCocina, LineaCocina, PersonalizacionLinea, PromocionLinea } from "../types/Mesa";
 import { API_BASE_URL } from "../config/env";
 import { getToken } from "./auth";
 import { mensajeErrorApi } from "./error";
@@ -13,16 +13,20 @@ import { mensajeErrorApi } from "./error";
 // acá se normaliza UNA sola vez (patrón del proyecto). El `codigo_acceso`
 // de la mesa nunca se mapea.
 
+interface PersonalizacionJSON {
+    tipo?: string
+    ingrediente_id?: number
+    ingrediente?: { id?: number; nombre?: string } | null
+}
+
 interface LineaJSON {
     id?: number
+    plato_id?: number
     cantidad?: number | string
     subtotal?: number | string
-    plato?: { nombre?: string } | null
+    plato?: { id?: number; nombre?: string } | null
     promocion?: PromocionLinea | null
-    ingredientes?: Array<{
-        tipo?: string
-        ingrediente?: { nombre?: string } | null
-    }> | null
+    ingredientes?: PersonalizacionJSON[] | null
 }
 
 interface PedidoJSON {
@@ -36,12 +40,24 @@ interface PedidoJSON {
 }
 
 function normalizarLinea(detalle: LineaJSON, indice: number): LineaCocina {
-    const personalizaciones = (detalle.ingredientes ?? [])
-        .filter(i => i?.ingrediente?.nombre)
-        .map(i => ({ tipo: i.tipo, nombre: String(i.ingrediente?.nombre) }))
+    const personalizaciones = (detalle.ingredientes ?? []).flatMap((i): PersonalizacionLinea[] => {
+        const nombre = i?.ingrediente?.nombre
+        const tipo = i?.tipo === 'excluido'
+            ? 'excluido'
+            : i?.tipo === 'agregado'
+                ? 'agregado'
+                : null
+        if (!nombre || !tipo) return []
+        return [{
+            ingrediente_id: Number(i.ingrediente_id ?? i.ingrediente?.id ?? 0),
+            nombre: String(nombre),
+            tipo,
+        }]
+    })
 
     return {
         detalle_id: Number(detalle.id ?? indice),
+        plato_id: Number(detalle.plato_id ?? detalle.plato?.id ?? 0),
         plato: String(detalle.plato?.nombre ?? 'Plato'),
         promocion: detalle.promocion
             ? {
@@ -52,8 +68,7 @@ function normalizarLinea(detalle: LineaJSON, indice: number): LineaCocina {
             : null,
         cantidad: Number(detalle.cantidad ?? 0),
         subtotal: Number(detalle.subtotal ?? 0),
-        excluir: personalizaciones.filter(p => p.tipo === 'excluido').map(p => p.nombre),
-        agregar: personalizaciones.filter(p => p.tipo === 'agregado').map(p => p.nombre),
+        personalizaciones,
     }
 }
 

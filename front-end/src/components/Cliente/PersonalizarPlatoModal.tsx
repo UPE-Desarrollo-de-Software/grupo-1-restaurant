@@ -118,7 +118,9 @@ function ContenidoModal({ platoId, lineaInicial, detallePrecargado, onCerrar, on
         for (const ing of detalle.ingredientes) {
             const tildado = checks[ing.id] ?? ing.pivot.por_defecto
             if (ing.pivot.por_defecto) {
-                if (!tildado) excluir.push(ing.id)
+                // Sólo se pueden excluir los opcionales; el obligatorio
+                // (por_defecto sin opcional) queda fijo en el plato.
+                if (!tildado && ing.pivot.opcional) excluir.push(ing.id)
             } else if (ing.pivot.opcional && tildado) {
                 ingredientes.push(ing.id)
             }
@@ -200,8 +202,10 @@ function ContenidoModal({ platoId, lineaInicial, detallePrecargado, onCerrar, on
                             <div className={s.ingredientes}>
                                 <span className={`text-label-md ${s.ingredientesTitulo}`}>Ingredientes</span>
                                 {detalle.ingredientes.map(ing => {
-                                    const modificable = ing.pivot.por_defecto || ing.pivot.opcional
-                                    if (!modificable) {
+                                    // Obligatorio = por_defecto sin opcional: fijo, no se toca.
+                                    // Inerte (!opcional y !por_defecto) no se muestra.
+                                    if (!ing.pivot.opcional) {
+                                        if (!ing.pivot.por_defecto) return null
                                         return (
                                             <span key={ing.id} className={`text-body-sm ${s.ingredienteFijo}`}>
                                                 <i className='bi bi-check2' aria-hidden='true' />

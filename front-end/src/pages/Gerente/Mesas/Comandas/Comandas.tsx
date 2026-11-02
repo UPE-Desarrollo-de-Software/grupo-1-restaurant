@@ -16,6 +16,8 @@ const formatearFecha = (fecha: string): string => {
     return momento.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+const textoEstado = (estado: string): string => estado.replace(/_/g, ' ')
+
 // Auxiliar de línea: promo y descuento solo si existen (patrón por
 // componente, igual que formatearPrecio).
 function AuxiliarLinea({ descuento, promocion }: { descuento: number; promocion: { nombre: string } | null }) {
@@ -195,7 +197,8 @@ export function ComandasPage() {
                                             {comanda.pedidos.length === 0 ? (
                                                 <p className={`text-body-md text-center ${s.vacio}`}>Sin pedidos en esta visita.</p>
                                             ) : (
-                                                comanda.pedidos.map(pedido => (
+                                                // El back ordena por id ascendente; el más reciente queda arriba.
+                                                [...comanda.pedidos].sort((a, b) => b.id - a.id).map(pedido => (
                                                     <Card key={pedido.id} className={s.parteCard}>
                                                         <div className={s.pedidoHeader}>
                                                             <span className={`text-headline-sm ${s.pedidoTitulo}`}>

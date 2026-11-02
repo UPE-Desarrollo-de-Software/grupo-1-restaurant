@@ -16,7 +16,9 @@ export const BOTTOM_POR_ROL: Record<string, OpcionNav[]> = {
         { to: '/gerente/usuarios', label: 'Usuarios', icon: 'bi-people' },
     ],
     Cocina: [
-        { to: '/cocina', label: 'Pedidos', icon: 'bi-list-check', end: true },
+        // Sin `end`: Comandas sigue activa en /cocina/comandas/:id.
+        { to: '/cocina/comandas', label: 'Comandas', icon: 'bi-list-check' },
+        { to: '/cocina/historial', label: 'Historial', icon: 'bi-clock-history', end: true },
     ],
     Mozo: [
         { to: '/mozo', label: 'Mesas', icon: 'bi-grid-3x3-gap', end: true },

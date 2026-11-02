@@ -113,15 +113,26 @@ export interface ResumenMesa {
 // `en_preparacion` de todas las mesas, con sus líneas (líneas ya
 // normalizadas por la capa de API: números y nombres planos).
 
+export type TipoPersonalizacionLinea = 'excluido' | 'agregado'
+
+// Excepción guardada por el backend (`detalle_pedido_ingrediente`): no es
+// la receta completa del plato, sólo lo que el cliente quitó o agregó.
+export interface PersonalizacionLinea {
+    ingrediente_id: number
+    nombre: string
+    tipo: TipoPersonalizacionLinea
+}
+
 export interface LineaCocina {
     detalle_id: number
+    // Necesario para pedir la receta del plato (GET /platos/{id}).
+    plato_id: number
     plato: string
     promocion: PromocionLinea | null
     cantidad: number
     subtotal: number
     // Personalizaciones por línea: "Sin lechuga", "Extra cheddar"…
-    excluir: string[]
-    agregar: string[]
+    personalizaciones: PersonalizacionLinea[]
 }
 
 export interface PedidoCocina {

@@ -140,8 +140,12 @@ export function PedidoPage() {
 
     const hayPedidosEnviados = pedidoIds.length > 0
     const cargandoResumen = hayPedidosEnviados && resumen === null && errorResumen === null
+    // El back ordena por id ascendente; acá el último pedido enviado queda arriba.
     const misPedidos = resumen
-        ? resumen.pedidos.filter((pedido: PedidoResumen) => pedidoIds.includes(pedido.id))
+        ? resumen.pedidos
+            .filter((pedido: PedidoResumen) => pedidoIds.includes(pedido.id))
+            .slice()
+            .sort((a, b) => b.id - a.id)
         : []
     const cargandoCuenta = vista === 'cuenta' && cuenta === null && errorCuenta === null
 

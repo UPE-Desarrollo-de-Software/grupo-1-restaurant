@@ -248,7 +248,10 @@ export function MozoMesaPage() {
                             Sin pedidos en esta visita. Usá "Tomar pedido" para agregar el primero.
                         </p>
                     ) : (
-                        comanda.pedidos.map(pedido => (
+                        // El back ordena por id ascendente; el más reciente queda arriba.
+                        [...comanda.pedidos]
+                            .sort((a, b) => b.id - a.id)
+                            .map(pedido => (
                             <PedidoCard
                                 key={pedido.id}
                                 pedido={pedido}

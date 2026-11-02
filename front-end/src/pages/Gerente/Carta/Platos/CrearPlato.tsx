@@ -8,6 +8,11 @@ import { usePromociones } from '../../../../hooks/usePromociones'
 import { etiquetaPromocion } from '../../../../components/Platos/promocionEtiqueta'
 import { platoSchema } from '../../../../schemas/carta'
 import { createPlato } from '../../../../api/platos'
+import {
+    ETIQUETAS_ESTADO_INGREDIENTE,
+    flagsDesdeEstado,
+    type EstadoIngredientePlato,
+} from '../../../../utils/ingredientePlato'
 
 export function CrearPlatoPage() {
     const navigate = useNavigate()
@@ -18,7 +23,8 @@ export function CrearPlatoPage() {
     const [precio, setPrecio] = useState('')
     const [imagen, setImagen] = useState('')
     const [disponible, setDisponible] = useState(true)
-    const [ingredientes, setIngredientes] = useState<number[]>([])
+    // Estado por ingrediente id; los no presentes quedan fuera del plato.
+    const [ingredientes, setIngredientes] = useState<Record<number, EstadoIngredientePlato>>({})
 
     const {categorias, loadingCategorias, errorCategorias} = useCategorias()
     const {listaIngredientes, loadingIngredientes, errorIngredientes} = useIngredientes()
@@ -30,6 +36,11 @@ export function CrearPlatoPage() {
     const [tocado, setTocado] = useState(false)
 
     const errores: Record<string, string> = {}
+    // El backend acepta objetos con los flags del pivot (opcional/por_defecto).
+    const ingredientesConFlags = Object.entries(ingredientes).map(([id, estado]) => ({
+        ingrediente_id: Number(id),
+        ...flagsDesdeEstado(estado),
+    }))
     const resultados = platoSchema.safeParse({
         categoria_id,
         promocion_id: promocion_id === '' ? null : promocion_id,
@@ -38,7 +49,7 @@ export function CrearPlatoPage() {
         precio,
         imagen,
         disponible,
-        ingredientes,
+        ingredientes: ingredientesConFlags,
     })
     if (!resultados.success) {
         for (const issue of resultados.error.issues) {
@@ -49,10 +60,13 @@ export function CrearPlatoPage() {
         }
     }
 
-    function toggleIngrediente(id: number) {
-        setIngredientes(prev =>
-            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-        )
+    function cambiarEstadoIngrediente(id: number, estado: EstadoIngredientePlato | '') {
+        setIngredientes(prev => {
+            const siguiente = { ...prev }
+            if (estado === '') delete siguiente[id]
+            else siguiente[id] = estado
+            return siguiente
+        })
     }
 
     async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -74,7 +88,7 @@ export function CrearPlatoPage() {
             setPrecio('')
             setImagen('')
             setDisponible(true)
-            setIngredientes([])
+            setIngredientes({})
             setTocado(false)
         } catch (err) {
             setErrorApi(err instanceof Error ? err.message : 'Error desconocido al crear el plato')
@@ -197,28 +211,40 @@ export function CrearPlatoPage() {
 
                     <Form.Group className={s.field} controlId='abm-plato-ingredientes'>
                         <Form.Label className={`text-label-md ${s.label}`}>Ingredientes</Form.Label>
+                        <p className={`text-body-sm ${s.ayuda}`}>
+                            Definí cómo participa cada ingrediente en el plato: obligatorio (siempre va),
+                            por defecto (el cliente puede quitarlo) o para agregar (el cliente lo agrega y
+                            se le cobra su precio adicional).
+                        </p>
                         <div className={s.ingredientsBox}>
                             {loadingIngredientes ? (
                                     <p className={`text-body-sm ${s.empty}`}>Cargando ingredientes...</p>
-                                ) :
+                            ) :
                             listaIngredientes.length === 0 ? (
                                 <p className={`text-body-sm ${s.empty}`}>No tiene ingredientes cargados</p>
                             ) : (
                                 listaIngredientes.map(ing => (
-                                    <Form.Check
-                                        key={ing.id}
-                                        className={`text-body-sm ${s.ingredientItem}`}
-                                        type='checkbox'
-                                        id={`ingrediente-${ing.id}`}
-                                        label={ing.nombre}
-                                        checked={ingredientes.includes(ing.id)}
-                                        onChange={() => toggleIngrediente(ing.id)}
-                                        isInvalid={tocado &&  !!errores.ingredientes}
-                                    />
+                                    <div key={ing.id} className={`text-body-sm ${s.ingredientItem}`}>
+                                        <span>{ing.nombre}</span>
+                                        <Form.Select
+                                            className={s.input}
+                                            aria-label={`Estado de ${ing.nombre}`}
+                                            value={ingredientes[ing.id] ?? ''}
+                                            onChange={(e) =>
+                                                cambiarEstadoIngrediente(ing.id, e.target.value as EstadoIngredientePlato | '')
+                                            }
+                                        >
+                                            <option value=''>No incluir</option>
+                                            {(Object.keys(ETIQUETAS_ESTADO_INGREDIENTE) as EstadoIngredientePlato[]).map(estado => (
+                                                <option key={estado} value={estado}>
+                                                    {ETIQUETAS_ESTADO_INGREDIENTE[estado]}
+                                                </option>
+                                            ))}
+                                        </Form.Select>
+                                    </div>
                                 ))
                             )}
                         </div>
-                        <Form.Control.Feedback type='invalid'>{errores.ingredientes}</Form.Control.Feedback>
                     </Form.Group>
 
                     <Form.Group className={s.field} controlId='abm-plato-disponible'>

@@ -143,13 +143,43 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   reabre (`confirmado → en_curso`), entrega (`listo → entregado`), cierra
   (`entregado → cerrado`) y **cancela desde cualquier no final** (única acción
   en `enviado`/`en_preparacion`; esos estados los avanza la cocina).
-- **Tramo de la cocina** (`/cocina`, `src/api/cocina.ts` + `pages/Cocina/Cocina.tsx`,
-  permiso `preparar_pedidos`): `GET /cocina/pedidos` devuelve la cola (pedidos
-  `enviado` + `en_preparacion` con mesa y líneas) y
-  `PUT /cocina/pedidos/{id}/estado` sólo admite `{estado: 'en_preparacion' | 'listo'}`.
-  La página es una lista de tarjetas con spinner por tarjeta y botón
-  "Actualizar cola" (sin polling); la capa API normaliza números/nombres UNA vez
-  y jamás mapea `codigo_acceso`.
+- **Tramo de la cocina** (`/cocina`, permiso `preparar_pedidos`):
+  `GET /cocina/pedidos` devuelve la cola (pedidos `enviado` + `en_preparacion` con
+  mesa y líneas) y `PUT /cocina/pedidos/{id}/estado` sólo admite
+  `{estado: 'en_preparacion' | 'listo'}`. `/cocina` redirige a `/cocina/comandas`
+  (gestión en dos paneles: cola ordenada por `fecha` + detalle con acciones);
+  `/cocina/comandas/:id` es la vista individual informativa (se abre en pestaña
+  nueva y se resuelve desde la cola porque el backend no expone un GET individual) y
+  `/cocina/historial` es el historial paginado (día/mes + búsqueda exacta por Nº).
+  Al marcar `listo` la comanda sale de la cola y se recarga; sin polling (botón
+  "Actualizar cola"). La navegación de Cocina vive en el BottomNavbar
+  (`Comandas` + `Historial`, sin `SubNavbar`; ver `bottom.ts`/`secciones.ts`) y
+  **no hay alertas de estado arriba de la cola**: el error de una acción se muestra
+  dentro del detalle. Piezas:
+  `pages/Cocina/{Comandas,ComandaDetalle,Historial}.tsx`,
+  `components/Cocina/{DetalleComanda,DetalleComandaHistorial,EstadoComanda}.tsx`,
+  `hooks/useCocinaPedidos.ts`, `hooks/useIngredientesComanda.ts`,
+  `hooks/useHistorialComandas.ts`, `hooks/useBusquedaComandaHistorial.ts`,
+  `hooks/useAhora.ts`, `utils/cocina.ts`, `utils/historial.ts`. La capa API normaliza
+  números/nombres UNA vez (incluye `plato_id` y `personalizaciones` con id/tipo) y
+  jamás mapea `codigo_acceso`.
+- **Ingredientes en la comanda**: el detalle muestra la composición FINAL de cada
+  línea, no la receta completa. `GET /cocina/pedidos` no trae `plato.ingredientes`;
+  `useIngredientesComanda` pide `GET /platos/{id}` (público) una vez por plato
+  distinto y cachea. Regla (`utils/cocina.ts` → `composicionLinea`): obligatorio
+  siempre; por defecto si no está excluido; opcional sólo si está agregado; no
+  incluir nunca. Los extras registrados se mantienen aunque la receta vigente ya no
+  los tenga; las exclusiones se muestran aparte como `Sin …`. No hay aclaraciones en
+  el backend (`detalle_pedidos` no tiene el campo).
+- **Historial de comandas** (implementado): `src/pages/Cocina/Historial.tsx` lista
+  paginada (20 por página) de comandas finalizadas con filtros Día/Mes (por defecto
+  hoy local) y búsqueda exacta por Nº con `getComandaHistorial(id)`, que ignora el
+  período y admite cualquier estado. `src/api/historial.ts` expone
+  `getHistorialComandas(filtros)` (paginado; `desde`/`hasta` Y-m-d, `estado`,
+  `mesa_id`, `page`, `per_page`; sin `estado` el backend devuelve finalizados) y
+  `getComandaHistorial(id)`; tipos en `types/Historial.ts`. El detalle
+  (`DetalleComandaHistorial`) es sólo lectura: las líneas no traen personalizaciones
+  ni ingredientes y no hay timestamp de envío (se usa `fecha`).
 - **`GET /cliente/pedidos` y `GET /mesas/{id}/pedidos` traen TODOS los pedidos de
   la visita** (activos y finalizados, cada uno con su `estado`): `PedidoCard` no
   renderiza acciones para `cerrado`/`cancelado` (sólo badge) y `PedidoPage`
@@ -171,12 +201,12 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
 
 - Los datos reales vienen de la API del backend. `src/data/platos.json` es solo un mock de diseño con otro schema (`restaurante/categorias/platos`); no tomarlo como contrato de la API. Los tipos de dominio viven en `src/types/Menu.ts`: `PlatoListar` (lista, con `categoria_nombre`, sin `ingredientes`), `PlatoObtener` (show/respuesta de POST, con `ingredientes` y `categoria_id`, sin `categoria_nombre`), `PlatoInput` (= `z.infer` de `platoSchema`) y `PlatoResponse`. `types/Plato.ts` fue eliminado; no reintroducirlo.
 - **Tipos de datos, no de presentación**: `precio: number` y `disponible: boolean` en los tipos de dominio. El backend manda `precio` como string en GET y number en POST (sin `$casts`), y `disponible` como 1/0 en GET y boolean en POST — **no se toca el backend**; la conversión ocurre UNA sola vez en la capa de API (`src/api/platos.ts`, `Number()`/`Boolean()` al recibir). `formatearPrecio()` se aplica solo en la vista. No repetir conversiones en componentes.
-- Capa de API en `src/api/` (`platos.ts`, `categorias.ts`, `ingredientes.ts`, `pedidos.ts`, `cliente.ts`, `cocina.ts`, `reservas.ts`, `mesas.ts`, `auth.ts`, `error.ts`, `usuarios.ts`, `promociones.ts`, `dashboard.ts`, `configuracion.ts`): funciones que hablan con `API_BASE_URL`, lanzan `Error` en español si el status no es 2xx, y normalizan tipos. El ABM usa `createPlatos` (POST) en vez de fetch inline. `cliente.ts` usa `ErrorCliente` (con `status`) para distinguir 401 (código muerto) de 422 (regla de negocio) en el flujo del comensal.
+- Capa de API en `src/api/` (`platos.ts`, `categorias.ts`, `ingredientes.ts`, `pedidos.ts`, `cliente.ts`, `cocina.ts`, `historial.ts`, `reservas.ts`, `mesas.ts`, `auth.ts`, `error.ts`, `usuarios.ts`, `promociones.ts`, `dashboard.ts`, `configuracion.ts`): funciones que hablan con `API_BASE_URL`, lanzan `Error` en español si el status no es 2xx, y normalizan tipos. El ABM usa `createPlatos` (POST) en vez de fetch inline. `cliente.ts` usa `ErrorCliente` (con `status`) para distinguir 401 (código muerto) de 422 (regla de negocio) en el flujo del comensal.
 - Validación con Zod **v4** en `src/schemas/` (ver `schemas/menu.ts` → `platoSchema`, `schemas/auth.ts`, `schemas/cliente.ts`); los tipos de input se derivan con `z.infer<>`. Zod v4: mensajes con `{ error: '...' }`, fecha con `z.iso.date()`. `precio` usa `.positive()` (precio $0 no permitido — decisión, mantener).
 - Estilos: Bootstrap + CSS Modules por componente (`*.module.css`, importados como `s`). Los design tokens viven en `src/styles/tokens.css`, importados DESPUÉS de `bootstrap.min.css` en `src/main.tsx` — preservar ese orden. Clases utilitarias como `text-headline-lg`, `text-body-md`, `text-price-display`, `elevation-1` son tokens propios, no de Bootstrap; preferirlas sobre colores/fuentes hardcodeadas.
 - Fetch de datos: hooks en `src/hooks` (`usePlatos`, `useCategorias`, `useIngredientes`) consultan `API_BASE_URL` con `AbortController`; seguir este patrón en fetches nuevos (abortar al desmontar, mensaje de error en español si el status no es 2xx). Dentro de componentes, el set de estado va en los callbacks async (`.then`/`.catch` o `try/catch` de una IIFE) — ver `usePlatos` o `CrearReserva`.
 - **`set-state-in-effect` (ESLint, react-hooks v7)**: está prohibido hacer `setX` síncrono en el body de un `useEffect`. El estado de carga se deriva (ej. `cargando = resumen === null && !error`) o se setea dentro del callback async. El reset limpio de modales se logra por remount: render condicional + `key` (ver `PersonalizarPlatoModal`).
-- Las rutas se declaran centralmente en `src/App.tsx` (NO hay catch-all `*`: un link a una ruta inexistente queda en blanco). Públicas de cliente: `/` (landing), `/carta`, `/plato/:id`, `/pedido`, `/reservas`, `/mesa`, y `/menu` (alias `Navigate` → `/carta`, repara el fallback de RequireAuth/Login). Staff: `/login`, `/cocina` (RequireAuth Cocina; cola de cocina implementada), `/mozo` + `/mozo/mesas/crear`, `/mozo/mesas/:id`, `/mozo/reservas*` (RequireAuth Mozo). Sección de gerente bajo `/gerente` protegida con `RequireAuth rolesPermitidos={['Gerente']}` + `<Outlet/>` anidado: Dashboard, Carta ABM (`/gerente/carta/platos`, `/categorias`, `/ingredientes`, `/promociones` con `/crear` y `/:id/editar`), ABM de usuarios en `/gerente/usuarios` (hub, `/crear`, `/:id/editar`), Mesas (`/gestion`, `/gestion/:id/editar`, `/configuracion`, `/qr`, `/comandas`), Reservas (hub/crear/editar). La ruta `/register` fue eliminada: el alta de usuarios vive en `/gerente/usuarios/crear` (el backend registra en `POST /usuarios/registrar`, no `POST /usuarios`). Páginas en `src/pages`, layouts en `src/layouts`. El placeholder de pantallas sin armar es `src/components/Building.tsx` (usado por la página Gerente).
+- Las rutas se declaran centralmente en `src/App.tsx` (NO hay catch-all `*`: un link a una ruta inexistente queda en blanco). Públicas de cliente: `/` (landing), `/carta`, `/plato/:id`, `/pedido`, `/reservas`, `/mesa`, y `/menu` (alias `Navigate` → `/carta`, repara el fallback de RequireAuth/Login). Staff: `/login`, `/cocina` (redirect a `/cocina/comandas`), `/cocina/comandas`, `/cocina/comandas/:id`, `/cocina/historial` (RequireAuth Cocina), `/mozo` + `/mozo/mesas/crear`, `/mozo/mesas/:id`, `/mozo/reservas*` (RequireAuth Mozo). Sección de gerente bajo `/gerente` protegida con `RequireAuth rolesPermitidos={['Gerente']}` + `<Outlet/>` anidado: Dashboard, Carta ABM (`/gerente/carta/platos`, `/categorias`, `/ingredientes`, `/promociones` con `/crear` y `/:id/editar`), ABM de usuarios en `/gerente/usuarios` (hub, `/crear`, `/:id/editar`), Mesas (`/gestion`, `/gestion/:id/editar`, `/configuracion`, `/qr`, `/comandas`), Reservas (hub/crear/editar). La ruta `/register` fue eliminada: el alta de usuarios vive en `/gerente/usuarios/crear` (el backend registra en `POST /usuarios/registrar`, no `POST /usuarios`). Páginas en `src/pages`, layouts en `src/layouts`. El placeholder de pantallas sin armar es `src/components/Building.tsx` (usado por la página Gerente).
 - **Rutas rotas conocidas** (links en el código sin ruta — pendientes, ajenos a la feature de cliente): `/mozo/mesas` (2 links "Volver a mesas" en `MozoMesa.tsx`; la lista real del mozo es `/mozo`) y `/gerente/historial-acciones` (`secciones.ts`; el historial real de comandas es `/gerente/mesas/comandas`). `/plato/:id`, `/pedido`, `/reservas`, `/mesa`, `/unir-mesa`→`/mesa` ya están resueltas.
 - TypeScript estricto con `verbatimModuleSyntax` y `erasableSyntaxOnly`: usar `import type` para imports solo de tipos; sin enums/namespaces ni parámetros-de-propiedad de clase.
 - Los precios se formatean con `Intl.NumberFormat('es-AR', { currency: 'ARS' })`.

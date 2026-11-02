@@ -1,0 +1,29 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  padding: var(--space-2xs) var(--space-xs);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.enviado {
+  background-color: var(--color-tertiary-container);
+  color: var(--color-on-tertiary-container);
+}
+
+.preparacion {
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.listo {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+
+.neutro {
+  background-color: var(--color-surface-container-high);
+  color: var(--color-on-surface-variant);
+}

@@ -37,11 +37,6 @@ export const SECCIONES_SUBNAV: SeccionNav[] = [
         opciones: [{ to: '/gerente/historial-acciones', label: 'Historial de acciones', end: true }],
     },
     {
-        prefijo: '/cocina',
-        roles: ['Cocina'],
-        opciones: [{ to: '/cocina', label: 'Pedidos', end: true }],
-    },
-    {
         prefijo: '/mozo/reservas',
         roles: ['Mozo'],
         opciones: [{ to: '/mozo/reservas', label: 'Reservas', end: true }],
