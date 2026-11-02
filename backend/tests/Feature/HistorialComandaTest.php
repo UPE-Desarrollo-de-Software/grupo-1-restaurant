@@ -18,7 +18,7 @@ beforeEach(function () {
  * HISTORIAL DE COMANDAS (GET /api/historial/comandas, permiso
  * ver_historial_comandas: Gerente y Cocina). La comanda = PEDIDO con
  * sus líneas y su mesa aunque la mesa haya sido destruida. Sin
- * filtro `estado` se listan solo los finalizados.
+ * filtro `estado` se listan `listo` + los finalizados.
  *
  * Usa los helpers globales tokenReporte / conReporte (definidos en
  * DashboardTest.php); no se redeclaran acá.
@@ -33,7 +33,7 @@ function comandaHistorial(array $atributos = []): Pedido
 {
     return Pedido::create(array_merge([
         'mesa_id' => Mesa::factory()->create()->id,
-        'estado' => 'cerrado',
+        'estado' => 'entregado',
         'total' => 100,
         'fecha' => now()->toDateTimeString(),
     ], $atributos));
@@ -55,24 +55,24 @@ test('el historial de comandas es 403 para Mozo', function () {
         ->assertForbidden();
 });
 
-test('sin filtro de estado lista solo los finalizados, mas recientes primero', function () {
+test('sin filtro de estado lista los listos y los finalizados, mas recientes primero', function () {
     $antiguo = comandaHistorial(['fecha' => now()->subDay()->toDateTimeString()]);
     $recienteCancelado = comandaHistorial(['estado' => 'cancelado']);
     comandaHistorial(['estado' => 'en_curso']);
-    comandaHistorial(['estado' => 'entregado']);
+    $listo = comandaHistorial(['estado' => 'listo']);
 
     $respuesta = conReporte($this, tokenReporte('Cocina'))
         ->getJson('/api/historial/comandas')
         ->assertOk()
-        ->assertJsonPath('total', 2);
+        ->assertJsonPath('total', 3);
 
     $ids = array_column($respuesta->json('data'), 'id');
-    expect($ids)->toBe([$recienteCancelado->id, $antiguo->id]);
+    expect($ids)->toBe([$listo->id, $recienteCancelado->id, $antiguo->id]);
 });
 
 test('el filtro estado lista tambien los pedidos activos', function () {
     $activo = comandaHistorial(['estado' => 'en_preparacion']);
-    comandaHistorial(['estado' => 'cerrado']);
+    comandaHistorial(['estado' => 'entregado']);
 
     conReporte($this, tokenReporte('Cocina'))
         ->getJson('/api/historial/comandas?estado=en_preparacion')

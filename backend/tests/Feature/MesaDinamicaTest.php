@@ -4,6 +4,7 @@ use App\Models\ConfigMesa;
 use App\Models\Mesa;
 use App\Models\Pedido;
 use App\Models\Plato;
+use App\Models\Reserva;
 use App\Models\Rol;
 use App\Models\Usuario;
 use Database\Seeders\PermisoSeeder;
@@ -88,6 +89,55 @@ test('crear mesa respeta el aforo del lugar', function () {
     // Hasta el tope exacto sí entra.
     $mzo->postJson('/api/mesas', ['capacidad' => 2])->assertStatus(201);
     expect(Mesa::count())->toBe(2);
+});
+
+test('el aforo efectivo descuenta las reservas que ocurren ahora', function () {
+    fijarAforo(10);
+    $ahora = now();
+
+    // Hold que contiene al AHORA: [ahora, ahora + 30 min), toma 4
+    // del salón (la reserva se crea directa: el lead time de la API
+    // no deja reservar para "ahora").
+    $reserva = Reserva::factory()->create([
+        'fecha' => $ahora->toDateString(),
+        'hora' => $ahora->format('H:i:s'),
+        'cantPersonas' => 4,
+    ]);
+    $reserva->inventario()->create(['capacidad' => 4, 'cantidad' => 1]);
+
+    // Reserva de OTRO día: no descuenta (es de mañana).
+    Reserva::factory()->create(['cantPersonas' => 2])
+        ->inventario()->create(['capacidad' => 2, 'cantidad' => 1]);
+
+    // Reserva de HOY pero de otro horario (+3 h): no descuenta.
+    Reserva::factory()->create([
+        'fecha' => $ahora->toDateString(),
+        'hora' => $ahora->copy()->addHours(3)->format('H:i:s'),
+        'cantPersonas' => 3,
+    ])->inventario()->create(['capacidad' => 3, 'cantidad' => 1]);
+
+    $mzo = conEmpleado($this, tokenEmpleado('Mozo'));
+
+    // Aforo efectivo = 10 − 4 = 6: de 0 a 6 entra.
+    $mesaId = $mzo->postJson('/api/mesas', ['capacidad' => 6])
+        ->assertStatus(201)
+        ->json('mesa.id');
+
+    $mzo->postJson('/api/mesas', ['capacidad' => 1])
+        ->assertStatus(422)
+        ->assertJsonPath(
+            'message',
+            'Se supera la capacidad del lugar: aforo 10, reservada 4 en este horario, ocupada 6, la mesa nueva necesita 1.'
+        );
+
+    // Editar también lo descuenta: 6 → 7 supera el efectivo (6).
+    conEmpleado($this, tokenEmpleado('Gerente'))
+        ->putJson("/api/mesas/{$mesaId}", ['capacidad' => 7, 'estado' => 'libre'])
+        ->assertStatus(422)
+        ->assertJsonPath(
+            'message',
+            'Se supera la capacidad del lugar: aforo 10, reservada 4 en este horario, ocupada 7 con la mesa editada.'
+        );
 });
 
 test('editar la capacidad tambien valida el aforo', function () {

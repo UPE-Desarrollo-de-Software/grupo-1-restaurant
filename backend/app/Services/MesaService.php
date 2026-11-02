@@ -7,11 +7,13 @@ use App\Exceptions\ApiException;
 use App\Models\DetallePedido;
 use App\Models\Mesa;
 use App\Models\Pedido;
+use App\Models\Reserva;
 use App\Repositories\ConfigMesaRepository;
 use App\Repositories\DetallePedidoRepository;
 use App\Repositories\MesaRepository;
 use App\Repositories\PedidoRepository;
 use App\Repositories\ReservaRepository;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +32,7 @@ use Illuminate\Support\Facades\DB;
  *    mesas vivas + 1 no puede superar Σ cantidad;
  *  - la cuenta ya no divide por "comensal con fila en el pivot": son
  *    PARTES por pedido RAÍZ (raíz + sus hijos = lo que paga cada quien);
- *  - `ocupada_desde` sigue siendo el corte de la visita.
+ *  - el corte de la visita es `created_at` de la fila de la mesa.
  */
 class MesaService
 {
@@ -65,9 +67,11 @@ class MesaService
     }
 
     /**
-     * Alta de mesa dinámica: valida el AFORO del lugar y el TOPE de
-     * mesas (ambos derivados de CONFIG_MESA) y genera el único código
-     * de acceso de la mesa (4 dígitos) ANTES de crearla.
+     * Alta de mesa dinámica: valida el AFORO del lugar (menos las
+     * reservas pendientes que ocurren en este horario: el salón no
+     * puede superar aforo − reservas) y el TOPE de mesas (ambos
+     * derivados de CONFIG_MESA) y genera el único código de acceso
+     * de la mesa (4 dígitos) ANTES de crearla.
      *
      * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?}
      *
@@ -79,11 +83,13 @@ class MesaService
 
         $aforo = $this->configMesas->aforo();
         $ocupada = $this->mesas->capacidadOcupada();
+        $reservada = $this->capacidadReservadaAhora();
 
-        if ($ocupada + $capacidad > $aforo) {
+        if ($ocupada + $capacidad > $aforo - $reservada) {
             throw new \Exception(
-                "Se supera la capacidad del lugar: aforo {$aforo}, ocupada {$ocupada}, "
-                    ."la mesa nueva necesita {$capacidad}."
+                "Se supera la capacidad del lugar: aforo {$aforo}"
+                    .($reservada > 0 ? ", reservada {$reservada} en este horario" : '')
+                    .", ocupada {$ocupada}, la mesa nueva necesita {$capacidad}."
             );
         }
 
@@ -107,7 +113,8 @@ class MesaService
     /**
      * Edita capacidad/estado/responsable. `codigo_acceso` no es
      * editable (nace con la mesa y vive hasta que se destruya) y si
-     * cambia la capacidad se vuelve a validar el AFORO.
+     * cambia la capacidad se vuelve a validar el AFORO (menos las
+     * reservas del horario actual).
      *
      * @param  array<string, mixed>  $datos
      *
@@ -125,10 +132,13 @@ class MesaService
             $capacidadNueva = (int) $datos['capacidad'];
             $ocupadaFutura = $this->mesas->capacidadOcupada() - (int) $mesa->capacidad + $capacidadNueva;
             $aforo = $this->configMesas->aforo();
+            $reservada = $this->capacidadReservadaAhora();
 
-            if ($ocupadaFutura > $aforo) {
+            if ($ocupadaFutura > $aforo - $reservada) {
                 throw new \Exception(
-                    "Se supera la capacidad del lugar: aforo {$aforo}, ocupada {$ocupadaFutura} con la mesa editada."
+                    "Se supera la capacidad del lugar: aforo {$aforo}"
+                        .($reservada > 0 ? ", reservada {$reservada} en este horario" : '')
+                        .", ocupada {$ocupadaFutura} con la mesa editada."
                 );
             }
         }
@@ -136,6 +146,33 @@ class MesaService
         $mesa->update($datos);
 
         return $mesa;
+    }
+
+    /**
+     * Suma de capacidades de las reservas PENDIENTES cuyo hold
+     * ([hora, hora + Reserva::ESPERA_MIN)) contiene al momento
+     * actual: esa franja del salón ya está comprometida, así que el
+     * aforo disponible para mesas nuevas es (aforo − reservada).
+     * Vencidas no cuentan: su hold ya terminó.
+     */
+    private function capacidadReservadaAhora(): int
+    {
+        $ahora = Carbon::now();
+        $minutos = $ahora->hour * 60 + $ahora->minute;
+
+        $total = 0;
+
+        foreach ($this->reservas->pendientesDeFecha($ahora->toDateString()) as $reserva) {
+            if (! $reserva->holdContieneMinuto($minutos)) {
+                continue;
+            }
+
+            foreach ($reserva->inventario as $hold) {
+                $total += (int) $hold->capacidad * (int) $hold->cantidad;
+            }
+        }
+
+        return $total;
     }
 
     /**
@@ -186,7 +223,7 @@ class MesaService
         if ($this->pedidos->hayActivosDeMesa($mesa->id)) {
             throw new \Exception(
                 'No se puede cerrar la mesa: quedan pedidos activos. '
-                    .'Cobrá la cuenta y cerrá (o cancelá) todos los pedidos primero.'
+                    .'Cobrá la cuenta y entregá (o cancelá) todos los pedidos primero.'
             );
         }
 
@@ -217,9 +254,6 @@ class MesaService
      * Marca la mesa como ocupada (paso manual del mozo antes de que
      * haya pedidos). NO regenera el código: el código es estable desde
      * el alta hasta la destrucción.
-     *
-     * `ocupada_desde` es el corte de la visita: se pone solo al pasar
-     * de libre → ocupada.
      *
      * @return array{mesa: Mesa, codigo_acceso: string}
      */
@@ -307,8 +341,10 @@ class MesaService
      * CUENTA DIVIDIDA de una mesa (rebote 2: partes por pedido raíz).
      *
      * Reglas:
-     *  - corte por `ocupada_desde`: solo pedidos de la visita actual;
-     *  - se excluyen los pedidos `cancelado`, se incluyen los `cerrado`;
+     *  - corte por `created_at` de la fila: solo pedidos de la visita
+     *    actual (una fila = una visita);
+     *  - se excluyen los pedidos `cancelado` (los entregados se
+     *    cobran);
      *  - cada PEDIDO RAÍZ es una "parte" (lo que paga una persona) y
      *    acumula sus HIJOS (las repeticiones de esa misma persona);
      *  - el front identifica SU parte con el pedido raíz que guardó en
@@ -325,7 +361,7 @@ class MesaService
     {
         $mesa = $this->mesas->conTrashedOrFail($mesaId);
 
-        $pedidos = $this->pedidos->pedidosDeVisita($mesaId, $mesa->ocupada_desde);
+        $pedidos = $this->pedidos->pedidosDeVisita($mesaId, $mesa->created_at?->toDateTimeString());
 
         $porRaiz = [];
 
@@ -363,7 +399,6 @@ class MesaService
         $cuenta = [
             'mesa_id' => $mesa->id,
             'codigo_acceso' => $mesa->codigo_acceso,
-            'ocupada_desde' => $mesa->ocupada_desde,
             'partes' => $partes,
             'total' => round(array_sum(array_column($partes, 'subtotal')), 2),
         ];
@@ -379,10 +414,10 @@ class MesaService
 
     /**
      * RESUMEN de LECTURA de la mesa: TODOS los pedidos de la visita
-     * —activos y finalizados (cerrado/cancelado), cada uno con su
+     * —activos y finalizados (entregado/cancelado), cada uno con su
      * `estado`— con sus líneas y su gate `confirmado` por línea (el
      * comensal ubica el suyo por id; el mozo ve también los que ya
-     * se cerraron). El corte por `ocupada_desde` es el mismo de la
+     * se cerraron). El corte por `created_at` es el mismo de la
      * cuenta.
      *
      * @return array<string, mixed>
@@ -395,7 +430,7 @@ class MesaService
             return ['mesa_id' => $mesaId, 'encontrada' => false, 'pedidos' => []];
         }
 
-        $pedidos = $this->pedidos->todosDeVisita($mesaId, $mesa->ocupada_desde);
+        $pedidos = $this->pedidos->todosDeVisita($mesaId, $mesa->created_at?->toDateTimeString());
 
         $resumen = [
             'mesa_id' => $mesa->id,

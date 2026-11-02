@@ -6,7 +6,7 @@ use App\Services\MesaService;
 
 /**
  * CASO DE USO: resumen de lectura de la mesa con TODOS los pedidos de
- * la visita (activos y finalizados: cerrado/cancelado, cada uno con su
+ * la visita (activos y finalizados: entregado/cancelado, cada uno con su
  * `estado`; GET /api/mesas/{id}/pedidos). Comparten el mozo (permiso
  * tomar_pedidos) y el comensal (/cliente/pedidos): misma respuesta
  * para ambos.

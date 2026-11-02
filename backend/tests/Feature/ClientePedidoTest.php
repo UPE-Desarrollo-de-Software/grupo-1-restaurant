@@ -371,12 +371,13 @@ test('la cuenta reparte las lineas en partes por pedido raiz', function () {
         ->and((float) $cuenta['total'])->toBe(1500.0);
 });
 
-test('la cuenta corta por ocupada_desde y sigue tras destruir la mesa', function () {
+test('la cuenta corta por created_at de la visita y sigue tras destruir la mesa', function () {
     $mesa = mesaVisita();
 
-    // Pedido de la visita ANTERIOR (antes de ocupar): queda fuera.
+    // Pedido de una visita anterior (fecha anterior al alta de la
+    // mesa): queda fuera del corte.
     $pedidoViejo = $mesa->pedidos()->create([
-        'estado' => 'cerrado',
+        'estado' => 'entregado',
         'total' => 999,
         'fecha' => now()->subHour(),
     ]);
@@ -402,10 +403,9 @@ test('la cuenta corta por ocupada_desde y sigue tras destruir la mesa', function
             ->assertOk();
     }
 
-    // ...y el mozo lo entrega y lo cierra: la mesa NO se destruye
+    // ...y el mozo lo entrega (estado final): la mesa NO se destruye
     // sola, la visita sigue hasta el pago.
     conMozo($this, $mzo)->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'entregado'])->assertOk();
-    conMozo($this, $mzo)->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'cerrado'])->assertOk();
 
     // El pedido quedó finalizado pero el código SIGUE valiendo: la
     // visita no terminó hasta que el cliente pague.
@@ -421,7 +421,8 @@ test('la cuenta corta por ocupada_desde y sigue tras destruir la mesa', function
     comensal($this, $codigo)->getJson('/api/cliente/pedidos')->assertUnauthorized();
 
     // ...pero la cuenta de la visita terminada sigue disponible para
-    // el empleado (la mesa se lee con trashed; lo cerrado se cobra).
+    // el empleado (la mesa se lee con trashed; lo finalizado se
+    // cobra).
     $cuentaFinal = conMozo($this, tokenMozo())
         ->getJson("/api/mesas/{$mesa->id}/cuenta")
         ->assertOk()
@@ -438,26 +439,25 @@ test('el comensal ve sus pedidos finalizados en su resumen', function () {
     $mzo = tokenMozo();
 
     // Dos pedidos suyos (raíces): uno termina cancelado y el otro
-    // cerrado, con todo el flujo cocina incluido.
+    // entregado, con todo el flujo cocina incluido.
     $cancelado = pedirLineaCliente($this, $codigo, platoAuto(500))
         ->assertStatus(201)
         ->json('pedido.id');
-    $cerrado = pedirLineaCliente($this, $codigo, platoAuto(700))
+    $entregado = pedirLineaCliente($this, $codigo, platoAuto(700))
         ->assertStatus(201)
         ->json('pedido.id');
 
     conMozo($this, $mzo)->putJson("/api/pedidos/{$cancelado}/estado", ['estado' => 'cancelado'])
         ->assertOk();
 
-    conMozo($this, $mzo)->postJson("/api/pedidos/{$cerrado}/confirmar", ['forzar' => true])->assertOk();
-    conMozo($this, $mzo)->postJson("/api/pedidos/{$cerrado}/enviar")->assertOk();
+    conMozo($this, $mzo)->postJson("/api/pedidos/{$entregado}/confirmar", ['forzar' => true])->assertOk();
+    conMozo($this, $mzo)->postJson("/api/pedidos/{$entregado}/enviar")->assertOk();
     foreach (['en_preparacion', 'listo'] as $estado) {
         conCocina($this, tokenCocina())
-            ->putJson("/api/cocina/pedidos/{$cerrado}/estado", ['estado' => $estado])
+            ->putJson("/api/cocina/pedidos/{$entregado}/estado", ['estado' => $estado])
             ->assertOk();
     }
-    conMozo($this, $mzo)->putJson("/api/pedidos/{$cerrado}/estado", ['estado' => 'entregado'])->assertOk();
-    conMozo($this, $mzo)->putJson("/api/pedidos/{$cerrado}/estado", ['estado' => 'cerrado'])->assertOk();
+    conMozo($this, $mzo)->putJson("/api/pedidos/{$entregado}/estado", ['estado' => 'entregado'])->assertOk();
 
     // Su resumen ya no es "solo activos": ve los dos, con su estado
     // y sus líneas (el front ubica el suyo por el pedido_id).
@@ -465,8 +465,8 @@ test('el comensal ve sus pedidos finalizados en su resumen', function () {
         ->assertOk()
         ->json('pedidos');
 
-    expect(collect($pedidos)->pluck('id')->all())->toBe([$cancelado, $cerrado])
-        ->and(collect($pedidos)->pluck('estado')->all())->toBe(['cancelado', 'cerrado']);
+    expect(collect($pedidos)->pluck('id')->all())->toBe([$cancelado, $entregado])
+        ->and(collect($pedidos)->pluck('estado')->all())->toBe(['cancelado', 'entregado']);
 });
 
 test('ocupar y agrupar NO regeneran el codigo de acceso', function () {

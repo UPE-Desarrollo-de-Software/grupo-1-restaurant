@@ -57,7 +57,7 @@ interface PedidoRepository
 
     /**
      * Pedidos de la visita de una mesa: excluye 'cancelado' y corta
-     * por `ocupada_desde` (histórico para la cuenta dividida).
+     * por `created_at` de la fila (histórico para la cuenta dividida).
      *
      * @return Collection<int, Pedido>
      */
@@ -66,7 +66,7 @@ interface PedidoRepository
     /**
      * Todos los pedidos de la visita para el resumen de lectura:
      * activos Y finalizados (incluidos los cancelados), cortados por
-     * `ocupada_desde` como la cuenta (la cuenta solo excluye los
+     * `created_at` como la cuenta (la cuenta solo excluye los
      * cancelados porque no se cobran; acá se muestran igual).
      *
      * @return Collection<int, Pedido>
@@ -100,8 +100,8 @@ interface PedidoRepository
 
     /**
      * HISTORIAL DE COMANDAS: pedidos paginados con su mesa (incluso
-     * destruida) y sus líneas. Sin filtro de estado se limita a los
-     * finalizados (cerrado/cancelado).
+     * destruida) y sus líneas. Sin filtro de estado se limita a
+     * `listo` + finalizados (listo/entregado/cancelado).
      *
      * @return LengthAwarePaginator<int, Pedido>
      */

@@ -28,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `confirmado` (el estado) = el mozo validó que todas las líneas del
  * pedido tienen detalle_pedidos.confirmado = true (o forzó).
  *
- * Estados finales (cerrado/cancelado): NO tocan la mesa; la visita
+ * Estados finales (entregado/cancelado): NO tocan la mesa; la visita
  * termina cuando el mozo la cierra tras el pago.
  */
 class Pedido extends Model
@@ -94,6 +94,6 @@ class Pedido extends Model
      */
     public function estaFinalizado(): bool
     {
-        return in_array($this->estado, ['cerrado', 'cancelado'], true);
+        return in_array($this->estado, ['entregado', 'cancelado'], true);
     }
 }

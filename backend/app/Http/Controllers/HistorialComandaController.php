@@ -12,8 +12,8 @@ use Illuminate\Http\Request;
  * sus líneas y su mesa (aunque la mesa haya sido destruida). Permiso
  * `ver_historial_comandas` (Gerente y Cocina).
  *
- * Sin filtro `estado` se listan solo los finalizados (cerrado /
- * cancelado). "No encontrado" responde 404 (como ReservaController).
+ * Sin filtro `estado` se listan `listo` + los finalizados (listo,
+ * entregado / cancelado). "No encontrado" responde 404 (como ReservaController).
  */
 class HistorialComandaController extends Controller
 {
@@ -31,7 +31,7 @@ class HistorialComandaController extends Controller
         $datos = $request->validate([
             'desde' => 'sometimes|nullable|date_format:Y-m-d',
             'hasta' => 'sometimes|nullable|date_format:Y-m-d',
-            'estado' => 'sometimes|nullable|in:en_curso,confirmado,enviado,en_preparacion,listo,entregado,cerrado,cancelado',
+            'estado' => 'sometimes|nullable|in:en_curso,confirmado,enviado,en_preparacion,listo,entregado,cancelado',
             'mesa_id' => 'sometimes|nullable|integer',
             'page' => 'sometimes|integer|min:1',
             'per_page' => 'sometimes|integer|min:1|max:100',

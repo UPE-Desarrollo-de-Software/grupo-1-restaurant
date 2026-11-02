@@ -22,15 +22,15 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 class ReporteService
 {
     /**
-     * Estados que cuentan como VENTA: el consumo está servido y la
-     * cuenta cerrada. Los activos y los cancelados quedan fuera.
+     * Estados que cuentan como VENTA: el consumo está servido.
+     * Los activos y los cancelados quedan fuera.
      *
      * @var list<string>
      */
-    private const ESTADOS_VENTA = ['entregado', 'cerrado'];
+    private const ESTADOS_VENTA = ['entregado'];
 
     /**
-     * Los 8 estados del DER, en flujo.
+     * Los 7 estados del DER, en flujo.
      *
      * @var list<string>
      */
@@ -41,7 +41,6 @@ class ReporteService
         'en_preparacion',
         'listo',
         'entregado',
-        'cerrado',
         'cancelado',
     ];
 
@@ -115,7 +114,6 @@ class ReporteService
 
         $libres = $conteos['libre'] ?? 0;
         $ocupadas = $conteos['ocupada'] ?? 0;
-        $reservadas = $conteos['reservada'] ?? 0;
 
         $cubiertos = $this->mesas->capacidadOcupada();
         $aforo = $this->configMesas->aforo();
@@ -124,8 +122,7 @@ class ReporteService
             'mesas' => [
                 'libres' => $libres,
                 'ocupadas' => $ocupadas,
-                'reservadas' => $reservadas,
-                'total' => $libres + $ocupadas + $reservadas,
+                'total' => $libres + $ocupadas,
             ],
             'cubiertos_ocupados' => $cubiertos,
             'aforo' => $aforo,
@@ -162,7 +159,8 @@ class ReporteService
 
     /**
      * Listado paginado de comandas (= pedidos) con sus líneas y su
-     * mesa (aunque haya sido destruida).
+     * mesa (aunque haya sido destruida). Sin filtro de estado lista
+     * `listo` + finalizados (listo/entregado/cancelado).
      *
      * @param  array{desde?: string|null, hasta?: string|null, estado?: string|null, mesa_id?: int|null, per_page?: int}  $filtros
      * @return LengthAwarePaginator<int, array<string, mixed>>

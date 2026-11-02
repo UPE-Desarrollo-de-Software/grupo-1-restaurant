@@ -10,12 +10,20 @@ use Illuminate\Support\Collection;
 class EloquentPedidoRepository implements PedidoRepository
 {
     /**
-     * Estados finales del DER (cerrado/cancelado): no admiten cambios
+     * Estados finales del DER (entregado/cancelado): no admiten cambios
      * ni agregados; la visita se cierra con el pago, no con el pedido.
      *
      * @var list<string>
      */
-    private const FINALES = ['cerrado', 'cancelado'];
+    private const FINALES = ['entregado', 'cancelado'];
+
+    /**
+     * Lo que lista el historial SIN filtro de estado: `listo` (la
+     * comanda terminó en cocina y espera al mozo) + los finalizados.
+     *
+     * @var list<string>
+     */
+    private const HISTORIAL = ['listo', 'entregado', 'cancelado'];
 
     public function conDetallesOrFail(int $id): Pedido
     {
@@ -121,8 +129,8 @@ class EloquentPedidoRepository implements PedidoRepository
             ->with(['mesaHistorial', 'detalles.plato', 'detalles.promocion'])
             ->when($estado !== null,
                 fn ($q) => $q->where('estado', $estado),
-                // Sin filtro: es un historial → solo finalizados.
-                fn ($q) => $q->whereIn('estado', self::FINALES))
+                // Sin filtro: es un historial → listo + finalizados.
+                fn ($q) => $q->whereIn('estado', self::HISTORIAL))
             ->when($desde !== null, fn ($q) => $q->where('fecha', '>=', "{$desde} 00:00:00"))
             ->when($hasta !== null, fn ($q) => $q->where('fecha', '<=', "{$hasta} 23:59:59"))
             ->when($mesaId !== null, fn ($q) => $q->where('mesa_id', $mesaId))
