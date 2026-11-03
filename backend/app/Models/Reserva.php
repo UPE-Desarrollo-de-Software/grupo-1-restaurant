@@ -72,14 +72,19 @@ class Reserva extends Model
     }
 
     /**
-     * ¿El hold de esta reserva ([hora, hora + ESPERA_MIN)) contiene al
-     * minuto $minutos desde 00:00 del mismo día?
+     * ¿El hold de esta reserva contiene al minuto $minutos desde
+     * 00:00 del mismo día?
+     *
+     * `$margenAntes` extiende la protección hacia atrás (usado por
+     * MesaService: una mesa nueva no puede comerse el cupo de una
+     * reserva desde M minutos antes de su hora, no solo durante el
+     * hold [hora, hora + ESPERA_MIN)).
      */
-    public function holdContieneMinuto(int $minutos): bool
+    public function holdContieneMinuto(int $minutos, int $margenAntes = 0): bool
     {
         [$hora, $minuto] = explode(':', $this->hora);
         $inicio = ((int) $hora) * 60 + (int) $minuto;
 
-        return $minutos >= $inicio && $minutos < $inicio + self::ESPERA_MIN;
+        return $minutos >= $inicio - $margenAntes && $minutos < $inicio + self::ESPERA_MIN;
     }
 }

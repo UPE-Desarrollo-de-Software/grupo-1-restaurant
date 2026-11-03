@@ -28,14 +28,26 @@ use Illuminate\Support\Facades\DB;
  *    o con DELETE /mesas/{id} (baja administrativa del gerente);
  *    `codigo_acceso` nace con la mesa y no cambia nunca;
  *  - AFORO: al crear, Σ capacidad(mesas vivas) + capacidad nueva ≤
- *    aforo (Σ capacidad×cantidad de CONFIG_MESA); además el total de
- *    mesas vivas + 1 no puede superar Σ cantidad;
+ *    aforo efectivo (Σ capacidad×cantidad de CONFIG_MESA menos las
+ *    reservas pendientes que protegen el ahora, ver
+ *    MARGEN_RESERVA_MIN); además el total de mesas vivas + 1 no
+ *    puede superar Σ cantidad;
  *  - la cuenta ya no divide por "comensal con fila en el pivot": son
  *    PARTES por pedido RAÍZ (raíz + sus hijos = lo que paga cada quien);
  *  - el corte de la visita es `created_at` de la fila de la mesa.
  */
 class MesaService
 {
+    /**
+     * Minutos ANTES de su hora en que una reserva empieza a proteger
+     * su cupo contra la creación/edición de mesas: la ventana cuenta
+     * desde [hora − MARGEN, hora + Reserva::ESPERA_MIN). Sin esto,
+     * un grupo caminante que arma mesas una hora antes se come el
+     * cupo de la reserva y a la llegada no hay lugar (la visita
+     * típica dura ~1 h: el margen aproxima cuánto vive esa mesa).
+     */
+    private const MARGEN_RESERVA_MIN = 60;
+
     public function __construct(
         private MesaRepository $mesas,
         private PedidoRepository $pedidos,
@@ -68,10 +80,11 @@ class MesaService
 
     /**
      * Alta de mesa dinámica: valida el AFORO del lugar (menos las
-     * reservas pendientes que ocurren en este horario: el salón no
-     * puede superar aforo − reservas) y el TOPE de mesas (ambos
-     * derivados de CONFIG_MESA) y genera el único código de acceso
-     * de la mesa (4 dígitos) ANTES de crearla.
+     * reservas pendientes que protegen este momento: su ventana es
+     * [hora − 60, hora + 30); el salón no puede superar
+     * aforo − reservas) y el TOPE de mesas (ambos derivados de
+     * CONFIG_MESA) y genera el único código de acceso de la mesa
+     * (4 dígitos) ANTES de crearla.
      *
      * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?}
      *
@@ -114,7 +127,8 @@ class MesaService
      * Edita capacidad/estado/responsable. `codigo_acceso` no es
      * editable (nace con la mesa y vive hasta que se destruya) y si
      * cambia la capacidad se vuelve a validar el AFORO (menos las
-     * reservas del horario actual).
+     * reservas que protegen el momento actual, ver
+     * capacidadReservadaAhora).
      *
      * @param  array<string, mixed>  $datos
      *
@@ -149,11 +163,13 @@ class MesaService
     }
 
     /**
-     * Suma de capacidades de las reservas PENDIENTES cuyo hold
-     * ([hora, hora + Reserva::ESPERA_MIN)) contiene al momento
-     * actual: esa franja del salón ya está comprometida, así que el
-     * aforo disponible para mesas nuevas es (aforo − reservada).
-     * Vencidas no cuentan: su hold ya terminó.
+     * Suma de capacidades de las reservas PENDIENTES cuya ventana de
+     * protección [hora − MARGEN_RESERVA_MIN, hora + Reserva::ESPERA_MIN)
+     * contiene al momento actual: esa franja del salón está
+     * comprometida, así que el aforo disponible para mesas nuevas es
+     * (aforo − reservada). El margen de 60 min antes impide que una
+     * mesa creada poco antes de la reserva se coma su cupo.
+     * Vencidas no cuentan: su espera ya terminó.
      */
     private function capacidadReservadaAhora(): int
     {
@@ -163,7 +179,7 @@ class MesaService
         $total = 0;
 
         foreach ($this->reservas->pendientesDeFecha($ahora->toDateString()) as $reserva) {
-            if (! $reserva->holdContieneMinuto($minutos)) {
+            if (! $reserva->holdContieneMinuto($minutos, self::MARGEN_RESERVA_MIN)) {
                 continue;
             }
 

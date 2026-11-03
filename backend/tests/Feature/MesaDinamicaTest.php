@@ -7,6 +7,7 @@ use App\Models\Plato;
 use App\Models\Reserva;
 use App\Models\Rol;
 use App\Models\Usuario;
+use Carbon\Carbon;
 use Database\Seeders\PermisoSeeder;
 use Database\Seeders\RolSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,6 +18,12 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     // Permisos (ROL_PERMISO) y roles, como en producción.
     $this->seed([PermisoSeeder::class, RolSeeder::class]);
+});
+
+afterEach(function () {
+    // Limpia el tiempo congelado (tests del margen de reservas) para
+    // que no se filtre a los demás tests.
+    Carbon::setTestNow();
 });
 
 /*
@@ -131,6 +138,45 @@ test('el aforo efectivo descuenta las reservas que ocurren ahora', function () {
         );
 
     // Editar también lo descuenta: 6 → 7 supera el efectivo (6).
+    conEmpleado($this, tokenEmpleado('Gerente'))
+        ->putJson("/api/mesas/{$mesaId}", ['capacidad' => 7, 'estado' => 'libre'])
+        ->assertStatus(422)
+        ->assertJsonPath(
+            'message',
+            'Se supera la capacidad del lugar: aforo 10, reservada 4 en este horario, ocupada 7 con la mesa editada.'
+        );
+});
+
+test('las reservas de las proximas 60 minutos protegen el aforo de las mesas', function () {
+    // Tiempo congelado a las 20:00: la ventana de protección de una
+    // reserva es [hora − 60, hora + 30), sin depender de la hora real.
+    Carbon::setTestNow(Carbon::parse('20:00:00'));
+    $hoy = now()->toDateString();
+    fijarAforo(10);
+
+    // 20:30 (dentro del margen): toma 4 del aforo efectivo.
+    $proxima = Reserva::factory()->create(['fecha' => $hoy, 'hora' => '20:30:00']);
+    $proxima->inventario()->create(['capacidad' => 4, 'cantidad' => 1]);
+
+    // 21:45 (fuera del margen: su ventana arranca recién 20:45).
+    $lejana = Reserva::factory()->create(['fecha' => $hoy, 'hora' => '21:45:00']);
+    $lejana->inventario()->create(['capacidad' => 3, 'cantidad' => 1]);
+
+    $mzo = conEmpleado($this, tokenEmpleado('Mozo'));
+
+    // Aforo efectivo = 10 − 4 = 6: crear 7 falla, 6 entra.
+    $mzo->postJson('/api/mesas', ['capacidad' => 7])
+        ->assertStatus(422)
+        ->assertJsonPath(
+            'message',
+            'Se supera la capacidad del lugar: aforo 10, reservada 4 en este horario, ocupada 0, la mesa nueva necesita 7.'
+        );
+
+    $mesaId = $mzo->postJson('/api/mesas', ['capacidad' => 6])
+        ->assertStatus(201)
+        ->json('mesa.id');
+
+    // Editar también respeta la reserva próxima: 6 → 7 > 6.
     conEmpleado($this, tokenEmpleado('Gerente'))
         ->putJson("/api/mesas/{$mesaId}", ['capacidad' => 7, 'estado' => 'libre'])
         ->assertStatus(422)
