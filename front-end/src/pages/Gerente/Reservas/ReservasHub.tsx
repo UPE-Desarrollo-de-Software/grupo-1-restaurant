@@ -35,7 +35,7 @@ export function ReservasHubPage() {
         <div className={`${s.page} ${s.hub}`}>
             <h1 className={`text-headline-md ${s.title}`}>Reservas</h1>
             <Buscador
-                placeHolder='Buscar por contacto, id...'
+                placeHolder='Buscar por nombre o código...'
                 valor={busqueda}
                 onCambio={setBusqueda}
             />

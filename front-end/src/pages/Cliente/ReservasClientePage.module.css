@@ -116,7 +116,18 @@
 }
 
 .botonEnviar {
-    min-width: 10rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+  border-radius: var(--radius-default);
+  text-decoration: none;
+  transition: background-color 0.15s ease;
 }
 
 .exitoIcono {
@@ -158,4 +169,29 @@
     margin: var(--space-sm) 0 0;
     text-align: center;
     color: var(--color-on-surface-variant);
+}
+/* ============ PIN (Modal exito) ============ */
+
+.pinBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  background-color: var(--color-surface-container);
+  border: 1px dashed var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.pinEtiqueta {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+.pinValor {
+  color: var(--color-on-surface);
+  letter-spacing: 0.3em;
+  margin: 0;
 }

@@ -22,7 +22,6 @@ export function hoyLocal(): string {
 // nombre + teléfono del formulario.
 export const reservaWebSchema = z.object({
     nombreApellido: z.string().trim().min(3, "Ingresá tu nombre y apellido"),
-    telefono: z.string().trim().min(6, "Ingresá un teléfono de contacto"),
     fecha: z.iso.date({ error: "Ingresá una fecha válida" })
         .refine(valor => valor >= hoyLocal(), {
             error: "No podés elegir una fecha pasada",

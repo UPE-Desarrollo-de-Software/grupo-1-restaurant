@@ -59,23 +59,23 @@
 }
 
 .badgePendiente {
-  background-color: var(--color-secondary-container);
-  color: var(--color-on-secondary-container);
-}
-
-.badgeFinalizada {
-  background-color: var(--color-inverse-surface);
-  color: var(--color-inverse-on-surface);
-}
-
-.badgeCancelada {
   background-color: var(--color-tertiary-container);
   color: var(--color-on-tertiary-container);
 }
 
+.badgeFinalizada {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+
+.badgeCancelada {
+  background-color: var(--color-error);
+  color: var(--color-on-error);
+}
+
 .badgeNoAsistio {
-  background-color: var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
+  background-color: var(--color-error-container);
+  color: var(--color-on-error-container);
 }
 
 .nombre {
@@ -94,7 +94,7 @@
 .footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--space-sm);
   margin-top: var(--space-sm);
   padding-top: var(--space-sm);
@@ -105,8 +105,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2xs);
-  color: var(--color-primary);
-  border-color: var(--color-outline-variant);
+  color: var(--color-primary-container);
 }
 
 .botonGestionar:hover {

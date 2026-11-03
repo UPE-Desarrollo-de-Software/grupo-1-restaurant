@@ -3,6 +3,8 @@ import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
 import { disponibilidadDiaReservaWeb, solicitarReservaWeb } from '../../api/cliente'
 import { hoyLocal, reservaWebSchema } from '../../schemas/cliente'
 import { useAhora } from '../../hooks/useAhora'
+import { jsPDF } from 'jspdf'
+// import { QRCodeCanvas } from 'qrcode.react'
 import type { DisponibilidadDiaReservaWeb, Reserva, SlotDisponibilidad } from '../../types/Reserva'
 import s from './ReservasClientePage.module.css'
 
@@ -28,10 +30,11 @@ function horaAMinutos(hora: string): number {
 // cantidad de personas y por la anticipación de 2 horas.
 export function ReservasClientePage() {
     const [nombreApellido, setNombreApellido] = useState('')
-    const [telefono, setTelefono] = useState('')
     const [fecha, setFecha] = useState('')
     const [hora, setHora] = useState('')
     const [cantPersonas, setCantPersonas] = useState('')
+
+    // const [codigo, setCodigo] = useState<string | null>(null)
 
     // Grilla del día cacheada por fecha: se muestra al instante si se
     // vuelve a una fecha ya consultada mientras se refresca.
@@ -46,10 +49,20 @@ export function ReservasClientePage() {
     const [errorApi, setErrorApi] = useState<string | null>(null)
     const [reservaCreada, setReservaCreada] = useState<Reserva | null>(null)
     const [tocado, setTocado] = useState(false)
+    const [copiado, setCopiado] = useState(false)
+
+    // const datosQR = reservaCreada
+    // ? JSON.stringify({
+    //     codigoReserva: reservaCreada.id,
+    //     fecha: reservaCreada.fecha,
+    //     hora: reservaCreada.hora,
+    //     cantPersonas: reservaCreada.cantPersonas,
+    // })
+    // : ''
 
     // Errores derivados en cada render (patrón de los formularios ABM).
     const errores: Record<string, string> = {}
-    const resultados = reservaWebSchema.safeParse({ nombreApellido, telefono, fecha, hora, cantPersonas })
+    const resultados = reservaWebSchema.safeParse({ nombreApellido, fecha, hora, cantPersonas })
     if (!resultados.success) {
         for (const issue of resultados.error.issues) {
             const campo = issue.path[0]
@@ -132,6 +145,54 @@ export function ReservasClientePage() {
         }
     }
 
+    // function handlerDescargar() {
+    // const canvas = document.getElementById(
+    //     'qr-reserva'
+    // ) as HTMLCanvasElement | null
+
+    // const imagen = canvas?.toDataURL('image/png')
+
+    // if (!imagen) return
+
+    // const enlace = document.createElement('a')
+    // enlace.href = imagen
+    // enlace.download = `reserva-${reservaCreada?.id}.png`
+    // enlace.click()
+    // }
+    async function handlerCopiar() {
+        if (!reservaCreada) return
+        try {
+            await navigator.clipboard.writeText(reservaCreada.id.toString())
+            setCopiado(true)
+        } catch {
+            setCopiado(false)
+        }
+    }
+
+    function descargarComprobante() {
+        if (!reservaCreada) return
+
+        const doc = new jsPDF()
+
+        doc.setFontSize(20)
+        doc.text('Reserva confirmada', 20, 25)
+
+        doc.setFontSize(12)
+        doc.text(`Código de reserva: ${reservaCreada.id}`, 20, 45)
+        doc.text(`Fecha: ${reservaCreada.fecha}`, 20, 55)
+        doc.text(`Hora: ${reservaCreada.hora}`, 20, 65)
+        doc.text(`Personas: ${reservaCreada.cantPersonas}`, 20, 75)
+
+        doc.setFontSize(10)
+        doc.text(
+            'Presentá este comprobante al mozo al llegar.',
+            20,
+            95
+        )
+
+        doc.save(`comprobante-reserva-${reservaCreada.id}.pdf`)
+    }
+
     async function manejarSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setTocado(true)
@@ -141,7 +202,7 @@ export function ReservasClientePage() {
         setEnviando(true)
         try {
             const creada = await solicitarReservaWeb({
-                contacto_solicitante: `${resultados.data.nombreApellido} (Tel: ${resultados.data.telefono})`,
+                contacto_solicitante: `${resultados.data.nombreApellido}`,
                 fecha: resultados.data.fecha,
                 hora: resultados.data.hora,
                 cantPersonas: resultados.data.cantPersonas,
@@ -159,7 +220,6 @@ export function ReservasClientePage() {
     function cerrarExito() {
         setReservaCreada(null)
         setNombreApellido('')
-        setTelefono('')
         setFecha('')
         setHora('')
         setCantPersonas('')
@@ -194,7 +254,7 @@ export function ReservasClientePage() {
                             <Form.Control.Feedback type='invalid'>{errores.nombreApellido}</Form.Control.Feedback>
                         </Form.Group>
 
-                        <Form.Group className={s.campo} controlId='reserva-cliente-telefono'>
+                        {/* <Form.Group className={s.campo} controlId='reserva-cliente-telefono'>
                             <Form.Label className='text-label-md'>Teléfono de contacto</Form.Label>
                             <Form.Control
                                 type='tel'
@@ -204,7 +264,7 @@ export function ReservasClientePage() {
                                 isInvalid={tocado && !!errores.telefono}
                             />
                             <Form.Control.Feedback type='invalid'>{errores.telefono}</Form.Control.Feedback>
-                        </Form.Group>
+                        </Form.Group> */}
                     </div>
 
                     <div className={s.fila}>
@@ -236,8 +296,10 @@ export function ReservasClientePage() {
                     </div>
 
                     <Form.Group className={s.campo} controlId='reserva-cliente-horarios'>
-                        <Form.Label className='text-label-md'>Horarios disponibles</Form.Label>
-
+                        {fecha && (
+                            <Form.Label className='text-label-md'>Horarios disponibles</Form.Label>
+                        )}
+                        
                         {!fecha && (
                             <Form.Text className='text-body-sm'>
                                 Elegí una fecha para ver los horarios disponibles.
@@ -327,7 +389,7 @@ export function ReservasClientePage() {
                     <Button
                         type='submit'
                         variant='primary'
-                        className={`text-label-md ${s.botonEnviar}`}
+                        className={`text-label-lg ${s.botonEnviar}`}
                         disabled={enviando}
                     >
                         {enviando
@@ -353,13 +415,28 @@ export function ReservasClientePage() {
                                 <i className='bi bi-check2-circle' />
                             </div>
                             <p className={`text-body-md ${s.exitoTexto}`}>
-                                ¡Listo! Tu reserva quedó registrada como <strong>pendiente</strong>.
+                                ¡Listo! Tu reserva quedó registrada.
                             </p>
+                            <div className={s.pinBox}>
+                                <div>
+                                    <p className={`text-label-sm ${s.pinEtiqueta}`}>Código reserva (PIN)</p>
+                                    <p className={`text-headline-md ${s.pinValor}`}>{reservaCreada.id}</p>
+                                </div>
+                                <Button
+                                    size='sm'
+                                    variant={copiado ? 'success' : 'outline-secondary'}
+                                    className='text-label-md'
+                                    type='button'
+                                    onClick={handlerCopiar}
+                                >
+                                    <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
+                                    {copiado ? 'Copiado' : 'Copiar'}
+                                </Button>
+                                <p className={`text-body-sm ${s.exitoNota}`}>
+                                    Presentá este código al llegar al restaurante.
+                                </p>
+                            </div>
                             <ul className={s.exitoDatos}>
-                                <li className='text-body-sm'>
-                                    <span>ID de la reserva</span>
-                                    <strong>#{reservaCreada.id}</strong>
-                                </li>
                                 <li className='text-body-sm'>
                                     <span>Fecha</span>
                                     <strong>{formatearFechaLarga(reservaCreada.fecha)}</strong>
@@ -372,19 +449,33 @@ export function ReservasClientePage() {
                                     <span>Personas</span>
                                     <strong>{reservaCreada.cantPersonas}</strong>
                                 </li>
-                                <li className='text-body-sm'>
-                                    <span>Mesas</span>
-                                    <strong>El local arma según aforo</strong>
-                                </li>
                             </ul>
+                            {/* <div className={s.qrContainer}>
+                                <QRCodeCanvas
+                                    id='qr-reserva'
+                                    value={datosQR}
+                                    size={200}
+                                    level='M'
+                                    includeMargin
+                                />
+                            </div> */}
                             <p className={`text-body-sm ${s.exitoNota}`}>
-                                Guardá el ID de tu reserva y mostráselo al local. Te vamos a
-                                contactar al teléfono que dejaste para confirmarla.
+                                Guardá el código de tu reserva y mostráselo al local.
                             </p>
+                            
                         </>
                     )}
                 </Modal.Body>
                 <Modal.Footer>
+                    <Button
+                        variant='outline-primary'
+                        className='text-label-md'
+                        type='button'
+                        onClick={descargarComprobante}
+                        >
+                        <i className='bi bi-download me-1' aria-hidden='true' />
+                        Descargar Comprobante
+                    </Button>
                     <Button
                         type='button'
                         variant='primary'

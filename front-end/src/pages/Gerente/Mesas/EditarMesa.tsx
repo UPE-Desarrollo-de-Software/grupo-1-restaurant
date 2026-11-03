@@ -142,11 +142,6 @@ export function EditarMesaPage() {
         <div className={s.page}>
             <Card className={s.card}>
                 <h1 className={`text-headline-md ${s.title}`}>Editar mesa</h1>
-                <p className={`text-body-sm ${s.subtitle}`}>
-                    Modificá la cantidad de personas o el mozo responsable. El código de
-                    acceso no se puede cambiar y bajar la capacidad por debajo de lo que
-                    ya está ocupado da error (422 de aforo).
-                </p>
                 {aforoInfo && (
                     <p className={`text-body-sm ${s.subtitle}`}>{aforoInfo}</p>
                 )}

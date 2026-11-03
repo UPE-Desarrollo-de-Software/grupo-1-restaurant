@@ -8,7 +8,7 @@ import s from './ReservaCard.module.css'
 const ESTADOS: Record<EstadoReserva, string> = {
   pendiente: 'Pendiente',
   cancelada: 'Cancelada',
-  finalizada: 'Finalizada',
+  finalizada: 'Atendida',
   no_asistio: 'No asistió',
 }
 
@@ -55,7 +55,7 @@ export function ReservaCard({ reserva }: ReservaCardProps) {
         <div className={s.footer}>
           <Link className={`btn btn-outline-primary btn-sm text-label-md ${s.botonGestionar}`} to={`${base}/${reserva.id}/editar`}>
             <i className={`bi bi-pencil ${s.iconoEditar}`} aria-hidden="true" />
-            {esPendiente ? 'Gestionar' : 'Ver'}
+            {esPendiente ? 'Gestionar' : 'Visualizar'}
           </Link>
         </div>
       </Card.Body>

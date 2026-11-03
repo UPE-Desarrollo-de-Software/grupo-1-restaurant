@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Mesas.module.css'
 import { mesaSchema } from '../../../schemas/mesas'
@@ -20,8 +20,11 @@ interface CrearMesaProps {
 }
 
 export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesion = false }: CrearMesaProps) {
+    const location = useLocation();
     const navigate = useNavigate()
-    const [capacidad, setCapacidad] = useState('')
+    const [capacidad, setCapacidad] = useState(
+    location.state?.capacidad?.toString() ?? ''
+);
     const [usuarioId, setUsuarioId] = useState(() =>
         soloSesion ? String(getUsuario()?.id ?? '') : ''
     )

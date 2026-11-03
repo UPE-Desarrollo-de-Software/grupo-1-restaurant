@@ -1,38 +1,65 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
+import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
+import { disponibilidadDiaReservaWeb, solicitarReservaWeb } from '../../../api/cliente'
+import { hoyLocal, reservaWebSchema } from '../../../schemas/cliente'
+import { useAhora } from '../../../hooks/useAhora'
+
+import type { DisponibilidadDiaReservaWeb, Reserva, SlotDisponibilidad } from '../../../types/Reserva'
 import s from './Reservas.module.css'
-import { reservaSchema } from '../../../schemas/reserva'
-import { createReserva } from '../../../api/reservas'
-import { getConfiguracion } from '../../../api/configuracion'
+// import { getConfiguracion } from '../../../api/configuracion'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { baseReservas } from '../../../navigation/rutas'
 
+// Anticipación mínima que exige el backend (ReservaService: 2 horas).
+const ANTICIPACION_MIN = 2 * 60
+
+function formatearFechaLarga(fecha: string): string {
+    const fechaDate = new Date(`${fecha}T00:00:00`)
+    if (Number.isNaN(fechaDate.getTime())) return fecha
+    return fechaDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+function horaAMinutos(hora: string): number {
+    const [horas, minutos] = hora.split(':').map(Number)
+    return horas * 60 + minutos
+}
+
+// Reservas del cliente (público, sin login): POST /cliente/reservas.
+// NO se elige mesa: es por personas + fecha + horario y el backend
+// asigna una combinación de capacidades del CONFIG_MESA. El horario se
+// elige de la grilla fija de turnos (12:00–23:00 cada 30 min) que
+// devuelve GET /cliente/reservas/disponibilidad-dia, filtrada por la
+// cantidad de personas y por la anticipación de 2 horas.
 export function CrearReservaPage() {
     const navigate = useNavigate()
     // Se sirve bajo /gerente/reservas (Gerente) y /mozo/reservas (Mozo).
     const base = baseReservas(useLocation().pathname)
-    const [contacto, setContacto] = useState('')
+    const [nombreApellido, setNombreApellido] = useState('')
     const [fecha, setFecha] = useState('')
     const [hora, setHora] = useState('')
     const [cantPersonas, setCantPersonas] = useState('')
 
-    // No hay mesa que elegir: el backend asigna la combinación de
-    // capacidades del CONFIG_MESA. Solo se muestra el aforo como
-    // referencia (tolerante a fallo).
-    const [aforoInfo, setAforoInfo] = useState<string | null>(null)
+    // const [codigo, setCodigo] = useState<string | null>(null)
+
+    // Grilla del día cacheada por fecha: se muestra al instante si se
+    // vuelve a una fecha ya consultada mientras se refresca.
+    const [horarios, setHorarios] = useState<
+        Record<string, { datos: DisponibilidadDiaReservaWeb | null; error: string | null }>
+    >({})
+    const [reintento, setReintento] = useState(0)
+
+    const ahora = useAhora()
+    // const [aforoInfo, setAforoInfo] = useState<string | null>(null)
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
-    const [exito, setExito] = useState<string | null>(null)
+    const [reservaCreada, setReservaCreada] = useState<Reserva | null>(null)
     const [tocado, setTocado] = useState(false)
+    const [copiado, setCopiado] = useState(false)
 
+    // Errores derivados en cada render (patrón de los formularios ABM).
     const errores: Record<string, string> = {}
-    const resultados = reservaSchema.safeParse({
-        contacto_solicitante: contacto,
-        fecha,
-        hora,
-        cantPersonas,
-    })
+    const resultados = reservaWebSchema.safeParse({ nombreApellido, fecha, hora, cantPersonas })
     if (!resultados.success) {
         for (const issue of resultados.error.issues) {
             const campo = issue.path[0]
@@ -42,125 +69,277 @@ export function CrearReservaPage() {
         }
     }
 
+    // useEffect(() => {
+    //     const controller = new AbortController()
+    //     getConfiguracion(controller.signal)
+    //         .then(config => {
+    //             setAforoInfo(`Salón: aforo ${config.aforo} personas · hasta ${config.mesas_maximas} mesas`)
+    //         })
+    //         .catch(() => {
+    //             // Sin aforo de referencia no se bloquea el alta.
+    //         })
+    //     return () => controller.abort()
+    // }, [])
+
+    const personasValidas = Number.isInteger(Number(cantPersonas)) && Number(cantPersonas) >= 1
+    const personas = personasValidas ? Number(cantPersonas) : 0
+
+    const diaActual = fecha ? horarios[fecha] : undefined
+    const cargandoHorarios = !!fecha && diaActual === undefined
+    const errorHorarios = diaActual?.error ?? null
+    const slots = diaActual?.datos?.slots ?? []
+
+    const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes()
+    const limiteAnticipacion = minutosAhora + ANTICIPACION_MIN
+    const esHoy = fecha === hoyLocal()
+
+    function fueraDeAnticipacion(slot: SlotDisponibilidad): boolean {
+        return esHoy && horaAMinutos(slot.hora) < limiteAnticipacion
+    }
+
+    function motivoDeshabilitado(slot: SlotDisponibilidad): string | null {
+        if (fueraDeAnticipacion(slot)) {
+            return 'Faltan 2 horas de anticipación'
+        }
+        if (!personasValidas) {
+            return 'Indicá cuántas personas son'
+        }
+        if (slot.aforo_disponible < personas) {
+            return 'Sin lugar para esa cantidad de personas'
+        }
+        return null
+    }
+
+    const slotSeleccionado = slots.find(slot => slot.hora === hora) ?? null
+
     useEffect(() => {
+        if (!fecha) return
         const controller = new AbortController()
-        getConfiguracion(controller.signal)
-            .then(config => {
-                setAforoInfo(`Salón: aforo ${config.aforo} personas · hasta ${config.mesas_maximas} mesas`)
+        disponibilidadDiaReservaWeb(fecha, controller.signal)
+            .then(datos => {
+                setHorarios(prev => ({ ...prev, [fecha]: { datos, error: null } }))
             })
-            .catch(() => {
-                // Sin aforo de referencia no se bloquea el alta.
+            .catch(err => {
+                if (!controller.signal.aborted) {
+                    setHorarios(prev => ({
+                        ...prev,
+                        [fecha]: {
+                            datos: null,
+                            error: err instanceof Error
+                                ? err.message
+                                : 'No se pudieron cargar los horarios',
+                        },
+                    }))
+                }
             })
         return () => controller.abort()
-    }, [])
+    }, [fecha, reintento])
 
-    async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
+    function cambiarFecha(valor: string) {
+        setFecha(valor)
+        // El horario pertenece a la fecha anterior: no lo arrastres.
+        setHora('')
+    }
+
+    function cambiarPersonas(valor: string) {
+        setCantPersonas(valor)
+        const nuevoTotal = Number(valor)
+        if (!hora) return
+        const slot = slots.find(candidato => candidato.hora === hora)
+        if (
+            !Number.isInteger(nuevoTotal) || nuevoTotal < 1
+            || !slot || slot.aforo_disponible < nuevoTotal
+        ) {
+            setHora('')
+        }
+    }
+
+    async function handlerCopiar() {
+        if (!reservaCreada) return
+        try {
+            await navigator.clipboard.writeText(reservaCreada.id.toString())
+            setCopiado(true)
+        } catch {
+            setCopiado(false)
+        }
+    }
+
+    async function manejarSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setTocado(true)
-        setExito(null)
         setErrorApi(null)
-
         if (!resultados.success) return
 
         setEnviando(true)
         try {
-            await createReserva(resultados.data)
-            setExito('Reserva creada exitosamente')
-            setContacto('')
-            setFecha('')
-            setHora('')
-            setCantPersonas('')
-            setTocado(false)
+            const creada = await solicitarReservaWeb({
+                contacto_solicitante: `${resultados.data.nombreApellido}`,
+                fecha: resultados.data.fecha,
+                hora: resultados.data.hora,
+                cantPersonas: resultados.data.cantPersonas,
+            })
+            setReservaCreada(creada)
         } catch (err) {
-            // Reglas de negocio del backend (422): anticipación mínima,
-            // aforo insuficiente o conflicto de fecha+hora.
-            setErrorApi(err instanceof Error ? err.message : 'Error desconocido al crear la reserva')
+            // Reglas del backend (422): 2 horas de anticipación, aforo
+            // insuficiente o conflicto de fecha+hora.
+            setErrorApi(err instanceof Error ? err.message : 'No se pudo solicitar la reserva')
         } finally {
             setEnviando(false)
         }
     }
 
+    function cerrarExito() {
+        setReservaCreada(null)
+        setNombreApellido('')
+        setFecha('')
+        setHora('')
+        setCantPersonas('')
+        setHorarios({})
+        setReintento(0)
+        setTocado(false)
+    }
+
     return (
-        <div className={s.page}>
-            <Card className={s.card}>
+        <div className={s.pagina}>
+            <section className={s.tarjeta}>
                 <h1 className={`text-headline-md ${s.title}`}>Nueva reserva</h1>
-
-                {aforoInfo && (
-                    <p className={`text-body-sm ${s.subtitle}`}>{aforoInfo}</p>
-                )}
-
-                {exito && (
-                    <Alert variant='success' className='text-body-md d-flex flex-wrap align-items-center justify-content-between gap-2'>
-                        <span>{exito}</span>
-                        <Button
-                            className='text-label-md'
-                            variant='outline-success'
-                            size='sm'
-                            type='button'
-                            onClick={() => navigate(base)}
-                        >
-                            Volver a la lista
-                        </Button>
-                    </Alert>
-                )}
-                {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
-
-                <Form onSubmit={handlerSubmit} noValidate>
-                    <div className={s.row}>
-                        <Form.Group className={s.field} controlId='crear-reserva-contacto'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Contacto del solicitante</Form.Label>
+                {errorApi && <Alert variant='danger' className='text-body-md alerta'>{errorApi}</Alert>}
+                            {/* {aforoInfo && (
+                <p className={`text-body-sm ${s.subtitle}`}>{aforoInfo}</p>
+            )} */}
+                <Form onSubmit={manejarSubmit} noValidate>
+                    <div className={s.fila}>
+                        <Form.Group className={s.campo} controlId='reserva-cliente-nombre'>
+                            <Form.Label className='text-label-md'>Nombre y apellido</Form.Label>
                             <Form.Control
-                                className={s.input}
                                 type='text'
-                                placeholder='Nombre y teléfono o email'
-                                value={contacto}
-                                onChange={(e) => setContacto(e.target.value)}
-                                isInvalid={tocado && !!errores.contacto_solicitante}
+                                placeholder='Ana Pérez'
+                                value={nombreApellido}
+                                onChange={e => setNombreApellido(e.target.value)}
+                                isInvalid={tocado && !!errores.nombreApellido}
                             />
-                            <Form.Control.Feedback type='invalid'>{errores.contacto_solicitante}</Form.Control.Feedback>
+                            <Form.Control.Feedback type='invalid'>{errores.nombreApellido}</Form.Control.Feedback>
                         </Form.Group>
                     </div>
 
-                    <div className={s.row}>
-                        <Form.Group className={s.field} controlId='crear-reserva-fecha'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Fecha</Form.Label>
+                    <div className={s.fila}>
+                        <Form.Group className={s.campo} controlId='reserva-cliente-personas'>
+                            <Form.Label className='text-label-md'>Personas</Form.Label>
                             <Form.Control
-                                className={s.input}
-                                type='date'
-                                value={fecha}
-                                onChange={(e) => setFecha(e.target.value)}
-                                isInvalid={tocado && !!errores.fecha}
-                            />
-                            <Form.Control.Feedback type='invalid'>{errores.fecha}</Form.Control.Feedback>
-                        </Form.Group>
-
-                        <Form.Group className={s.field} controlId='crear-reserva-hora'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Hora</Form.Label>
-                            <Form.Control
-                                className={s.input}
-                                type='time'
-                                value={hora}
-                                onChange={(e) => setHora(e.target.value)}
-                                isInvalid={tocado && !!errores.hora}
-                            />
-                            <Form.Control.Feedback type='invalid'>{errores.hora}</Form.Control.Feedback>
-                        </Form.Group>
-
-                        <Form.Group className={s.field} controlId='crear-reserva-personas'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Cantidad de personas</Form.Label>
-                            <Form.Control
-                                className={s.input}
                                 type='number'
                                 min={1}
                                 step={1}
                                 placeholder='4'
                                 value={cantPersonas}
-                                onChange={(e) => setCantPersonas(e.target.value)}
+                                onChange={e => cambiarPersonas(e.target.value)}
                                 isInvalid={tocado && !!errores.cantPersonas}
                             />
                             <Form.Control.Feedback type='invalid'>{errores.cantPersonas}</Form.Control.Feedback>
                         </Form.Group>
+
+                        <Form.Group className={s.campo} controlId='reserva-cliente-fecha'>
+                            <Form.Label className='text-label-md'>Fecha</Form.Label>
+                            <Form.Control
+                                type='date'
+                                min={hoyLocal()}
+                                value={fecha}
+                                onChange={e => cambiarFecha(e.target.value)}
+                                isInvalid={tocado && !!errores.fecha}
+                            />
+                            <Form.Control.Feedback type='invalid'>{errores.fecha}</Form.Control.Feedback>
+                        </Form.Group>
                     </div>
+
+                    <Form.Group className={s.campo} controlId='reserva-cliente-horarios'>
+                        {fecha && (
+                            <Form.Label className='text-label-md'>Horarios disponibles</Form.Label>
+                        )}
+                        
+                        {!fecha && (
+                            <Form.Text className='text-body-sm'>
+                                Elegí una fecha para ver los horarios disponibles.
+                            </Form.Text>
+                        )}
+
+                        {cargandoHorarios && (
+                            <p className='text-body-sm mb-0 d-flex align-items-center gap-2'>
+                                <Spinner size='sm' animation='border' />
+                                Cargando horarios…
+                            </p>
+                        )}
+
+                        {errorHorarios && (
+                            <div className='text-body-sm'>
+                                <span className='d-block mb-2'>{errorHorarios}</span>
+                                <Button
+                                    type='button'
+                                    variant='outline-secondary'
+                                    size='sm'
+                                    className='text-label-sm'
+                                    onClick={() => setReintento(valor => valor + 1)}
+                                >
+                                    Reintentar
+                                </Button>
+                            </div>
+                        )}
+
+                        {fecha && !cargandoHorarios && !errorHorarios && slots.length === 0 && (
+                            <Form.Text className='text-body-sm'>
+                                No hay horarios para esa fecha.
+                            </Form.Text>
+                        )}
+
+                        {slots.length > 0 && (
+                            <div className={s.grilla} role='group' aria-label='Horarios disponibles'>
+                                {slots.map(slot => {
+                                    const motivo = motivoDeshabilitado(slot)
+                                    const seleccionado = slot.hora === hora && motivo === null
+                                    return (
+                                        <button
+                                            key={slot.hora}
+                                            type='button'
+                                            className={s.slot}
+                                            aria-pressed={seleccionado}
+                                            disabled={motivo !== null}
+                                            title={motivo ?? undefined}
+                                            onClick={() => setHora(slot.hora)}
+                                        >
+                                            {slot.hora}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        )}
+
+                        {tocado && errores.hora && slots.length > 0 && (
+                            <Form.Text className='text-body-sm text-danger d-block'>
+                                {errores.hora}
+                            </Form.Text>
+                        )}
+
+                        {slotSeleccionado && (
+                            <div className={`text-body-sm ${s.detalleSlot}`}>
+                                <span className='d-block'>
+                                    Aforo libre para las {slotSeleccionado.hora}:{' '}
+                                    <strong>{slotSeleccionado.aforo_disponible} personas</strong>
+                                </span>
+                                {slotSeleccionado.disponible.length > 0 ? (
+                                    <ul className='mb-0 ps-3'>
+                                        {slotSeleccionado.disponible.map(fila => (
+                                            <li key={fila.capacidad}>
+                                                Combinaciones de {fila.capacidad} lugares × {fila.cantidad}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <span className='d-block'>
+                                        No quedan combinaciones libres para ese horario; probá
+                                        con otro.
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </Form.Group>
 
                     <div className={s.actions}>
                         <Button className={s.button} variant='primary' type='submit' disabled={enviando}>
@@ -179,7 +358,81 @@ export function CrearReservaPage() {
                         </Button>
                     </div>
                 </Form>
-            </Card>
+            </section>
+
+            <Modal show={reservaCreada !== null} onHide={cerrarExito} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title className='text-headline-sm'>Reserva pedida</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {reservaCreada && (
+                        <>
+                            <div className={s.exitoIcono} aria-hidden='true'>
+                                <i className='bi bi-check2-circle' />
+                            </div>
+                            <p className={`text-body-md ${s.exitoTexto}`}>
+                                ¡Listo! Tu reserva quedó registrada.
+                            </p>
+                            <div className={s.pinBox}>
+                                <div>
+                                    <p className={`text-label-sm ${s.pinEtiqueta}`}>Código reserva (PIN)</p>
+                                    <p className={`text-headline-md ${s.pinValor}`}>{reservaCreada.id}</p>
+                                </div>
+                                <Button
+                                    size='sm'
+                                    variant={copiado ? 'success' : 'outline-secondary'}
+                                    className='text-label-md'
+                                    type='button'
+                                    onClick={handlerCopiar}
+                                >
+                                    <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
+                                    {copiado ? 'Copiado' : 'Copiar'}
+                                </Button>
+                                <p className={`text-body-sm ${s.exitoNota}`}>
+                                    Presentá este código al llegar al restaurante.
+                                </p>
+                            </div>
+                            <ul className={s.exitoDatos}>
+                                <li className='text-body-sm'>
+                                    <span>Fecha</span>
+                                    <strong>{formatearFechaLarga(reservaCreada.fecha)}</strong>
+                                </li>
+                                <li className='text-body-sm'>
+                                    <span>Hora</span>
+                                    <strong>{reservaCreada.hora} hs</strong>
+                                </li>
+                                <li className='text-body-sm'>
+                                    <span>Personas</span>
+                                    <strong>{reservaCreada.cantPersonas}</strong>
+                                </li>
+                            </ul>
+                            <p className={`text-body-sm ${s.exitoNota}`}>
+                                Guardá el código de tu reserva y mostráselo al local.
+                            </p>
+                            
+                        </>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button
+                        variant='outline-primary'
+                        className='text-label-md'
+                        type='button'
+                        onClick={cerrarExito}
+                        >
+                        <i className='bi bi-plus-circle me-1' aria-hidden='true' />
+                        Seguir creando
+                    </Button>
+                    <Button
+                        type='button'
+                        variant='primary'
+                        className='text-label-md'
+                        onClick={() => navigate(base)}
+                    >
+                        Listo
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </div>
     )
 }
