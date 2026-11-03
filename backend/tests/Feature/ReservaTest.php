@@ -453,3 +453,95 @@ test('la disponibilidad publica muestra las capacidades libres y no expone crede
         ->assertStatus(422)
         ->assertJsonValidationErrors(['hora']);
 });
+
+test('la grilla publica devuelve los turnos fijos del dia con su aforo', function () {
+    salonReserva([
+        ['cantidad' => 2, 'capacidad' => 4],
+        ['cantidad' => 1, 'capacidad' => 2],
+    ]);
+    $fecha = now()->addDays(2)->toDateString();
+
+    $response = $this->getJson("/api/cliente/reservas/disponibilidad-dia?fecha={$fecha}")
+        ->assertOk();
+
+    $slots = $response->json('slots');
+
+    expect($response->json('fecha'))->toBe($fecha)
+        ->and($slots)->toHaveCount(23)
+        ->and($slots[0]['hora'])->toBe('12:00')
+        ->and($slots[0]['inicio'])->toBe('12:00')
+        ->and($slots[0]['fin'])->toBe('12:30')
+        ->and($slots[0]['aforo_disponible'])->toBe(10)
+        ->and($slots[22]['hora'])->toBe('23:00')
+        ->and($slots[22]['fin'])->toBe('23:30');
+
+    expect(collect($slots[0]['disponible'])->firstWhere('capacidad', 4)['cantidad'])->toBe(2)
+        ->and(collect($slots[0]['disponible'])->firstWhere('capacidad', 2)['cantidad'])->toBe(1);
+
+    // Ruta pública: jamás expone credenciales (ni codigo_acceso).
+    expect($response->json())->not->toHaveKey('codigo_acceso');
+});
+
+test('la grilla del dia descuenta solo el turno que solapa con una pendiente', function () {
+    salonReserva([['cantidad' => 1, 'capacidad' => 4]]);
+    $fecha = now()->addDays(2)->toDateString();
+
+    $this->postJson('/api/cliente/reservas', [
+        'contacto_solicitante' => '1234-5678',
+        'fecha' => $fecha,
+        'hora' => '21:00',
+        'cantPersonas' => 4,
+    ])->assertStatus(201);
+
+    $slots = collect(
+        $this->getJson("/api/cliente/reservas/disponibilidad-dia?fecha={$fecha}")
+            ->assertOk()
+            ->json('slots')
+    )->keyBy('hora');
+
+    // El hold de 21:00 dura 30 min: tapa exactamente su turno, no los vecinos.
+    expect($slots['21:00']['aforo_disponible'])->toBe(0)
+        ->and($slots['21:00']['disponible'])->toBe([])
+        ->and($slots['20:30']['aforo_disponible'])->toBe(4)
+        ->and($slots['21:30']['aforo_disponible'])->toBe(4);
+});
+
+test('la grilla del dia libera los turnos de una reserva vencida', function () {
+    $this->travelTo('2026-11-10 19:00:00');
+    salonReserva([['cantidad' => 1, 'capacidad' => 4]]);
+
+    $this->postJson('/api/cliente/reservas', [
+        'contacto_solicitante' => '4444-3333',
+        'fecha' => '2026-11-10',
+        'hora' => '21:00',
+        'cantPersonas' => 4,
+    ])->assertStatus(201);
+
+    // Dentro de la espera (21:00 + 30 min): el turno sigue tomado.
+    $this->travelTo('2026-11-10 21:15:00');
+    $tomado = collect(
+        $this->getJson('/api/cliente/reservas/disponibilidad-dia?fecha=2026-11-10')
+            ->assertOk()
+            ->json('slots')
+    )->firstWhere('hora', '21:00');
+    expect($tomado['aforo_disponible'])->toBe(0);
+
+    // Pasó la espera: vence sola y el turno vuelve a estar libre.
+    $this->travelTo('2026-11-10 21:31:00');
+    $libre = collect(
+        $this->getJson('/api/cliente/reservas/disponibilidad-dia?fecha=2026-11-10')
+            ->assertOk()
+            ->json('slots')
+    )->firstWhere('hora', '21:00');
+    expect($libre['aforo_disponible'])->toBe(4);
+});
+
+test('la grilla del dia exige una fecha valida', function () {
+    $this->getJson('/api/cliente/reservas/disponibilidad-dia')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['fecha']);
+
+    $this->getJson('/api/cliente/reservas/disponibilidad-dia?fecha=invalida')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['fecha']);
+});

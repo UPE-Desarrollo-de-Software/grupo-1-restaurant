@@ -106,11 +106,16 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
 //    de capacidades del inventario (CONFIG_MESA − pendientes
 //    solapadas); no hay mesa que elegir ni "mozo virtual";
 //  - disponibilidad: qué capacidades quedan libres para ese intervalo
-//    (reemplaza al antiguo mapa de elección de mesas).
+//    (reemplaza al antiguo mapa de elección de mesas);
+//  - disponibilidad-dia: grilla fija de turnos (12:00–23:00 cada 30
+//    min) con el aforo libre de cada uno (una sola request por fecha).
 Route::post('/cliente/reservas', [ReservaController::class, 'solicitarWeb'])
     ->middleware('throttle:60,1');
 
 Route::get('/cliente/reservas/disponibilidad', [ReservaController::class, 'disponibilidad'])
+    ->middleware('throttle:60,1');
+
+Route::get('/cliente/reservas/disponibilidad-dia', [ReservaController::class, 'disponibilidadDia'])
     ->middleware('throttle:60,1');
 
 // ==================== CUALQUIER EMPLEADO AUTENTICADO ====================
