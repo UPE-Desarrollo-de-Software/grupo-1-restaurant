@@ -41,9 +41,6 @@ export function ReservaCard({ reserva }: ReservaCardProps) {
 
           <div className={s.info}>
             <div className={s.badges}>
-              <span className={`text-label-sm ${s.badgeMesa}`}>
-                {reserva.mesa_id == null ? 'A armar' : `Mesa #${reserva.mesa_id}`}
-              </span>
               <span className={`text-label-sm ${s[CLASES_ESTADO[reserva.estado]]}`}>
                 {ESTADOS[reserva.estado]}
               </span>

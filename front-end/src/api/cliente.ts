@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "../config/env"
 import type { ClienteMesa } from "../types/Cliente"
 import type { CuentaMesa, ResumenMesa } from "../types/Mesa"
-import type { DisponibilidadReservaWeb, Reserva, ReservaResponse, ReservaWebAlta } from "../types/Reserva"
+import type { DisponibilidadDiaReservaWeb, Reserva, ReservaResponse, ReservaWebAlta } from "../types/Reserva"
 import type { AltaPedidosMesa } from "./pedidos"
 
 // Auto-pedido del comensal: NO usa Sanctum. La credencial es el
@@ -145,16 +145,15 @@ export async function llamarMozo(codigo: string): Promise<{ mensaje: string }> {
     return { mensaje: String((data as { mensaje?: string } | null)?.mensaje ?? 'El mozo fue avisado.') }
 }
 
-// GET /cliente/reservas/disponibilidad?fecha=&hora= — (PÚBLICO con
-// throttle) capacidades del CONFIG_MESA que quedan libres para el
-// intervalo (las pendientes del día que solapan hacen hold).
-export async function disponibilidadReservaWeb(
+// GET /cliente/reservas/disponibilidad-dia?fecha= — (PÚBLICO con
+// throttle) grilla fija de turnos (12:00–23:00 cada 30 min) con el
+// aforo que queda libre en cada uno. Una sola request por fecha.
+export async function disponibilidadDiaReservaWeb(
     fecha: string,
-    hora: string,
     signal?: AbortSignal,
-): Promise<DisponibilidadReservaWeb> {
-    const params = new URLSearchParams({ fecha, hora })
-    const response = await fetch(`${API_BASE_URL}/cliente/reservas/disponibilidad?${params.toString()}`, {
+): Promise<DisponibilidadDiaReservaWeb> {
+    const params = new URLSearchParams({ fecha })
+    const response = await fetch(`${API_BASE_URL}/cliente/reservas/disponibilidad-dia?${params.toString()}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
         signal,
@@ -162,11 +161,11 @@ export async function disponibilidadReservaWeb(
     const data = await response.json().catch(() => null)
     if (!response.ok) {
         throw new ErrorCliente(
-            `Error ${response.status} al consultar la disponibilidad`,
+            `Error ${response.status} al consultar los horarios`,
             response.status,
         )
     }
-    return data as DisponibilidadReservaWeb
+    return data as DisponibilidadDiaReservaWeb
 }
 
 // POST /cliente/reservas — alta de reserva del cliente (PÚBLICO con

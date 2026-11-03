@@ -33,14 +33,17 @@ export function ReservasHubPage() {
 
     return (
         <div className={`${s.page} ${s.hub}`}>
+            <h1 className={`text-headline-md ${s.title}`}>Reservas</h1>
             <Buscador
-                placeHolder='Buscar por contacto, mesa o id...'
+                placeHolder='Buscar por contacto, id...'
                 valor={busqueda}
                 onCambio={setBusqueda}
             />
+            <BotonRedireccion nombre='Nueva Reserva' ruta={`${base}/crear`}/>
+            <Resumen tipo='reserva' items={items} loading={loading} />
             <div className={s.filtros}>
                 <Form.Select
-                    className={s.filtro}
+                    className={`${s.filtro} text-label-md`}
                     value={estado}
                     onChange={(e) => setEstado(e.target.value as EstadoReserva | '')}
                     aria-label='Filtrar por estado'
@@ -50,7 +53,7 @@ export function ReservasHubPage() {
                     ))}
                 </Form.Select>
                 <Form.Control
-                    className={s.filtro}
+                    className={`${s.filtro}  text-label-md`}
                     type='date'
                     value={fecha}
                     onChange={(e) => setFecha(e.target.value)}
@@ -69,8 +72,6 @@ export function ReservasHubPage() {
                     </Button>
                 )}
             </div>
-            <BotonRedireccion nombre='Nueva Reserva' ruta={`${base}/crear`}/>
-            <Resumen tipo='reserva' items={items} loading={loading} />
             <Lista tipo='reserva' items={filtradas} loading={loading} error={error} busqueda={busqueda} />
         </div>
     )

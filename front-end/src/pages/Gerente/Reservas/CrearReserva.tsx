@@ -84,11 +84,7 @@ export function CrearReservaPage() {
         <div className={s.page}>
             <Card className={s.card}>
                 <h1 className={`text-headline-md ${s.title}`}>Nueva reserva</h1>
-                <p className={`text-body-sm ${s.subtitle}`}>
-                    La reserva es por personas + fecha y horario; el local arma las mesas
-                    según la configuración del salón. Queda pendiente hasta que se cancele,
-                    finalice o se registre la inasistencia.
-                </p>
+
                 {aforoInfo && (
                     <p className={`text-body-sm ${s.subtitle}`}>{aforoInfo}</p>
                 )}

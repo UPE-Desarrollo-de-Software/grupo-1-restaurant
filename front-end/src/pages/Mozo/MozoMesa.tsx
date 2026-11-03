@@ -212,7 +212,7 @@ export function MozoMesaPage() {
             {codigo && (
                 <div className={s.pinBox}>
                     <div>
-                        <p className={`text-label-sm ${s.pinEtiqueta}`}>PIN de la mesa (código de acceso)</p>
+                        <p className={`text-label-sm ${s.pinEtiqueta}`}>Código de Mesa</p>
                         <p className={`text-headline-sm ${s.pinValor}`}>{codigo}</p>
                     </div>
                     <Button
@@ -366,11 +366,6 @@ export function MozoMesaPage() {
                     )}
                 </div>
             ) : null}
-
-            <p className={`text-body-sm ${s.nota}`}>
-                Se muestra la visita actual de la mesa. Cuando el cliente pague, usá "Cerrar visita"
-                en la vista Cuenta para finalizarla.
-            </p>
 
             <CerrarMesaModal
                 visible={modalCerrar}

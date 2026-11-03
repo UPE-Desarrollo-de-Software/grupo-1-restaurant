@@ -65,9 +65,7 @@ export function CerrarMesaModal({ visible, mesaId, numeroMesa, onCancelar, onCer
           <Alert variant='success' className='text-body-md mb-0'>{exito}</Alert>
         ) : (
           <p className='text-body-md mb-0'>
-            Cerrá la visita de la mesa {String(numeroMesa).padStart(2, '0')} cuando el cliente ya
-            pagó: se elimina del sistema (su código deja de valer) y se cancelan sus reservas
-            pendientes. No puede haber pedidos activos.
+            ¿Cerrar visita de la Mesa {String(numeroMesa).padStart(2, '0')}?
           </p>
         )}
       </Modal.Body>

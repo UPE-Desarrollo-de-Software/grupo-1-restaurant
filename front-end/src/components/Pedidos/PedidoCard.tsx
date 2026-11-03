@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Alert, Button, Spinner } from 'react-bootstrap'
+import { Alert, Button, Spinner, Modal } from 'react-bootstrap'
 import type { EstadoPedido, PedidoResumen } from '../../types/Mesa'
-import { cambiarEstadoPedido, confirmarPedido, enviarPedido } from '../../api/pedidos'
+import { cambiarEstadoPedido, confirmarPedido } from '../../api/pedidos'
 import s from './PedidoCard.module.css'
 
 // Tarjeta de un pedido activo de la mesa con las acciones del mozo.
@@ -19,7 +19,7 @@ const ETIQUETAS_ESTADO: Record<EstadoPedido, string> = {
     en_preparacion: 'En preparación',
     listo: 'Listo',
     entregado: 'Entregado',
-    cerrado: 'Cerrado',
+    cerrado: 'Entregado',
     cancelado: 'Cancelado',
 }
 
@@ -30,7 +30,7 @@ const CLASES_ESTADO: Record<EstadoPedido, string> = {
     en_preparacion: 'badgePreparacion',
     listo: 'badgeListo',
     entregado: 'badgeEntregado',
-    cerrado: 'badgeCerrado',
+    cerrado: 'badgeEntregado',
     cancelado: 'badgeCancelado',
 }
 
@@ -44,7 +44,7 @@ const DESTINO: Record<Accion, EstadoPedido> = {
     enviar: 'enviado',
     reabrir: 'en_curso',
     cancelar: 'cancelado',
-    entregado: 'entregado',
+    entregado: 'cerrado',
     cerrar: 'cerrado',
 }
 
@@ -108,6 +108,7 @@ export function PedidoCard({ pedido, onCambio, onAgregar }: PedidoCardProps) {
     const [accion, setAccion] = useState<Accion | null>(null)
     const [errorApi, setErrorApi] = useState<string | null>(null)
     const [exito, setExito] = useState<string | null>(null)
+    const [confirmandoCancelar, setConfirmandoCancelar] = useState(false)
     // El gate de confirmar (422 "Faltan comensales…") ofrece forzar.
     const [permiteForzar, setPermiteForzar] = useState(false)
 
@@ -134,9 +135,20 @@ export function PedidoCard({ pedido, onCambio, onAgregar }: PedidoCardProps) {
             setAccion(null)
         }
     }
+    function confirmarCancelacion() {
+        setConfirmandoCancelar(false) // cierra el modal; el spinner pasa a la tarjeta
+        correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))
+    }
 
     const ocupado = accion !== null
-
+    
+    const botonCancelar = (
+    <BotonAccion
+        etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
+        proceso={accion === 'cancelar'} bloqueado={ocupado}
+        onClick={() => setConfirmandoCancelar(true)}
+    />
+)
     return (
         <article className={s.card}>
             <div className={s.header}>
@@ -219,37 +231,13 @@ export function PedidoCard({ pedido, onCambio, onAgregar }: PedidoCardProps) {
                     </>
                 )}
 
-                {estadoRender === 'confirmado' && (
-                    <>
-                        <BotonAccion
-                            etiqueta='Enviar a cocina' icono='bi-send' variant='primary'
-                            proceso={accion === 'enviar'} bloqueado={ocupado}
-                            onClick={() => correr('enviar', () => enviarPedido(pedido.id))}
-                        />
-                        <BotonAccion
-                            etiqueta='Reabrir' icono='bi-arrow-counterclockwise' variant='outline-secondary'
-                            proceso={accion === 'reabrir'} bloqueado={ocupado}
-                            onClick={() => correr('reabrir', () => cambiarEstadoPedido(pedido.id, 'en_curso'))}
-                        />
-                        <BotonAccion
-                            etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
-                            proceso={accion === 'cancelar'} bloqueado={ocupado}
-                            onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
-                        />
-                    </>
-                )}
-
                 {estadoRender === 'enviado' && (
                     <>
                         <span className={`text-body-sm ${s.enCocina}`}>
                             <i className='bi bi-fire me-1' aria-hidden='true' />
-                            En la cocina: la preparación la avanza el personal de cocina.
+                            Tu pedido esta en espera
                         </span>
-                        <BotonAccion
-                            etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
-                            proceso={accion === 'cancelar'} bloqueado={ocupado}
-                            onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
-                        />
+                        {botonCancelar}
                     </>
                 )}
 
@@ -257,13 +245,9 @@ export function PedidoCard({ pedido, onCambio, onAgregar }: PedidoCardProps) {
                     <>
                         <span className={`text-body-sm ${s.enCocina}`}>
                             <i className='bi bi-fire me-1' aria-hidden='true' />
-                            En preparación: la cocina avanza hasta marcarlo listo.
+                            Tu pedido se esta cocinando
                         </span>
-                        <BotonAccion
-                            etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
-                            proceso={accion === 'cancelar'} bloqueado={ocupado}
-                            onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
-                        />
+                        {botonCancelar}
                     </>
                 )}
 
@@ -272,31 +256,50 @@ export function PedidoCard({ pedido, onCambio, onAgregar }: PedidoCardProps) {
                         <BotonAccion
                             etiqueta='Marcar entregado' icono='bi-bag-check' variant='outline-primary'
                             proceso={accion === 'entregado'} bloqueado={ocupado}
-                            onClick={() => correr('entregado', () => cambiarEstadoPedido(pedido.id, 'entregado'))}
+                            onClick={() => correr('entregado', async () => {
+                                await cambiarEstadoPedido(pedido.id, 'entregado')
+                                await cambiarEstadoPedido(pedido.id, 'cerrado')
+   
+                                return { mensaje: 'Pedido entregado' }
+                            })}
                         />
-                        <BotonAccion
-                            etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
-                            proceso={accion === 'cancelar'} bloqueado={ocupado}
-                            onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
-                        />
-                    </>
-                )}
-
-                {estadoRender === 'entregado' && (
-                    <>
-                        <BotonAccion
-                            etiqueta='Cerrar pedido' icono='bi-check2-square' variant='primary'
-                            proceso={accion === 'cerrar'} bloqueado={ocupado}
-                            onClick={() => correr('cerrar', () => cambiarEstadoPedido(pedido.id, 'cerrado'))}
-                        />
-                        <BotonAccion
-                            etiqueta='Cancelar' icono='bi-x-circle' variant='outline-danger'
-                            proceso={accion === 'cancelar'} bloqueado={ocupado}
-                            onClick={() => correr('cancelar', () => cambiarEstadoPedido(pedido.id, 'cancelado'))}
-                        />
+                        {botonCancelar}
                     </>
                 )}
             </div>
+
+            <Modal
+                show={confirmandoCancelar}
+                onHide={() => setConfirmandoCancelar(false)}
+                centered
+            >
+                <Modal.Header closeButton>
+                    <Modal.Title className='text-headline-sm'>
+                        Cancelar pedido #{pedido.id}
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body className='text-body-md'>
+                    ¿Seguro que querés cancelar este pedido? Esta acción no se puede deshacer.
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button
+                        variant='outline-secondary'
+                        className='text-label-md'
+                        onClick={() => setConfirmandoCancelar(false)}
+                    >
+                        Volver
+                    </Button>
+                    <Button
+                        variant='primary'
+                        className='text-label-md'
+                        onClick={confirmarCancelacion}
+                        type='button'
+                    >
+                        <i className='bi bi-x-circle me-1' aria-hidden='true' />
+                        Sí, cancelar pedido
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </article>
     )
 }

@@ -21,14 +21,14 @@ export function QrMesaModal({ mesa, onCerrar }: QrMesaModalProps) {
     ? `${window.location.origin}/mesa?codigo=${mesa.codigo_acceso}`
     : ''
 
-  function handlerDescargar() {
-    const lienzo = canvasRef.current?.toDataURL('image/png')
-    if (!lienzo) return
-    const enlace = document.createElement('a')
-    enlace.href = lienzo
-    enlace.download = `qr-mesa-${mesa?.id ?? 'mesa'}.png`
-    enlace.click()
-  }
+  // function handlerDescargar() {
+  //   const lienzo = canvasRef.current?.toDataURL('image/png')
+  //   if (!lienzo) return
+  //   const enlace = document.createElement('a')
+  //   enlace.href = lienzo
+  //   enlace.download = `qr-mesa-${mesa?.id ?? 'mesa'}.png`
+  //   enlace.click()
+  // }
 
   return (
     <Modal show={mesa !== null} onHide={onCerrar} centered aria-labelledby='qr-mesa-titulo'>
@@ -49,11 +49,11 @@ export function QrMesaModal({ mesa, onCerrar }: QrMesaModalProps) {
               Escaneá para entrar a tu mesa
             </p>
             <QRCodeSVG value={destino} size={220} level='M' className={s.qr} />
-            <p className={`text-headline-md ${s.codigo}`}>{mesa.codigo_acceso}</p>
             <p className={`text-body-sm ${s.ayuda}`}>
               O ingresá el código de 4 dígitos en la app.
             </p>
-            <p className={`text-body-sm ${s.url}`}>{destino}</p>
+            <p className={`text-headline-md ${s.codigo}`}>{mesa.codigo_acceso}</p>
+
             <p className={`text-body-sm ${s.nota}`}>
               <i className='bi bi-info-circle me-1' aria-hidden='true' />
               Válido hasta cerrar la visita.
@@ -63,14 +63,14 @@ export function QrMesaModal({ mesa, onCerrar }: QrMesaModalProps) {
       </Modal.Body>
 
       <Modal.Footer className='no-print'>
-        <Button variant='outline-primary' className='text-label-md' type='button' onClick={() => window.print()}>
+        {/* <Button variant='outline-primary' className='text-label-md' type='button' onClick={() => window.print()}>
           <i className='bi bi-printer me-1' aria-hidden='true' />
           Imprimir
         </Button>
         <Button variant='outline-primary' className='text-label-md' type='button' onClick={handlerDescargar}>
           <i className='bi bi-download me-1' aria-hidden='true' />
           Descargar PNG
-        </Button>
+        </Button> */}
         <Button variant='primary' className='text-label-md' type='button' onClick={onCerrar}>
           Listo
         </Button>

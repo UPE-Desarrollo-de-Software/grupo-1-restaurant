@@ -15,9 +15,9 @@ export const SECCIONES_SUBNAV: SeccionNav[] = [
         prefijo: '/gerente/mesas',
         roles: ['Gerente'],
         opciones: [
-            { to: '/gerente/mesas/gestion', label: 'Gestión de mesas', end: true },
+            { to: '/gerente/mesas/gestion', label: 'Mesas', end: true },
             { to: '/gerente/mesas/configuracion', label: 'Configuración', end: true },
-            { to: '/gerente/mesas/qr', label: 'Códigos QR', end: true },
+            { to: '/gerente/mesas/qr', label: 'QR', end: true },
             { to: '/gerente/mesas/comandas', label: 'Comandas', end: true },
         ],
     },
@@ -30,11 +30,6 @@ export const SECCIONES_SUBNAV: SeccionNav[] = [
         prefijo: '/gerente/usuarios',
         roles: ['Gerente'],
         opciones: [{ to: '/gerente/usuarios', label: 'Usuarios', end: true }],
-    },
-    {
-        prefijo: '/gerente/historial-acciones',
-        roles: ['Gerente'],
-        opciones: [{ to: '/gerente/historial-acciones', label: 'Historial de acciones', end: true }],
     },
     {
         prefijo: '/mozo/reservas',

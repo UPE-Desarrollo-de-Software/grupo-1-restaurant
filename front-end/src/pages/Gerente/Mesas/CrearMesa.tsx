@@ -114,10 +114,6 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
         <div className={s.page}>
             <Card className={s.card}>
                 <h1 className={`text-headline-md ${s.title}`}>Nueva mesa</h1>
-                <p className={`text-body-sm ${s.subtitle}`}>
-                    La mesa nace ocupada (el cliente ya se sentó). El código de acceso
-                    (PIN de 4 dígitos) se genera solo y es estable hasta cerrar la visita.
-                </p>
                 {aforoInfo && (
                     <p className={`text-body-sm ${s.subtitle}`}>{aforoInfo}</p>
                 )}

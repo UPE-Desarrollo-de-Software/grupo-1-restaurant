@@ -31,16 +31,21 @@ export type ReservaResponse = {
 
 // ==== Reserva web del cliente (rutas PÚBLICAS, sin token) ====
 
-// GET /cliente/reservas/disponibilidad?fecha=&hora= — capacidades del
-// CONFIG_MESA que quedan libres para el intervalo (las pendientes del
-// día que solapan hacen hold). Reemplaza al viejo mapa de elección de
-// mesas.
-export interface DisponibilidadReservaWeb {
-    fecha: string
+// GET /cliente/reservas/disponibilidad-dia?fecha= — grilla fija de
+// turnos (12:00–23:00 cada 30 min). Por cada horario, las capacidades
+// del CONFIG_MESA que quedan libres en su intervalo (las pendientes que
+// solapan hacen hold).
+export interface SlotDisponibilidad {
+    hora: string
     inicio: string
     fin: string
     disponible: { capacidad: number; cantidad: number }[]
     aforo_disponible: number
+}
+
+export interface DisponibilidadDiaReservaWeb {
+    fecha: string
+    slots: SlotDisponibilidad[]
 }
 
 // POST /cliente/reservas — alta; NO hay mesa que elegir: el backend

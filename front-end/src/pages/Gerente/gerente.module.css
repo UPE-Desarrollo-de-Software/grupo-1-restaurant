@@ -32,8 +32,9 @@
 
 .card {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-md);
   padding: var(--space-lg);
   background-color: var(--color-surface-container-lowest);
   border: 1px solid var(--color-outline-variant);
@@ -43,7 +44,12 @@
   text-decoration: none;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
 .card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-level-2);
@@ -54,16 +60,12 @@
 .icon {
   font-size: 1.75rem;
   color: var(--color-primary);
-  margin-bottom: var(--space-2xs);
-}
-
-.cardTitle {
-  color: inherit;
   margin: 0;
+  flex-shrink: 0;
 }
 
+.cardTitle,
 .cardDesc {
-  color: var(--color-on-surface-variant);
   margin: 0;
 }
 

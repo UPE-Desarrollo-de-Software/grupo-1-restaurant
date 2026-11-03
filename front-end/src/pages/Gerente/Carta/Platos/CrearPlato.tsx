@@ -205,17 +205,12 @@ export function CrearPlatoPage() {
                         <p className={`text-body-sm ${s.ayuda}`}>
                             {loadingPromociones
                                 ? 'Cargando promociones...'
-                                : 'La promoción seleccionada se muestra en la tarjeta del plato y el descuento se aplica al precio al realizar el pedido.'}
+                                : 'La promoción se aplica al realizar el pedido.'}
                         </p>
                     </Form.Group>
 
                     <Form.Group className={s.field} controlId='abm-plato-ingredientes'>
                         <Form.Label className={`text-label-md ${s.label}`}>Ingredientes</Form.Label>
-                        <p className={`text-body-sm ${s.ayuda}`}>
-                            Definí cómo participa cada ingrediente en el plato: obligatorio (siempre va),
-                            por defecto (el cliente puede quitarlo) o para agregar (el cliente lo agrega y
-                            se le cobra su precio adicional).
-                        </p>
                         <div className={s.ingredientsBox}>
                             {loadingIngredientes ? (
                                     <p className={`text-body-sm ${s.empty}`}>Cargando ingredientes...</p>

@@ -122,8 +122,7 @@ export function ComandasPage() {
 
     return (
         <div className={`${s.page} ${s.hub}`}>
-            <h2 className={`text-headline-lg ${s.tituloListado}`}>Mesas</h2>
-            <p className={`text-body-md ${s.vacio}`}>
+            <p className={`text-body-md ${s.subtitle}`}>
                 Tocá una mesa para ver su comanda y su cuenta de la visita en curso.
             </p>
 

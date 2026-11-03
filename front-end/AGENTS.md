@@ -61,12 +61,17 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
 - Reservas web del cliente (públicas con throttle): **no hay elección de mesa**
   — solo `contacto_solicitante`, fecha, hora y `cantPersonas`; el backend asigna
   la combinación de capacidades del CONFIG_MESA (422 = anticipación mínima de
-  2 h, aforo insuficiente o conflicto de fecha+hora). La página consulta
-  `GET /cliente/reservas/disponibilidad?fecha=&hora=` (capacidades libres del
-  config para el intervalo) como referencia — **ruta ya registrada en el back**
-  (antes daba 404; la vieja `GET /cliente/reservas/mesas` fue eliminada). La
-  respuesta trae `reserva.id`: mostrarlo en el modal de éxito. El alta incluye un
-  único `contacto_solicitante` (la capa API arma "Nombre (Tel: ...)").
+  2 h, aforo insuficiente o conflicto de fecha+hora). **El horario se elige de
+  una grilla fija de turnos** (`12:00–23:00` cada 30 min, 23 slots) que devuelve
+  `GET /cliente/reservas/disponibilidad-dia?fecha=` — una sola request por fecha;
+  los slots viven como constante en `ReservaService` (no en el front) y cada uno
+  trae `hora`, `inicio`, `fin`, `disponible` y `aforo_disponible`. La página
+  (`ReservasClientePage`) cachea la grilla por fecha, filtra por personas
+  (`aforo_disponible >= cantPersonas`) y deshabilita los turnos de hoy con menos
+  de 2 h de anticipación (front) y los que no tienen aforo (422 real lo sigue
+  validando el back al crear). El alta no cambia. La respuesta trae
+  `reserva.id`: mostrarlo en el modal de éxito. El alta incluye un único
+  `contacto_solicitante` (la capa API arma "Nombre (Tel: ...)").
 - BottomNavbar (`useBottomNav`, `src/navigation/useBottomNav.ts`): sin sesión
   staff → `NAV_PUBLICO` (Carta, Mi pedido, Reservas, Mesa — todas con ruta); con
   sesión → `BOTTOM_POR_ROL[rol]` con fallback `NAV_PUBLICO`.
@@ -212,4 +217,4 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
 - Los precios se formatean con `Intl.NumberFormat('es-AR', { currency: 'ARS' })`.
 - `react-refresh/only-export-components` (ESLint): un archivo con componentes NO exporta constantes ni funciones — por eso el context está partido en `RolesContext.tsx` (solo el Provider) y `useRoles.ts` (contexto, hook y constantes).
   **Actualización**: el provider y el contexto de roles fueron eliminados; `src/context/RolesContext/` hoy solo contiene `useRol.ts` (hook puro, sin contexto de React).
-- Tipos del cliente en `src/types/Cliente.ts` (`ClienteMesa`, `LineaBorrador` con `clave`, `SesionCliente`); los tipos de reserva web (`MesaReservaWeb`, `ReservaWebAlta`) y el resumen de comanda (`ResumenMesa`, `PedidoResumen`) están en `types/Reserva.ts` y `types/Mesa.ts` (shapes espejo del backend — no duplicarlos).
+- Tipos del cliente en `src/types/Cliente.ts` (`ClienteMesa`, `LineaBorrador` con `clave`, `SesionCliente`); los tipos de reserva web (`DisponibilidadDiaReservaWeb`, `SlotDisponibilidad`, `ReservaWebAlta`) y el resumen de comanda (`ResumenMesa`, `PedidoResumen`) están en `types/Reserva.ts` y `types/Mesa.ts` (shapes espejo del backend — no duplicarlos).
