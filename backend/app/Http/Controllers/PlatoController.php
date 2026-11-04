@@ -9,6 +9,8 @@ use App\UseCases\Platos\EliminarPlatoUseCase;
 use App\UseCases\Platos\ListarPlatosActivosUseCase;
 use App\UseCases\Platos\ListarPlatosUseCase;
 use App\UseCases\Platos\ObtenerPlatoUseCase;
+use App\UseCases\Platos\QuitarImagenPlatoUseCase;
+use App\UseCases\Platos\SubirImagenPlatoUseCase;
 use Illuminate\Http\Request;
 
 /**
@@ -24,6 +26,8 @@ class PlatoController extends Controller
         private ActualizarPlatoUseCase $actualizar,
         private EliminarPlatoUseCase $eliminar,
         private AumentarPreciosPlatosUseCase $aumentarPrecios,
+        private SubirImagenPlatoUseCase $subirImagen,
+        private QuitarImagenPlatoUseCase $quitarImagen
     ) {}
 
     public function indexAll()
@@ -68,7 +72,6 @@ class PlatoController extends Controller
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
             'precio' => 'required|numeric|min:0',
-            'imagen' => 'nullable|string|max:255',
             'disponible' => 'required|boolean',
 
             // Ingredientes del plato con los flags opcional/por_defecto.
@@ -95,7 +98,6 @@ class PlatoController extends Controller
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
             'precio' => 'required|numeric|min:0',
-            'imagen' => 'nullable|string|max:255',
             'disponible' => 'required|boolean',
             'ingredientes' => 'nullable|array',
             'ingredientes.*' => 'array',
@@ -126,6 +128,34 @@ class PlatoController extends Controller
 
         return response()->json([
             'message' => 'Plato eliminado exitosamente',
+        ], 200);
+    }
+
+    public function imagen(Request $request, int $id)
+    {
+        $request->validate([
+            'imagen' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048', // KB
+        ]);
+
+        try {
+            $plato = ($this->subirImagen)($id, $request->file('imagen'));
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
+        }
+
+        return response()->json([
+            'message' => 'Imagen actualizada exitosamente',
+            'plato' => $plato,
+        ], 200);
+    }
+
+    public function quitarImagen(int $id)
+    {
+        $plato = ($this->quitarImagen)($id);
+
+        return response()->json([
+            'message' => 'Imagen eliminada exitosamente',
+            'plato' => $plato,
         ], 200);
     }
 

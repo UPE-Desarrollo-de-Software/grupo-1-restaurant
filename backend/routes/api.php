@@ -241,6 +241,8 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_platos'])->group(function 
     Route::post('/platos', [PlatoController::class, 'store']);
     Route::put('/platos/{id}', [PlatoController::class, 'update'])->whereNumber('id');
     Route::delete('/platos/{id}', [PlatoController::class, 'destroy'])->whereNumber('id');
+    Route::post('/platos/{id}/imagen', [PlatoController::class, 'imagen'])->whereNumber('id');
+    Route::delete('/platos/{id}/imagen', [PlatoController::class, 'quitarImagen'])->whereNumber('id');
     Route::post('/platos/aumentar-precios', [PlatoController::class, 'aumentarPrecios']);
 });
 

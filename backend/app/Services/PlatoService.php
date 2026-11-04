@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Plato;
 use App\Repositories\PlatoRepository;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * CRUD de platos (DER v2.2: entidad PLATO; antes "Producto").
@@ -23,7 +25,7 @@ class PlatoService
     public function obtenerDisponibles()
     {
         return $this->platos->disponiblesConCategoria()
-            ->map(fn (Plato $plato) => $this->conPromoVigente($plato));
+            ->map(fn(Plato $plato) => $this->conPromoVigente($plato));
     }
 
     public function obtenerConIngredientes(int $id): Plato
@@ -80,9 +82,14 @@ class PlatoService
     public function eliminar(int $id): void
     {
         $plato = $this->platos->conIngredientesOrFail((int) $id);
+        $imagen = $plato->imagen;
 
         $this->platos->desprenderIngredientes($plato); // Eliminar relaciones con ingredientes
         $this->platos->eliminar($plato);
+
+        // Recién acá, con el plato ya borrado: si la BD rechaza el DELETE
+        // la foto tiene que seguir en S3.
+        $this->borrarArchivo($imagen);
     }
 
     /**
@@ -233,5 +240,48 @@ class PlatoService
         }
 
         return $plato;
+    }
+
+    public function subirImagen(int $id, UploadedFile $archivo): Plato
+    {
+        $plato = $this->platos->conIngredientesOrFail($id);
+        $anterior = $plato->imagen;
+
+        $path = $archivo->store('platos', 's3');
+
+        if ($path === false) {
+            throw new \Exception('No se pudo guardar la imagen.');
+        }
+
+        try {
+            $plato = $this->platos->actualizar($plato, ['imagen' => $path]);
+        } catch (\Throwable $e) {
+            Storage::disk('s3')->delete($path); // no dejar huérfanos
+            throw $e;
+        }
+
+        $this->borrarArchivo($anterior);
+
+        return $plato;
+    }
+
+    public function quitarImagen(int $id): Plato
+    {
+        $plato = $this->platos->conIngredientesOrFail($id);
+        $anterior = $plato->imagen;
+
+        $plato = $this->platos->actualizar($plato, ['imagen' => null]);
+
+        $this->borrarArchivo($anterior);
+
+        return $plato;
+    }
+
+    private function borrarArchivo(?string $path): void
+    {
+        // Las URLs externas viejas no viven en nuestro bucket: no se tocan.
+        if ($path && ! str_starts_with($path, 'http')) {
+            Storage::disk('s3')->delete($path);
+        }
     }
 }
