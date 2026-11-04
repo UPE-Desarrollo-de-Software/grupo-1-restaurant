@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
+import { Alert, Button, Form, Spinner } from 'react-bootstrap'
 import { disponibilidadDiaReservaWeb, solicitarReservaWeb } from '../../../api/cliente'
 import { hoyLocal, reservaWebSchema } from '../../../schemas/cliente'
 import { useAhora } from '../../../hooks/useAhora'
+import { ExitoModal } from '../../../components/Exito/ExitoModal'
 
 import type { DisponibilidadDiaReservaWeb, Reserva, SlotDisponibilidad } from '../../../types/Reserva'
 import s from './Reservas.module.css'
@@ -360,79 +361,42 @@ export function CrearReservaPage() {
                 </Form>
             </section>
 
-            <Modal show={reservaCreada !== null} onHide={cerrarExito} centered>
-                <Modal.Header closeButton>
-                    <Modal.Title className='text-headline-sm'>Reserva pedida</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    {reservaCreada && (
-                        <>
-                            <div className={s.exitoIcono} aria-hidden='true'>
-                                <i className='bi bi-check2-circle' />
-                            </div>
-                            <p className={`text-body-md ${s.exitoTexto}`}>
-                                ¡Listo! Tu reserva quedó registrada.
-                            </p>
-                            <div className={s.pinBox}>
-                                <div>
-                                    <p className={`text-label-sm ${s.pinEtiqueta}`}>Código reserva (PIN)</p>
-                                    <p className={`text-headline-md ${s.pinValor}`}>{reservaCreada.id}</p>
-                                </div>
-                                <Button
-                                    size='sm'
-                                    variant={copiado ? 'success' : 'outline-secondary'}
-                                    className='text-label-md'
-                                    type='button'
-                                    onClick={handlerCopiar}
-                                >
-                                    <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
-                                    {copiado ? 'Copiado' : 'Copiar'}
-                                </Button>
-                                <p className={`text-body-sm ${s.exitoNota}`}>
-                                    Presentá este código al llegar al restaurante.
-                                </p>
-                            </div>
-                            <ul className={s.exitoDatos}>
-                                <li className='text-body-sm'>
-                                    <span>Fecha</span>
-                                    <strong>{formatearFechaLarga(reservaCreada.fecha)}</strong>
-                                </li>
-                                <li className='text-body-sm'>
-                                    <span>Hora</span>
-                                    <strong>{reservaCreada.hora} hs</strong>
-                                </li>
-                                <li className='text-body-sm'>
-                                    <span>Personas</span>
-                                    <strong>{reservaCreada.cantPersonas}</strong>
-                                </li>
-                            </ul>
-                            <p className={`text-body-sm ${s.exitoNota}`}>
-                                Guardá el código de tu reserva y mostráselo al local.
-                            </p>
-                            
-                        </>
-                    )}
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button
-                        variant='outline-primary'
-                        className='text-label-md'
-                        type='button'
-                        onClick={cerrarExito}
+            <ExitoModal
+                show={reservaCreada !== null}
+                titulo='Reserva pedida'
+                mensaje='¡Listo! La reserva quedó registrada.'
+                datos={reservaCreada
+                    ? [
+                        { etiqueta: 'Fecha', valor: formatearFechaLarga(reservaCreada.fecha) },
+                        { etiqueta: 'Hora', valor: `${reservaCreada.hora} hs` },
+                        { etiqueta: 'Personas', valor: String(reservaCreada.cantPersonas) },
+                    ]
+                    : []}
+                onSeguir={cerrarExito}
+                onListo={() => navigate(base)}
+            >
+                {reservaCreada && (
+                    <div className={`${s.pinBox} mt-3`}>
+                        <div>
+                            <p className={`text-label-sm ${s.pinEtiqueta}`}>Código reserva (PIN)</p>
+                            <p className={`text-headline-md ${s.pinValor}`}>{reservaCreada.id}</p>
+                        </div>
+                        <Button
+                            size='sm'
+                            variant={copiado ? 'success' : 'outline-secondary'}
+                            className='text-label-md'
+                            type='button'
+                            onClick={handlerCopiar}
                         >
-                        <i className='bi bi-plus-circle me-1' aria-hidden='true' />
-                        Seguir creando
-                    </Button>
-                    <Button
-                        type='button'
-                        variant='primary'
-                        className='text-label-md'
-                        onClick={() => navigate(base)}
-                    >
-                        Listo
-                    </Button>
-                </Modal.Footer>
-            </Modal>
+                            <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
+                            {copiado ? 'Copiado' : 'Copiar'}
+                        </Button>
+                        <p className={`text-body-sm ${s.exitoNota}`}>
+                            Este código te debe dar el cliente cuando venga
+                        </p>
+                    </div>
+                )}
+            </ExitoModal>
         </div>
     )
 }

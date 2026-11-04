@@ -6,6 +6,7 @@ import { BotonRedireccion } from '../../../components/Carta/BotonRedireccion'
 import { Resumen } from '../../../components/Carta/Resumen'
 import { Lista } from '../../../components/Carta/Lista'
 import { useDatos } from '../../../hooks/useDatos'
+import { useReservasRealtime } from '../../../realtime/useRealtimeEmpleado'
 import { baseReservas } from '../../../navigation/rutas'
 import type { EstadoReserva, Reserva } from '../../../types/Reserva'
 import s from './Reservas.module.css'
@@ -22,9 +23,13 @@ export function ReservasHubPage() {
     const [busqueda, setBusqueda] = useState('')
     const [estado, setEstado] = useState<EstadoReserva | ''>('')
     const [fecha, setFecha] = useState('')
-    const { items, loading, error } = useDatos('reserva')
+    const { items, loading, error, recargar } = useDatos('reserva')
     // Se sirve bajo /gerente/reservas (Gerente) y /mozo/reservas (Mozo).
     const base = baseReservas(useLocation().pathname)
+
+    // Tiempo real: altas y cancelaciones hechas por otros usuarios (o
+    // por el propio cliente desde la web) refrescan el listado.
+    useReservasRealtime({ alCrear: recargar, alCancelar: recargar, alConectar: recargar })
 
     const reservas = items.filter((item): item is Reserva => 'contacto_solicitante' in item)
     const filtradas = reservas.filter(r =>

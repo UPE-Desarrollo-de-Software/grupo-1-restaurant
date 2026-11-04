@@ -3,6 +3,7 @@ import { Alert, Badge, Button, Spinner } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
 import { getCuentaCliente, llamarMozo } from '../../api/cliente'
 import { useCliente } from '../../context/ClienteContext/useCliente'
+import { useMesaRealtime } from '../../realtime/useRealtimeMesa'
 import type { LineaBorrador } from '../../types/Cliente'
 import type { EstadoPedido, ParteCuenta, PedidoResumen } from '../../types/Mesa'
 import { importeLinea, unitarioLinea } from '../../utils/borrador'
@@ -94,6 +95,17 @@ export function PedidoPage() {
     const [avisando, setAvisando] = useState(false)
     const [avisoEnviado, setAvisoEnviado] = useState(false)
     const [errorAviso, setErrorAviso] = useState<string | null>(null)
+
+    // Tiempo real del comensal: el canal privado de su mesa avisa que el
+    // mozo fue notificado (el POST /cliente/llamar dispara .mesa.atencion),
+    // así el botón queda bloqueado aunque el aviso haya salido de otro
+    // dispositivo de la misma mesa. Al reconectar se refresca el resumen.
+    useMesaRealtime(mesa?.id ?? null, mesa?.codigo_acceso ?? null, {
+        alLlamarMozo: () => setAvisoEnviado(true),
+        // Si la sesión murió, recargarResumen lanza y el efecto de
+        // revalidación del provider ya se encarga de limpiarla.
+        alConectar: () => { recargarResumen().catch(() => { }) },
+    })
 
     // Pedidos enviados por ESTE comensal (el resumen trae todos los de
     // la mesa, incluidos los de otros comensales en sesiones de grupo).

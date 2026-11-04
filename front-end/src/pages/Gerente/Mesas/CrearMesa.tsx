@@ -40,7 +40,6 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
-    const [exito, setExito] = useState<string | null>(null)
     // Mesa creada: al éxito se abre el modal con el QR de la visita.
     const [mesaCreada, setMesaCreada] = useState<MesaConCodigo | null>(null)
     const [tocado, setTocado] = useState(false)
@@ -84,10 +83,16 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
         }
     }
 
+    function cerrarExito(){
+            setMesaCreada(null)
+            setCapacidad('')
+            setUsuarioId(soloSesion ? String(getUsuario()?.id ?? '') : '')
+            setTocado(false)
+    }
+
     async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setTocado(true)
-        setExito(null)
         setErrorApi(null)
 
         if (!resultados.success) return
@@ -96,7 +101,6 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
         try {
             const creada = await createMesa(resultados.data)
             setMesaCreada(creada)
-            setExito('Mesa creada exitosamente')
             setCapacidad('')
             setUsuarioId(soloSesion ? String(getUsuario()?.id ?? '') : '')
             setTocado(false)
@@ -121,20 +125,6 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
                     <p className={`text-body-sm ${s.subtitle}`}>{aforoInfo}</p>
                 )}
 
-                {exito && (
-                    <Alert variant='success' className='text-body-md d-flex flex-wrap align-items-center justify-content-between gap-2'>
-                        <span>{exito}</span>
-                        <Button
-                            className='text-label-md'
-                            variant='outline-success'
-                            size='sm'
-                            type='button'
-                            onClick={() => navigate(baseVuelta)}
-                        >
-                            Volver a la lista
-                        </Button>
-                    </Alert>
-                )}
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
                 {errorUsuarios && <Alert variant='warning' className='text-body-md'>{errorUsuarios}</Alert>}
 
@@ -203,7 +193,11 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
                 </Form>
             </Card>
 
-            <QrMesaModal mesa={mesaCreada} onCerrar={() => setMesaCreada(null)} />
+            <QrMesaModal
+                mesa={mesaCreada}
+                onListo={() => navigate(baseVuelta)}
+                onCrearMas={cerrarExito}
+            />
         </div>
     )
 }

@@ -8,13 +8,16 @@ import s from './QrMesaModal.module.css'
 interface QrMesaModalProps {
   // Mesa recién creada (null = modal oculto).
   mesa: MesaConCodigo | null
-  onCerrar: () => void
+  // "Listo": cierra el modal y vuelve a la lista de mesas.
+  onListo: () => void
+  // "Crear más": cierra el modal y resetea el formulario de alta.
+  onCrearMas: () => void
 }
 
 // QR de la visita: codifica `${origin}/mesa?codigo={codigo_acceso}`, así
 // el cliente escanea y queda identificado sin tipear el PIN. El código
 // es la credencial: muere con la mesa (borrado lógico al cerrar visita).
-export function QrMesaModal({ mesa, onCerrar }: QrMesaModalProps) {
+export function QrMesaModal({ mesa, onListo, onCrearMas }: QrMesaModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const destino = mesa
@@ -31,7 +34,7 @@ export function QrMesaModal({ mesa, onCerrar }: QrMesaModalProps) {
   // }
 
   return (
-    <Modal show={mesa !== null} onHide={onCerrar} centered aria-labelledby='qr-mesa-titulo'>
+    <Modal show={mesa !== null} onHide={onListo} centered aria-labelledby='qr-mesa-titulo'>
       <Modal.Header closeButton className='no-print'>
         <Modal.Title id='qr-mesa-titulo' className='text-headline-sm'>
           QR de la mesa
@@ -71,7 +74,11 @@ export function QrMesaModal({ mesa, onCerrar }: QrMesaModalProps) {
           <i className='bi bi-download me-1' aria-hidden='true' />
           Descargar PNG
         </Button> */}
-        <Button variant='primary' className='text-label-md' type='button' onClick={onCerrar}>
+        <Button variant='outline-primary' className='text-label-md' type='button' onClick={onCrearMas}>
+          <i className='bi bi-plus-circle me-1' aria-hidden='true' />
+          Crear más
+        </Button>
+        <Button variant='primary' className='text-label-md' type='button' onClick={onListo}>
           Listo
         </Button>
       </Modal.Footer>

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Alert, Button, Card, Spinner } from 'react-bootstrap'
 import { useDatos } from '../../../../hooks/useDatos'
+import { usePedidosRealtime } from '../../../../realtime/useRealtimeEmpleado'
 import type { CuentaMesa, Mesa, ParteCuenta, ResumenMesa } from '../../../../types/Mesa'
 import { getCuentaMesa, getResumenMesa } from '../../../../api/mesas'
 import s from '../Mesas.module.css'
@@ -64,13 +65,24 @@ function BloqueParte({ parte, indice }: { parte: ParteCuenta; indice: number }) 
 // abierta se identifica por `expandida` (id de mesa) y `cargadoDe` deriva
 // el estado de carga (regla react-hooks/set-state-in-effect).
 export function ComandasPage() {
-    const { items, loading, error } = useDatos('mesa')
+    const { items, loading, error, recargar } = useDatos('mesa')
     const [expandida, setExpandida] = useState<number | null>(null)
     const [vista, setVista] = useState<Vista>('comanda')
     const [comanda, setComanda] = useState<ResumenMesa | null>(null)
     const [cuenta, setCuenta] = useState<CuentaMesa | null>(null)
     const [errorDetalle, setErrorDetalle] = useState<string | null>(null)
     const [cargadoDe, setCargadoDe] = useState<string | null>(null)
+    // Nonce que fuerza releer la comanda/cuenta abierta cuando llega un
+    // evento de pedido (el detalle expandido no se refresca solo).
+    const [nonceDetalle, setNonceDetalle] = useState(0)
+
+    const refrescar = useCallback(() => {
+        recargar()
+        setNonceDetalle(n => n + 1)
+    }, [recargar])
+
+    // Tiempo real: altas y cambios de estado de pedidos.
+    usePedidosRealtime({ alCrear: refrescar, alCambiarEstado: refrescar, alConectar: refrescar })
 
     const mesas = items as Mesa[]
     const clave = expandida !== null ? `${expandida}-${vista}` : null
@@ -118,7 +130,7 @@ export function ComandasPage() {
                 setCargadoDe(`${expandida}-${vista}`)
             })
         return () => controller.abort()
-    }, [expandida, vista])
+    }, [expandida, vista, nonceDetalle])
 
     return (
         <div className={`${s.page} ${s.hub}`}>

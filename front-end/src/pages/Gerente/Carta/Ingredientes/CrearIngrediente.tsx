@@ -1,16 +1,21 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Platos.module.css'
 import { ingredienteSchema } from '../../../../schemas/carta'
 import { createIngrediente } from '../../../../api/ingredientes'
+import { ExitoModal } from '../../../../components/Exito/ExitoModal'
+import { formatearPrecio } from '../../../../utils/historial'
 
 export function CrearIngredientePage() {
+    const navigate = useNavigate()
     const [nombre, setNombre] = useState('')
     const [precioAdicional, setPrecio] = useState('')
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
-    const [exito, setExito] = useState<string | null>(null)
+    // Ingrediente creado: abre el modal de confirmación (Listo / Seguir creando).
+    const [ingredienteCreado, setIngredienteCreado] = useState<{ nombre: string; precio: number | null } | null>(null)
     const [tocado, setTocado] = useState(false)
 
     const errores: Record<string, string> = {}
@@ -28,15 +33,18 @@ export function CrearIngredientePage() {
     async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setTocado(true)
-        setExito(null)
+        setIngredienteCreado(null)
         setErrorApi(null)
 
         if (!resultados.success) return
 
         setEnviando(true)
         try {
-            const ingrediente = await createIngrediente(resultados.data)
-            setExito(ingrediente.message)
+            await createIngrediente(resultados.data)
+            setIngredienteCreado({
+                nombre: resultados.data.nombre,
+                precio: resultados.data.precioAdicional ?? null,
+            })
             setNombre('')
             setPrecio('')
             setTocado(false)
@@ -54,7 +62,6 @@ export function CrearIngredientePage() {
                 <p className={`text-body-sm ${s.subtitle}`}>El ingrediente creado se refleja en su propia lista.</p>
                 
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
-                {exito && <Alert variant='success' className='text-body-md'>{exito}</Alert>}
 
                 <Form onSubmit={handlerSubmit} noValidate>
                     <div className={s.row}>
@@ -97,6 +104,25 @@ export function CrearIngredientePage() {
                     </Button>
                 </Form>
             </Card>
+
+            <ExitoModal
+                show={ingredienteCreado !== null}
+                titulo='Ingrediente creado'
+                mensaje='¡Listo! El ingrediente se creó correctamente.'
+                datos={ingredienteCreado
+                    ? [
+                        { etiqueta: 'Nombre', valor: ingredienteCreado.nombre },
+                        {
+                            etiqueta: 'Precio',
+                            valor: ingredienteCreado.precio === null
+                                ? 'Sin precio adicional'
+                                : formatearPrecio(ingredienteCreado.precio),
+                        },
+                    ]
+                    : []}
+                onSeguir={() => setIngredienteCreado(null)}
+                onListo={() => navigate('/gerente/carta/ingredientes')}
+            />
         </div>
     )
 }

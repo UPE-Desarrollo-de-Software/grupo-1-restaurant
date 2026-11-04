@@ -5,7 +5,8 @@ import s from './Usuarios.module.css'
 import { registerSchema } from '../../../schemas/usuarios'
 import { getRoles } from '../../../api/auth'
 import { createUsuario } from '../../../api/usuarios'
-import type { Rol } from '../../../types/Auth'
+import { ExitoModal } from '../../../components/Exito/ExitoModal'
+import type { Rol, Usuario } from '../../../types/Auth'
 
 export function CrearUsuarioPage() {
     const navigate = useNavigate()
@@ -13,6 +14,7 @@ export function CrearUsuarioPage() {
     const [rol_id, setRol] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [usuarioCreado, setUsuarioCreado] = useState<Usuario | null>(null)
 
     const [roles, setRoles] = useState<Rol[]>([])
     const [cargandoRoles, setCargandoRoles] = useState(true)
@@ -20,7 +22,6 @@ export function CrearUsuarioPage() {
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
-    const [exito, setExito] = useState<string | null>(null)
     const [tocado, setTocado] = useState(false)
 
     const errores: Record<string, string> = {}
@@ -32,6 +33,17 @@ export function CrearUsuarioPage() {
                 errores[campo] = issue.message
             }
         }
+    }
+    const volverListaUsuarios = () => {
+        navigate('/gerente/usuarios');
+    };
+    function cerrarExito(){
+        setUsuarioCreado(null)
+        setNombre('')
+        setRol('')
+        setEmail('')
+        setPassword('')
+        setTocado(false)
     }
 
     useEffect(() => {
@@ -52,20 +64,14 @@ export function CrearUsuarioPage() {
     async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setTocado(true)
-        setExito(null)
         setErrorApi(null)
 
         if (!resultados.success) return
 
         setEnviando(true)
         try {
-            await createUsuario(resultados.data)
-            setExito('Usuario creado exitosamente')
-            setNombre('')
-            setRol('')
-            setEmail('')
-            setPassword('')
-            setTocado(false)
+            const usuario = await createUsuario(resultados.data)
+            setUsuarioCreado(usuario)
         } catch (err) {
             setErrorApi(err instanceof Error ? err.message : 'Error desconocido al crear el usuario')
         } finally {
@@ -78,21 +84,7 @@ export function CrearUsuarioPage() {
             <Card className={s.card}>
                 <h1 className={`text-headline-md ${s.title}`}>Nuevo usuario</h1>
                 <p className={`text-body-sm ${s.subtitle}`}>El usuario creado podrá ingresar al sistema con su rol.</p>
-
-                {exito && (
-                    <Alert variant='success' className='text-body-md d-flex flex-wrap align-items-center justify-content-between gap-2'>
-                        <span>{exito}</span>
-                        <Button
-                            className='text-label-md'
-                            variant='outline-success'
-                            size='sm'
-                            type='button'
-                            onClick={() => navigate('/gerente/usuarios')}
-                        >
-                            Volver a la lista
-                        </Button>
-                    </Alert>
-                )}
+                
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
                 {errorRoles && <Alert variant='danger' className='text-body-md'>{errorRoles}</Alert>}
 
@@ -177,6 +169,21 @@ export function CrearUsuarioPage() {
                     </div>
                 </Form>
             </Card>
+            
+            <ExitoModal
+                show={usuarioCreado !== null}
+                titulo='Usuario creado'
+                mensaje='¡Listo! El usuario se creó correctamente.'
+                datos={usuarioCreado
+                    ? [
+                        { etiqueta: 'Nombre', valor: usuarioCreado.nombre },
+                        { etiqueta: 'Mail', valor: usuarioCreado.email },
+                    ]
+                    : []}
+                textoSeguir='Crear más'
+                onSeguir={cerrarExito}
+                onListo={volverListaUsuarios}
+            />
         </div>
     )
 }

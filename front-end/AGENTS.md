@@ -190,6 +190,35 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   renderiza acciones para `cerrado`/`cancelado` (sólo badge) y `PedidoPage`
   ("Pedidos enviados") pinta el badge con `COLOR_ESTADO`.
 
+## Tiempo real (WebSockets / Reverb) — implementado
+
+- Contrato del backend: `.pedido.creado` / `.pedido.estado`
+  (`empleado.pedidos`), `.reserva.creada` / `.reserva.cancelada`
+  (`empleado.reservas`) y `.mesa.atencion` (`empleado.atencion` **y**
+  `mesa.{id}`). Los payloads sólo traen ids y estados: **cada evento dispara
+  un refetch por REST**, la vista nunca se arma con el payload.
+- Capa en `src/realtime/`: `conexion.ts` (`crearEcho` + `suscribir`, con
+  catch-up al reconectar), `empleado.ts` (una conexión por token Sanctum;
+  `cerrarEchoEmpleado()` se llama en el logout de `Navbar`), `cliente.ts`
+  (Bearer = `codigo_acceso`, firma en `/cliente/broadcasting/auth`) y los
+  hooks `useRealtimeEmpleado.ts` (`usePedidosRealtime`, `useReservasRealtime`,
+  `useAtencionRealtime`) / `useRealtimeMesa.ts` (`useMesaRealtime`).
+- Env: `VITE_REVERB_APP_KEY/HOST/PORT/SCHEME` → `REVERB` en
+  `config/env.ts`. Sin la key la capa se desactiva con un `console.warn` y
+  todas las pantallas siguen con su refresco manual (el botón "Actualizar
+  cola" de cocina es el respaldo).
+- Suscriptos: Cocina y gerente `/comandas` (pedidos), `/mozo` (atención) y
+  `/mozo/mesas/:id` (atención + comanda), hubs de reservas de gerente y mozo
+  (reservas), y `/pedido` del comensal (atención: el botón pasa a "Mozo
+  avisado" aunque el POST lo haya hecho otro dispositivo de la mesa).
+- Los manejadores se guardan en un `ref` y la suscripción se arma una sola
+  vez por canal (cleanup con `stopListening` por evento, sin re-suscribir en
+  cada render).
+- **Pendiente del back**: `backend/.env` sigue con `BROADCAST_CONNECTION=log`
+  y sin `REVERB_*`/`VITE_REVERB_*`, y `documentacion/CONTRATO-websockets.md`
+  no existe (lo referencia `routes/channels.php`). Hasta configurar Reverb no
+  llega ningún evento.
+
 ## Comandos
 
 - `npm run dev` — servidor de desarrollo Vite
@@ -200,7 +229,7 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
 ## Entorno
 
 - La URL base del backend sale de `.env`: `VITE_API_URL` (default `http://127.0.0.1:8000/api`), expuesta via `src/config/env.ts` (`API_BASE_URL`). Las rutas de la API se concatenan a esa base (ej. `/platos`).
-- `.env` está commiteado y solo contiene la URL de la API (sin secretos).
+- `.env` está commiteado y solo contiene la URL de la API (sin secretos) más las claves `VITE_REVERB_*` **comentadas** hasta que el backend publique las credenciales del socket.
 
 ## Arquitectura y convenciones
 

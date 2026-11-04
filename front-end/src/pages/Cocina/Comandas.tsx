@@ -5,6 +5,7 @@ import { DetalleComanda } from '../../components/Cocina/DetalleComanda'
 import { EstadoComanda } from '../../components/Cocina/EstadoComanda'
 import { useAhora } from '../../hooks/useAhora'
 import { useCocinaPedidos } from '../../hooks/useCocinaPedidos'
+import { usePedidosRealtime } from '../../realtime/useRealtimeEmpleado'
 import type { PedidoCocina } from '../../types/Mesa'
 import { contarProductos, formatearHora, ordenarPorLlegada, tiempoTranscurrido } from '../../utils/cocina'
 import s from './Comandas.module.css'
@@ -20,6 +21,10 @@ export function ComandasCocinaPage() {
     const [seleccionadoId, setSeleccionadoId] = useState<number | null>(null)
     const [accion, setAccion] = useState<number | null>(null)
     const [errorAccion, setErrorAccion] = useState<string | null>(null)
+
+    // Tiempo real: cada alta o cambio de estado de un pedido refresca la
+    // cola (el botón "Actualizar cola" queda como respaldo manual).
+    usePedidosRealtime({ alCrear: recargar, alCambiarEstado: recargar, alConectar: recargar })
 
     const ordenados = useMemo(() => ordenarPorLlegada(pedidos ?? []), [pedidos])
     // Si la seleccionada salió de la cola (p. ej. al marcarla lista) se

@@ -6,6 +6,8 @@ import { useCategorias } from '../../../../hooks/useCategorias'
 import { useIngredientes } from '../../../../hooks/useIngredientes'
 import { usePromociones } from '../../../../hooks/usePromociones'
 import { etiquetaPromocion } from '../../../../components/Platos/promocionEtiqueta'
+import { ExitoModal } from '../../../../components/Exito/ExitoModal'
+import { formatearPrecio } from '../../../../utils/historial'
 import { platoSchema } from '../../../../schemas/carta'
 import { createPlato } from '../../../../api/platos'
 import {
@@ -32,7 +34,8 @@ export function CrearPlatoPage() {
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
-    const [exito, setExito] = useState<string | null>(null)
+    // Plato creado: abre el modal de confirmación (Listo / Seguir creando).
+    const [platoCreado, setPlatoCreado] = useState<{ nombre: string; precio: number } | null>(null)
     const [tocado, setTocado] = useState(false)
 
     const errores: Record<string, string> = {}
@@ -72,15 +75,18 @@ export function CrearPlatoPage() {
     async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setTocado(true)
-        setExito(null)
+        setPlatoCreado(null)
         setErrorApi(null)
 
         if (!resultados.success) return
 
         setEnviando(true)
         try {
-            const plato = await createPlato(resultados.data)
-            setExito(plato.message)
+            await createPlato(resultados.data)
+            setPlatoCreado({
+                nombre: resultados.data.nombre,
+                precio: resultados.data.precio,
+            })
             setCategoriaId('')
             setPromocionId('')
             setNombre('')
@@ -108,7 +114,6 @@ export function CrearPlatoPage() {
                         No se pudieron cargar las categorías, los ingredientes o las promociones. Verificá que el servidor esté activo
                     </Alert>}
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
-                {exito && <Alert variant='success' className='text-body-md'>{exito}</Alert>}
 
                 <Form onSubmit={handlerSubmit} noValidate>
                     <div className={s.row}>
@@ -272,6 +277,20 @@ export function CrearPlatoPage() {
                     </div>
                 </Form>
             </Card>
+
+            <ExitoModal
+                show={platoCreado !== null}
+                titulo='Plato creado'
+                mensaje='¡Listo! El plato se creó correctamente.'
+                datos={platoCreado
+                    ? [
+                        { etiqueta: 'Nombre', valor: platoCreado.nombre },
+                        { etiqueta: 'Precio', valor: formatearPrecio(platoCreado.precio) },
+                    ]
+                    : []}
+                onSeguir={() => setPlatoCreado(null)}
+                onListo={() => navigate('/gerente/carta/platos')}
+            />
         </div>
     )
 }
