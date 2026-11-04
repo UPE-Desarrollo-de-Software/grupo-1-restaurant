@@ -10,6 +10,11 @@ use Illuminate\Database\Seeder;
  *
  * Ya no tienen el flag `opcional`: eso vive en `plato_ingrediente`
  * (por plato). Acá solo queda `precioAdicional` (recargo de catálogo).
+ *
+ * Los de `$base` son ingredientes "de receta": en cada plato se
+ * asignan como default (obligatorio u opcional según el plato) o como
+ * agregable sin recargo. Los de `$extras` son agregables con recargo
+ * (también pueden ser default en otro plato: los flags son por plato).
  * Idempotente por nombre.
  */
 class IngredienteSeeder extends Seeder
@@ -36,6 +41,11 @@ class IngredienteSeeder extends Seeder
             'Dulce de leche',
             'Crema',
             'Helado de crema',
+            // Bebidas: cada una es el ingrediente default de su plato.
+            'Agua mineral',
+            'Gaseosa',
+            'Cerveza artesanal',
+            'Vino tinto',
         ];
 
         // Extras: solo se AGREGAN a un plato y tienen recargo.
@@ -45,6 +55,8 @@ class IngredienteSeeder extends Seeder
             'Huevo frito' => 700,
             'Aceitunas' => 400,
             'Morrón asado' => 500,
+            'Carne extra' => 1800,
+            'Salchicha' => 900,
         ];
 
         foreach ($base as $nombre) {

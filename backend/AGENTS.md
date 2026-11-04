@@ -4,11 +4,11 @@ API REST de un restaurante (proyecto final). Laravel 13 + Sanctum. Este repo es 
 
 ## Comandos
 
-- `composer run dev` → `php artisan dev` (serve + queue + vite). Requiere `npm install` antes: `node_modules/` no está commiteado y hoy no existe.
-- `php artisan test --compact` → corre sobre **SQLite en memoria** (`phpunit.xml`), no necesita MySQL. Un archivo: `php artisan test --compact tests/Feature/XTest.php`; un caso: `--filter='...'` (o `vendor/bin/pest <path>`).
-- `vendor/bin/pint --dirty --format agent` tras tocar cualquier PHP (no hay `pint.json` → preset `laravel`).
-  - **Ojo mientras el repo no tenga commits**: sin `HEAD`, `--dirty` evalúa todo el codebase y reformatea los ~31 PHP que no cumplen el preset. Para limitarlo a lo tuyo: `vendor/bin/pint <ruta>`.
-- Setup desde cero: `composer run setup`. Seed: `php artisan db:seed` (permisos + roles + usuarios `gerente@restaurant.com` y un mozo, password `123456`, + la CONFIG_MESA base 25×4 = aforo 100; **no se precrean mesas**: son dinámicas contra el aforo). Si MySQL está caído, validar migraciones+seed con `DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan migrate:fresh --seed`.
+- `composer run dev` → `php artisan dev` (serve + queue + vite). Requiere `npm install` antes: `node_modules/` no está commiteado y hoy no existe. Para realtime falta un proceso aparte: `php artisan reverb:start`.
+- Tests: usar `vendor/bin/pest [ruta]` (`--filter='...'` para un caso). **Nunca `php artisan test --compact` en este entorno (Windows/OneDrive)**: se cuelga y corta por timeout; `vendor/bin/pest` corre igual sobre **SQLite en memoria** (`phpunit.xml`), no necesita MySQL.
+- `vendor/bin/pint --dirty` tras tocar cualquier PHP (no hay `pint.json` → preset `laravel`). **No usar `--format agent`** (lo sugieren las guidelines de Boost): en este entorno revienta con `Unknown: ChildProcess.kill`.
+    - **Ojo mientras el repo no tenga commits**: sin `HEAD`, `--dirty` evalúa todo el codebase y reformatea los ~31 PHP que no cumplen el preset. Para limitarlo a lo tuyo: `vendor/bin/pint <ruta>`.
+- Setup desde cero: `composer run setup`. Seed: `php artisan db:seed` (permisos + roles + usuarios `gerente@restaurant.com`, un mozo y un cocinero `cocina@restaurant.com`, password `123456`, + la CONFIG_MESA base 25×4 = aforo 100; **no se precrean mesas**: son dinámicas contra el aforo). Si MySQL está caído, validar migraciones+seed con `DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan migrate:fresh --seed`.
 
 ## Entorno
 
