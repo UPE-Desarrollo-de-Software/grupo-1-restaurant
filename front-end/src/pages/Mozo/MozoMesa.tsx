@@ -5,6 +5,7 @@ import { getCuentaMesa, getMesa, getResumenMesa } from '../../api/mesas'
 import { CerrarMesaModal } from '../../components/Mesas/CerrarMesaModal'
 import { PedidoCard } from '../../components/Pedidos/PedidoCard'
 import { TomarPedido } from '../../components/Pedidos/TomarPedido'
+import { useAtencionRealtime, usePedidosRealtime } from '../../realtime/useRealtimeEmpleado'
 import type { CuentaMesa, MesaConCodigo, ParteCuenta, ResumenMesa } from '../../types/Mesa'
 import s from './MozoMesa.module.css'
 
@@ -140,6 +141,18 @@ export function MozoMesaPage() {
     // página completa: el refresh es in-place).
     const recargar = (): Promise<void> => cargar()
 
+    // Tiempo real: el cliente y la cocina mueven los pedidos de esta
+    // mesa (crear, confirmar, enviar, preparar, listo), así que la
+    // comanda se refresca sola. El "Llamar al mozo" llega por el canal
+    // de atención.
+    const [avisoAtencion, setAvisoAtencion] = useState(false)
+    usePedidosRealtime({ alCrear: recargar, alCambiarEstado: recargar, alConectar: recargar })
+    useAtencionRealtime({
+        alLlamar: (evento) => {
+            if (evento.mesa_id === mesaId) setAvisoAtencion(true)
+        },
+    })
+
     async function copiarPin() {
         const pin = mesa?.codigo_acceso ?? comanda?.codigo_acceso ?? cuenta?.codigo_acceso
         if (!pin) return
@@ -212,7 +225,7 @@ export function MozoMesaPage() {
             {codigo && (
                 <div className={s.pinBox}>
                     <div>
-                        <p className={`text-label-sm ${s.pinEtiqueta}`}>PIN de la mesa (código de acceso)</p>
+                        <p className={`text-label-sm ${s.pinEtiqueta}`}>Código de Mesa</p>
                         <p className={`text-headline-sm ${s.pinValor}`}>{codigo}</p>
                     </div>
                     <Button
@@ -226,6 +239,13 @@ export function MozoMesaPage() {
                         {copiado ? 'Copiado' : 'Copiar PIN'}
                     </Button>
                 </div>
+            )}
+
+            {avisoAtencion && (
+                <Alert variant='info' className='text-body-md' dismissible onClose={() => setAvisoAtencion(false)}>
+                    <i className='bi bi-bell me-1' aria-hidden='true' />
+                    El cliente llamó al mozo desde esta mesa.
+                </Alert>
             )}
 
             {mesaError && !cargando && (
@@ -248,7 +268,10 @@ export function MozoMesaPage() {
                             Sin pedidos en esta visita. Usá "Tomar pedido" para agregar el primero.
                         </p>
                     ) : (
-                        comanda.pedidos.map(pedido => (
+                        // El back ordena por id ascendente; el más reciente queda arriba.
+                        [...comanda.pedidos]
+                            .sort((a, b) => b.id - a.id)
+                            .map(pedido => (
                             <PedidoCard
                                 key={pedido.id}
                                 pedido={pedido}
@@ -363,11 +386,6 @@ export function MozoMesaPage() {
                     )}
                 </div>
             ) : null}
-
-            <p className={`text-body-sm ${s.nota}`}>
-                Se muestra la visita actual de la mesa. Cuando el cliente pague, usá "Cerrar visita"
-                en la vista Cuenta para finalizarla.
-            </p>
 
             <CerrarMesaModal
                 visible={modalCerrar}

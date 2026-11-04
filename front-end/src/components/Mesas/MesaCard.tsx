@@ -10,11 +10,11 @@ import s from './MesaCard.module.css'
 // edita la mesa; en /mozo la "atende" (detalle de pedidos).
 
 // "2026-10-19 20:15:00" (del backend) → fecha corta local.
-const formatearFecha = (fecha: string): string => {
-  const momento = new Date(fecha.replace(' ', 'T'))
-  if (Number.isNaN(momento.getTime())) return fecha
-  return momento.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
-}
+// const formatearFecha = (fecha: string): string => {
+//   const momento = new Date(fecha.replace(' ', 'T'))
+//   if (Number.isNaN(momento.getTime())) return fecha
+//   return momento.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
+// }
 
 export function MesaCard({ mesa }: { mesa: Mesa }) {
   const enMozo = useLocation().pathname.startsWith('/mozo')
@@ -25,17 +25,17 @@ export function MesaCard({ mesa }: { mesa: Mesa }) {
           <span className={`text-label-sm ${s.indice}`}>#{String(mesa.id).padStart(2, '0')}</span>
 
           <div className={s.info}>
-            {mesa.grupo_codigo != null && (
+            {/* {mesa.grupo_codigo != null && (
               <div className={s.badges}>
                 <span className={`text-label-sm ${s.badgeGrupo}`}>Grupo {mesa.grupo_codigo}</span>
               </div>
-            )}
+            )} */}
             <h3 className={`text-headline-sm ${s.titulo}`}>{mesa.capacidad} lugares</h3>
-            <p className={`text-body-sm ${s.detalle}`}>
+            {/* <p className={`text-body-sm ${s.detalle}`}>
               {mesa.ocupada_desde
                 ? `Ocupada desde ${formatearFecha(mesa.ocupada_desde)}`
                 : 'Sin visita en curso'}
-            </p>
+            </p> */}
           </div>
         </div>
 

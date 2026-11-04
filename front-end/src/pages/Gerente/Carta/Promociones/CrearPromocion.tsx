@@ -4,6 +4,7 @@ import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Promociones.module.css'
 import { promocionSchema } from '../../../../schemas/carta'
 import { createPromocion } from '../../../../api/promociones'
+import { ExitoModal } from '../../../../components/Exito/ExitoModal'
 import type { TipoPromocion } from '../../../../types/Menu'
 
 const TIPOS: { value: TipoPromocion; label: string }[] = [
@@ -24,7 +25,8 @@ export function CrearPromocionPage() {
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
-    const [exito, setExito] = useState<string | null>(null)
+    // Promoción creada: abre el modal de confirmación (Listo / Seguir creando).
+    const [promocionCreada, setPromocionCreada] = useState<{ nombre: string; tipo: string } | null>(null)
     const [tocado, setTocado] = useState(false)
 
     const errores: Record<string, string> = {}
@@ -48,7 +50,7 @@ export function CrearPromocionPage() {
     async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setTocado(true)
-        setExito(null)
+        setPromocionCreada(null)
         setErrorApi(null)
 
         if (!resultados.success) return
@@ -56,7 +58,11 @@ export function CrearPromocionPage() {
         setEnviando(true)
         try {
             await createPromocion(resultados.data)
-            setExito('Promoción creada exitosamente')
+            setPromocionCreada({
+                nombre: resultados.data.nombre,
+                tipo: TIPOS.find(opcion => opcion.value === resultados.data.tipo)?.label
+                    ?? resultados.data.tipo,
+            })
             setNombre('')
             setTipo('')
             setValor('')
@@ -77,20 +83,6 @@ export function CrearPromocionPage() {
                 <h1 className={`text-headline-md ${s.title}`}>Nueva promoción</h1>
                 <p className={`text-body-sm ${s.subtitle}`}>La promoción queda inactiva hasta que la actives y, si querés, asignala a un plato desde su edición.</p>
 
-                {exito && (
-                    <Alert variant='success' className='text-body-md d-flex flex-wrap align-items-center justify-content-between gap-2'>
-                        <span>{exito}</span>
-                        <Button
-                            className='text-label-md'
-                            variant='outline-success'
-                            size='sm'
-                            type='button'
-                            onClick={() => navigate('/gerente/carta/promociones')}
-                        >
-                            Volver a la lista
-                        </Button>
-                    </Alert>
-                )}
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
 
                 <Form onSubmit={handlerSubmit} noValidate>
@@ -200,6 +192,20 @@ export function CrearPromocionPage() {
                     </div>
                 </Form>
             </Card>
+
+            <ExitoModal
+                show={promocionCreada !== null}
+                titulo='Promoción creada'
+                mensaje='¡Listo! La promoción se creó correctamente.'
+                datos={promocionCreada
+                    ? [
+                        { etiqueta: 'Nombre', valor: promocionCreada.nombre },
+                        { etiqueta: 'Tipo', valor: promocionCreada.tipo },
+                    ]
+                    : []}
+                onSeguir={() => setPromocionCreada(null)}
+                onListo={() => navigate('/gerente/carta/promociones')}
+            />
         </div>
     )
 }

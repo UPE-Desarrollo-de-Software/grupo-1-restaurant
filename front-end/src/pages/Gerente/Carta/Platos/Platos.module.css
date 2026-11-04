@@ -80,8 +80,13 @@
   color: var(--color-on-surface);
 }
 
-.ingredientItem :global(.form-check-input) {
-  margin-left: 0;
+.ingredientItem span {
+  flex: 1;
+}
+
+.ingredientItem :global(.form-select) {
+  flex: 1 1 12rem;
+  max-width: 16rem;
 }
 
 .empty {

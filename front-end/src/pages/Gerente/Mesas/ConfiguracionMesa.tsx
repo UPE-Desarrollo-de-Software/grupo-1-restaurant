@@ -128,11 +128,6 @@ export function ConfiguracionMesaPage() {
         <div className={s.page}>
             <Card className={s.card}>
                 <h1 className={`text-headline-md ${s.title}`}>Configuración del salón</h1>
-                <p className={`text-body-sm ${s.subtitle}`}>
-                    Definí las piezas del salón (capacidad × cantidad). El aforo es la cantidad
-                    máxima de personas simultáneas: Σ capacidad × cantidad. Las mesas que se
-                    creen se validan contra este aforo.
-                </p>
 
                 {exito && <Alert variant='success' className='text-body-md'>{exito}</Alert>}
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}

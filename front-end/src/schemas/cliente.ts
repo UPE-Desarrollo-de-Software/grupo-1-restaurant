@@ -22,12 +22,11 @@ export function hoyLocal(): string {
 // nombre + teléfono del formulario.
 export const reservaWebSchema = z.object({
     nombreApellido: z.string().trim().min(3, "Ingresá tu nombre y apellido"),
-    telefono: z.string().trim().min(6, "Ingresá un teléfono de contacto"),
     fecha: z.iso.date({ error: "Ingresá una fecha válida" })
         .refine(valor => valor >= hoyLocal(), {
             error: "No podés elegir una fecha pasada",
         }),
-    hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Ingresá una hora válida"),
+    hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Elegí un horario de la grilla"),
     cantPersonas: z.coerce.number({ error: "Indicá cuántas personas son" })
         .int("La cantidad debe ser un número entero")
         .min(1, "Debe ser al menos 1 persona"),

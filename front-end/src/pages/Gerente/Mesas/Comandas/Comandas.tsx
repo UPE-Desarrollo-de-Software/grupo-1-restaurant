@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Alert, Button, Card, Spinner } from 'react-bootstrap'
 import { useDatos } from '../../../../hooks/useDatos'
+import { usePedidosRealtime } from '../../../../realtime/useRealtimeEmpleado'
 import type { CuentaMesa, Mesa, ParteCuenta, ResumenMesa } from '../../../../types/Mesa'
 import { getCuentaMesa, getResumenMesa } from '../../../../api/mesas'
 import s from '../Mesas.module.css'
@@ -15,6 +16,8 @@ const formatearFecha = (fecha: string): string => {
     if (Number.isNaN(momento.getTime())) return fecha
     return momento.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
 }
+
+const textoEstado = (estado: string): string => estado.replace(/_/g, ' ')
 
 // Auxiliar de línea: promo y descuento solo si existen (patrón por
 // componente, igual que formatearPrecio).
@@ -62,13 +65,24 @@ function BloqueParte({ parte, indice }: { parte: ParteCuenta; indice: number }) 
 // abierta se identifica por `expandida` (id de mesa) y `cargadoDe` deriva
 // el estado de carga (regla react-hooks/set-state-in-effect).
 export function ComandasPage() {
-    const { items, loading, error } = useDatos('mesa')
+    const { items, loading, error, recargar } = useDatos('mesa')
     const [expandida, setExpandida] = useState<number | null>(null)
     const [vista, setVista] = useState<Vista>('comanda')
     const [comanda, setComanda] = useState<ResumenMesa | null>(null)
     const [cuenta, setCuenta] = useState<CuentaMesa | null>(null)
     const [errorDetalle, setErrorDetalle] = useState<string | null>(null)
     const [cargadoDe, setCargadoDe] = useState<string | null>(null)
+    // Nonce que fuerza releer la comanda/cuenta abierta cuando llega un
+    // evento de pedido (el detalle expandido no se refresca solo).
+    const [nonceDetalle, setNonceDetalle] = useState(0)
+
+    const refrescar = useCallback(() => {
+        recargar()
+        setNonceDetalle(n => n + 1)
+    }, [recargar])
+
+    // Tiempo real: altas y cambios de estado de pedidos.
+    usePedidosRealtime({ alCrear: refrescar, alCambiarEstado: refrescar, alConectar: refrescar })
 
     const mesas = items as Mesa[]
     const clave = expandida !== null ? `${expandida}-${vista}` : null
@@ -116,12 +130,11 @@ export function ComandasPage() {
                 setCargadoDe(`${expandida}-${vista}`)
             })
         return () => controller.abort()
-    }, [expandida, vista])
+    }, [expandida, vista, nonceDetalle])
 
     return (
         <div className={`${s.page} ${s.hub}`}>
-            <h2 className={`text-headline-lg ${s.tituloListado}`}>Mesas</h2>
-            <p className={`text-body-md ${s.vacio}`}>
+            <p className={`text-body-md ${s.subtitle}`}>
                 Tocá una mesa para ver su comanda y su cuenta de la visita en curso.
             </p>
 
@@ -195,7 +208,8 @@ export function ComandasPage() {
                                             {comanda.pedidos.length === 0 ? (
                                                 <p className={`text-body-md text-center ${s.vacio}`}>Sin pedidos en esta visita.</p>
                                             ) : (
-                                                comanda.pedidos.map(pedido => (
+                                                // El back ordena por id ascendente; el más reciente queda arriba.
+                                                [...comanda.pedidos].sort((a, b) => b.id - a.id).map(pedido => (
                                                     <Card key={pedido.id} className={s.parteCard}>
                                                         <div className={s.pedidoHeader}>
                                                             <span className={`text-headline-sm ${s.pedidoTitulo}`}>

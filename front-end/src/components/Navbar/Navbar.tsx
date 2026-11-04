@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import logo from '../../assets/logo/gastroapp-logo-256x256.png'
 import s from './navbar.module.css'
 import { logoutSesion } from "../../api/auth"
+import { cerrarEchoEmpleado } from "../../realtime/empleado"
 import { useNavigate } from "react-router-dom"
 import { useState } from "react"
 import { useRol } from "../../context/RolesContext/useRol"
@@ -18,6 +19,8 @@ export function NavbarComponent(){
 
   async function handleLogout(){
     await logoutSesion()
+    // El socket del staff se firma con el token: se cierra junto con la sesión.
+    cerrarEchoEmpleado()
     setShowPerfil(false)
     navigate('/login', {replace: true})
   }

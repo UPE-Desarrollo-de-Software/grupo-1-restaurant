@@ -29,8 +29,10 @@ import { EditarReservaPage } from './pages/Gerente/Reservas/EditarReserva'
 import { UsuariosHubPage } from './pages/Gerente/Usuarios/UsuariosHub'
 import { CrearUsuarioPage } from './pages/Gerente/Usuarios/CrearUsuario'
 import { EditarUsuarioPage } from './pages/Gerente/Usuarios/EditarUsuario'
-import { CocinaPage } from './pages/Cocina/Cocina'
-import { MozoPage } from './pages/Mozo/Mozo'
+import { ComandasCocinaPage } from './pages/Cocina/Comandas'
+import { ComandaDetallePage } from './pages/Cocina/ComandaDetalle'
+import { HistorialCocinaPage } from './pages/Cocina/Historial'
+import { MozoPage } from './pages/Mozo/MozoHub'
 import { MozoMesaPage } from './pages/Mozo/MozoMesa'
 import { PlatosHubPage } from './pages/Gerente/Carta/Platos/PlatosHub'
 import { EditarPlatoPage } from './pages/Gerente/Carta/Platos/EditarPlato'
@@ -90,7 +92,10 @@ function App() {
 
 
               <Route element={<RequireAuth rolesPermitidos={['Cocina']}><Outlet/></RequireAuth>}>
-                <Route path='/cocina' element={<CocinaPage/>}/>
+                <Route path='/cocina' element={<Navigate to='/cocina/comandas' replace/>}/>
+                <Route path='/cocina/comandas' element={<ComandasCocinaPage/>}/>
+                <Route path='/cocina/comandas/:id' element={<ComandaDetallePage/>}/>
+                <Route path='/cocina/historial' element={<HistorialCocinaPage/>}/>
               </Route>
 
               <Route element={<RequireAuth rolesPermitidos={['Mozo']}><Outlet/></RequireAuth>}>

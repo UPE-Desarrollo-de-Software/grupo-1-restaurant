@@ -40,9 +40,12 @@
 }
 
 .input {
-  border-color: var(--color-outline-variant);
-  border-radius: var(--radius-default);
-  padding: var(--space-xs) var(--space-sm);
+    max-height: 40px;
+}
+
+.input option {
+    padding: 4px 8px;
+    font-size: 14px;
 }
 
 .input:focus {

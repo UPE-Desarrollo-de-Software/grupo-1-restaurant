@@ -6,6 +6,7 @@ import { BotonRedireccion } from '../../../components/Carta/BotonRedireccion'
 import { Resumen } from '../../../components/Carta/Resumen'
 import { Lista } from '../../../components/Carta/Lista'
 import { useDatos } from '../../../hooks/useDatos'
+import { useReservasRealtime } from '../../../realtime/useRealtimeEmpleado'
 import { baseReservas } from '../../../navigation/rutas'
 import type { EstadoReserva, Reserva } from '../../../types/Reserva'
 import s from './Reservas.module.css'
@@ -22,9 +23,13 @@ export function ReservasHubPage() {
     const [busqueda, setBusqueda] = useState('')
     const [estado, setEstado] = useState<EstadoReserva | ''>('')
     const [fecha, setFecha] = useState('')
-    const { items, loading, error } = useDatos('reserva')
+    const { items, loading, error, recargar } = useDatos('reserva')
     // Se sirve bajo /gerente/reservas (Gerente) y /mozo/reservas (Mozo).
     const base = baseReservas(useLocation().pathname)
+
+    // Tiempo real: altas y cancelaciones hechas por otros usuarios (o
+    // por el propio cliente desde la web) refrescan el listado.
+    useReservasRealtime({ alCrear: recargar, alCancelar: recargar, alConectar: recargar })
 
     const reservas = items.filter((item): item is Reserva => 'contacto_solicitante' in item)
     const filtradas = reservas.filter(r =>
@@ -33,14 +38,17 @@ export function ReservasHubPage() {
 
     return (
         <div className={`${s.page} ${s.hub}`}>
+            <h1 className={`text-headline-md ${s.title}`}>Reservas</h1>
             <Buscador
-                placeHolder='Buscar por contacto, mesa o id...'
+                placeHolder='Buscar por nombre o código...'
                 valor={busqueda}
                 onCambio={setBusqueda}
             />
+            <BotonRedireccion nombre='Nueva Reserva' ruta={`${base}/crear`}/>
+            <Resumen tipo='reserva' items={items} loading={loading} />
             <div className={s.filtros}>
                 <Form.Select
-                    className={s.filtro}
+                    className={`${s.filtro} text-label-md`}
                     value={estado}
                     onChange={(e) => setEstado(e.target.value as EstadoReserva | '')}
                     aria-label='Filtrar por estado'
@@ -50,7 +58,7 @@ export function ReservasHubPage() {
                     ))}
                 </Form.Select>
                 <Form.Control
-                    className={s.filtro}
+                    className={`${s.filtro}  text-label-md`}
                     type='date'
                     value={fecha}
                     onChange={(e) => setFecha(e.target.value)}
@@ -69,8 +77,6 @@ export function ReservasHubPage() {
                     </Button>
                 )}
             </div>
-            <BotonRedireccion nombre='Nueva Reserva' ruta={`${base}/crear`}/>
-            <Resumen tipo='reserva' items={items} loading={loading} />
             <Lista tipo='reserva' items={filtradas} loading={loading} error={error} busqueda={busqueda} />
         </div>
     )

@@ -4,6 +4,7 @@ import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Platos.module.css'
 import { categoriaSchema } from '../../../../schemas/carta'
 import { createCategoria } from '../../../../api/categorias'
+import { ExitoModal } from '../../../../components/Exito/ExitoModal'
 
 export function CrearCategoriaPage() {
     const navigate = useNavigate()
@@ -14,7 +15,8 @@ export function CrearCategoriaPage() {
 
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
-    const [exito, setExito] = useState<string | null>(null)
+    // Categoría creada: abre el modal de confirmación (Listo / Seguir creando).
+    const [categoriaCreada, setCategoriaCreada] = useState<{ nombre: string; activa: boolean } | null>(null)
     const [tocado, setTocado] = useState(false)
 
     const errores: Record<string, string> = {}
@@ -31,15 +33,18 @@ export function CrearCategoriaPage() {
     async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setTocado(true)
-        setExito(null)
+        setCategoriaCreada(null)
         setErrorApi(null)
 
         if (!resultados.success) return
 
         setEnviando(true)
         try {
-            const rta = await createCategoria(resultados.data)
-            setExito(rta.message)
+            await createCategoria(resultados.data)
+            setCategoriaCreada({
+                nombre: resultados.data.nombre,
+                activa: resultados.data.activo,
+            })
             setNombre('')
             setDescripcion('')
             setActivo(true)
@@ -60,20 +65,6 @@ export function CrearCategoriaPage() {
                 </p>
 
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
-                {exito && (
-                    <Alert variant='success' className='text-body-md d-flex flex-wrap align-items-center justify-content-between gap-2'>
-                        <span>{exito}</span>
-                        <Button
-                            className='text-label-md'
-                            variant='outline-success'
-                            size='sm'
-                            type='button'
-                            onClick={() => navigate('/gerente/carta/categorias')}
-                        >
-                            Volver a la lista
-                        </Button>
-                    </Alert>
-                )}
 
                 <Form onSubmit={handlerSubmit} noValidate>
                     <div className={s.row}>
@@ -138,6 +129,20 @@ export function CrearCategoriaPage() {
                     </div>
                 </Form>
             </Card>
+
+            <ExitoModal
+                show={categoriaCreada !== null}
+                titulo='Categoría creada'
+                mensaje='¡Listo! La categoría se creó correctamente.'
+                datos={categoriaCreada
+                    ? [
+                        { etiqueta: 'Nombre', valor: categoriaCreada.nombre },
+                        { etiqueta: 'Activa', valor: categoriaCreada.activa ? 'Sí' : 'No' },
+                    ]
+                    : []}
+                onSeguir={() => setCategoriaCreada(null)}
+                onListo={() => navigate('/gerente/carta/categorias')}
+            />
         </div>
     )
 }

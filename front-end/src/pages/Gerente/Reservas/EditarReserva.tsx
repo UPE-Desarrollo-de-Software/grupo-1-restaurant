@@ -5,6 +5,7 @@ import s from './Reservas.module.css'
 import { cancelarReserva, finalizarReserva, getReserva, inasistioReserva } from '../../../api/reservas'
 import { baseReservas } from '../../../navigation/rutas'
 import type { EstadoReserva, Reserva } from '../../../types/Reserva'
+import { useRol } from '../../../context/RolesContext/useRol'
 
 const ESTADOS: Record<EstadoReserva, string> = {
     pendiente: 'Pendiente',
@@ -26,6 +27,7 @@ export function EditarReservaPage() {
     const navigate = useNavigate()
     // Se sirve bajo /gerente/reservas (Gerente) y /mozo/reservas (Mozo).
     const base = baseReservas(useLocation().pathname)
+    const { esGerente } = useRol();
 
     const [reserva, setReserva] = useState<Reserva | null>(null)
     const [cargando, setCargando] = useState(true)
@@ -68,6 +70,38 @@ export function EditarReservaPage() {
             setTransicion(null)
         }
     }
+async function handlerHabilitarMesa() {
+    setTransicion('finalizar');
+    setErrorApi(null);
+    setExito(null);
+
+    try {
+        const rta = await finalizarReserva(Number(id));
+
+        setReserva(rta.reserva);
+        setExito(rta.mensaje);
+
+        const ruta = esGerente
+            ? '/gerente/mesas/gestion/crear'
+            : '/mozo/mesas/crear';
+
+        navigate(ruta, {
+            state: {
+                // reservaId: rta.reserva.id,
+                capacidad: rta.reserva.cantPersonas
+            }
+        });
+
+    } catch (err) {
+        setErrorApi(
+            err instanceof Error
+                ? err.message
+                : 'Error desconocido al habilitar la mesa'
+        );
+    } finally {
+        setTransicion(null);
+    }
+}
 
     if (cargando) {
         return (
@@ -132,34 +166,17 @@ export function EditarReservaPage() {
                 <Form onSubmit={(e) => e.preventDefault()} noValidate>
                     <div className={s.row}>
                         <Form.Group className={s.field} controlId='ver-reserva-contacto'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Contacto del solicitante</Form.Label>
+                            <Form.Label className={`text-label-md ${s.label}`}>Solicitante</Form.Label>
                             <Form.Control className={s.input} type='text' value={reserva.contacto_solicitante} readOnly />
                         </Form.Group>
 
-                        <Form.Group className={s.field} controlId='ver-reserva-estado'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Estado</Form.Label>
-                            <Form.Control className={s.input} type='text' value={ESTADOS[reserva.estado]} readOnly />
+                        <Form.Group className={s.field} controlId='ver-reserva-personas'>
+                            <Form.Label className={`text-label-md ${s.label}`}>Personas</Form.Label>
+                            <Form.Control className={s.input} type='text' value={String(reserva.cantPersonas)} readOnly />
                         </Form.Group>
                     </div>
 
                     <div className={s.row}>
-                        <Form.Group className={s.field} controlId='ver-reserva-mesa'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Mesas</Form.Label>
-                            <Form.Control
-                                className={s.input}
-                                type='text'
-                                value={
-                                    reserva.mesa_id == null
-                                        ? 'A armar según aforo'
-                                        : `Mesa #${reserva.mesa_id}${reserva.mesa ? ` · ${reserva.mesa.capacidad} lugares` : ''}`
-                                }
-                                readOnly
-                            />
-                            <Form.Text className='text-body-sm'>
-                                El local arma las mesas al llegar el grupo según la configuración del salón.
-                            </Form.Text>
-                        </Form.Group>
-
                         <Form.Group className={s.field} controlId='ver-reserva-fecha'>
                             <Form.Label className={`text-label-md ${s.label}`}>Fecha</Form.Label>
                             <Form.Control className={s.input} type='text' value={formatearFecha(reserva.fecha)} readOnly />
@@ -169,62 +186,57 @@ export function EditarReservaPage() {
                             <Form.Label className={`text-label-md ${s.label}`}>Hora</Form.Label>
                             <Form.Control className={s.input} type='text' value={`${reserva.hora} h`} readOnly />
                         </Form.Group>
+                    </div>
 
-                        <Form.Group className={s.field} controlId='ver-reserva-personas'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Personas</Form.Label>
-                            <Form.Control className={s.input} type='text' value={String(reserva.cantPersonas)} readOnly />
+                    <div className={s.row}>
+                        <Form.Group className={s.field} controlId='ver-reserva-estado'>
+                            <Form.Label className={`text-label-md ${s.label}`}>Estado</Form.Label>
+                            <Form.Control className={s.input} type='text' value={ESTADOS[reserva.estado]} readOnly />
                         </Form.Group>
                     </div>
                 </Form>
-            </Card>
-
-            {esPendiente && (
-                <div className={s.zonaWrap}>
-                    <Card className={s.card}>
-                        <h2 className={`text-headline-sm ${s.title}`}>Acciones de la reserva</h2>
-                        <p className={`text-body-sm ${s.subtitle}`}>
-                            Cancelá si el cliente no va a venir, finalizá cuando ya haya concurrido, o registrá la
-                            inasistencia. Finalizar y marcar inasistencia solo se aplican después de la hora reservada.
-                        </p>
-
+                    {esPendiente && (
                         <div className={s.actions}>
                             <Button
-                                className={s.button}
-                                variant='outline-danger'
-                                type='button'
+                                className={`${s.button} ${s.finalizar}`}
+                                variant="primary"
+                                type="button"
+                                disabled={ocupado}
+                                onClick={handlerHabilitarMesa}
+                            >
+                                {transicion === 'finalizar'
+                                    ? <><Spinner size="sm" animation="border" className="me-2" />Finalizando...</>
+                                    : <><i className="bi bi-check-circle me-2" aria-hidden="true" />Habilitar su Mesa</>}
+                            </Button>
+
+                            <Button
+                                className={`${s.button} ${s.cancelar}`}
+                                variant="danger"
+                                type="button"
                                 disabled={ocupado}
                                 onClick={() => handlerTransicion('cancelar')}
                             >
                                 {transicion === 'cancelar'
-                                    ? <><Spinner size='sm' animation='border' className='me-2' />Cancelando...</>
-                                    : <><i className='bi bi-x-circle me-2' aria-hidden='true' />Cancelar reserva</>}
+                                    ? <><Spinner size="sm" animation="border" className="me-2" />Cancelando...</>
+                                    : <><i className="bi bi-x-circle me-2" aria-hidden="true" />Cancelar</>}
                             </Button>
+
                             <Button
-                                className={s.button}
-                                variant='outline-success'
-                                type='button'
-                                disabled={ocupado}
-                                onClick={() => handlerTransicion('finalizar')}
-                            >
-                                {transicion === 'finalizar'
-                                    ? <><Spinner size='sm' animation='border' className='me-2' />Finalizando...</>
-                                    : <><i className='bi bi-check-circle me-2' aria-hidden='true' />Finalizó la visita</>}
-                            </Button>
-                            <Button
-                                className={s.button}
-                                variant='outline-secondary'
-                                type='button'
+                                className={`${s.button} ${s.inasistio}`}
+                                variant="secondary"
+                                type="button"
                                 disabled={ocupado}
                                 onClick={() => handlerTransicion('inasistio')}
                             >
                                 {transicion === 'inasistio'
-                                    ? <><Spinner size='sm' animation='border' className='me-2' />Registrando...</>
-                                    : <><i className='bi bi-person-x me-2' aria-hidden='true' />No asistió</>}
+                                    ? <><Spinner size="sm" animation="border" className="me-2" />Registrando...</>
+                                    : <><i className="bi bi-person-x me-2" aria-hidden="true" />No asistió</>}
                             </Button>
                         </div>
-                    </Card>
-                </div>
             )}
+            </Card>
+
+
         </div>
     )
 }

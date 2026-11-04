@@ -8,30 +8,33 @@ import s from './QrMesaModal.module.css'
 interface QrMesaModalProps {
   // Mesa recién creada (null = modal oculto).
   mesa: MesaConCodigo | null
-  onCerrar: () => void
+  // "Listo": cierra el modal y vuelve a la lista de mesas.
+  onListo: () => void
+  // "Crear más": cierra el modal y resetea el formulario de alta.
+  onCrearMas: () => void
 }
 
 // QR de la visita: codifica `${origin}/mesa?codigo={codigo_acceso}`, así
 // el cliente escanea y queda identificado sin tipear el PIN. El código
 // es la credencial: muere con la mesa (borrado lógico al cerrar visita).
-export function QrMesaModal({ mesa, onCerrar }: QrMesaModalProps) {
+export function QrMesaModal({ mesa, onListo, onCrearMas }: QrMesaModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const destino = mesa
     ? `${window.location.origin}/mesa?codigo=${mesa.codigo_acceso}`
     : ''
 
-  function handlerDescargar() {
-    const lienzo = canvasRef.current?.toDataURL('image/png')
-    if (!lienzo) return
-    const enlace = document.createElement('a')
-    enlace.href = lienzo
-    enlace.download = `qr-mesa-${mesa?.id ?? 'mesa'}.png`
-    enlace.click()
-  }
+  // function handlerDescargar() {
+  //   const lienzo = canvasRef.current?.toDataURL('image/png')
+  //   if (!lienzo) return
+  //   const enlace = document.createElement('a')
+  //   enlace.href = lienzo
+  //   enlace.download = `qr-mesa-${mesa?.id ?? 'mesa'}.png`
+  //   enlace.click()
+  // }
 
   return (
-    <Modal show={mesa !== null} onHide={onCerrar} centered aria-labelledby='qr-mesa-titulo'>
+    <Modal show={mesa !== null} onHide={onListo} centered aria-labelledby='qr-mesa-titulo'>
       <Modal.Header closeButton className='no-print'>
         <Modal.Title id='qr-mesa-titulo' className='text-headline-sm'>
           QR de la mesa
@@ -49,11 +52,11 @@ export function QrMesaModal({ mesa, onCerrar }: QrMesaModalProps) {
               Escaneá para entrar a tu mesa
             </p>
             <QRCodeSVG value={destino} size={220} level='M' className={s.qr} />
-            <p className={`text-headline-md ${s.codigo}`}>{mesa.codigo_acceso}</p>
             <p className={`text-body-sm ${s.ayuda}`}>
               O ingresá el código de 4 dígitos en la app.
             </p>
-            <p className={`text-body-sm ${s.url}`}>{destino}</p>
+            <p className={`text-headline-md ${s.codigo}`}>{mesa.codigo_acceso}</p>
+
             <p className={`text-body-sm ${s.nota}`}>
               <i className='bi bi-info-circle me-1' aria-hidden='true' />
               Válido hasta cerrar la visita.
@@ -63,15 +66,19 @@ export function QrMesaModal({ mesa, onCerrar }: QrMesaModalProps) {
       </Modal.Body>
 
       <Modal.Footer className='no-print'>
-        <Button variant='outline-primary' className='text-label-md' type='button' onClick={() => window.print()}>
+        {/* <Button variant='outline-primary' className='text-label-md' type='button' onClick={() => window.print()}>
           <i className='bi bi-printer me-1' aria-hidden='true' />
           Imprimir
         </Button>
         <Button variant='outline-primary' className='text-label-md' type='button' onClick={handlerDescargar}>
           <i className='bi bi-download me-1' aria-hidden='true' />
           Descargar PNG
+        </Button> */}
+        <Button variant='outline-primary' className='text-label-md' type='button' onClick={onCrearMas}>
+          <i className='bi bi-plus-circle me-1' aria-hidden='true' />
+          Crear más
         </Button>
-        <Button variant='primary' className='text-label-md' type='button' onClick={onCerrar}>
+        <Button variant='primary' className='text-label-md' type='button' onClick={onListo}>
           Listo
         </Button>
       </Modal.Footer>
