@@ -50,4 +50,21 @@ interface PlatoRepository
     public function desprenderIngredientes(Plato $plato): void;
 
     public function todos();
+
+    /**
+     * Platos que entran en un ajuste masivo de precios: de una
+     * categoría puntual o de toda la carta (null = sin filtro, activos
+     * y pausados: es un reprecio de catálogo, no una baja).
+     *
+     * @return Collection<int, Plato>
+     */
+    public function platosParaAjuste(?int $categoriaId): Collection;
+
+    /**
+     * Persiste precios ya calculados (id => precio_nuevo) en lote,
+     * dentro de una transacción y agrupando por precio destino.
+     *
+     * @param  array<int, float>  $precios
+     */
+    public function actualizarPreciosEnLote(array $precios): void;
 }

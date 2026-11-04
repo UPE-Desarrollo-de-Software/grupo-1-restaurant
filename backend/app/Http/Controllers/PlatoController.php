@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\UseCases\Platos\ActualizarPlatoUseCase;
+use App\UseCases\Platos\AumentarPreciosPlatosUseCase;
 use App\UseCases\Platos\CrearPlatoUseCase;
 use App\UseCases\Platos\EliminarPlatoUseCase;
 use App\UseCases\Platos\ListarPlatosActivosUseCase;
@@ -22,6 +23,7 @@ class PlatoController extends Controller
         private CrearPlatoUseCase $crear,
         private ActualizarPlatoUseCase $actualizar,
         private EliminarPlatoUseCase $eliminar,
+        private AumentarPreciosPlatosUseCase $aumentarPrecios,
     ) {}
 
     public function indexAll()
