@@ -44,13 +44,29 @@ class PlatoService
      */
     public function crear(array $datos): Plato
     {
+        $archivo = $datos['imagen'] ?? null;
         $ingredientes = $this->normalizarIngredientes($datos['ingredientes'] ?? []);
 
-        unset($datos['ingredientes']);
 
-        $plato = $this->platos->crear($datos);
 
-        $this->platos->sincronizarIngredientes($plato, $ingredientes);
+        $path = $archivo instanceof UploadedFile ? $this->guardarArchivo($archivo) : null;
+
+        unset($datos['ingredientes'], $datos['imagen']);
+
+        if ($path) {
+            $datos['imagen'] = $path;
+        }
+
+        try {
+            $plato = $this->platos->crear($datos);
+
+            $this->platos->sincronizarIngredientes($plato, $ingredientes);
+        } catch (\Throwable $e) {
+
+            $this->borrarArchivo($path); // no dejar huérfanos
+            throw $e;
+        }
+
 
         return $plato->load('ingredientes:id,nombre,precioAdicional');
     }
@@ -61,6 +77,7 @@ class PlatoService
     public function actualizar(int $id, array $datos): Plato
     {
         $plato = $this->platos->conIngredientesOrFail((int) $id);
+        $anterior = $plato->imagen;
 
         // `ingredientes` omitido o null = no tocar el pivot (el PUT puede
         // ser solo para vincular una promoción); lista, aunque vacía, = reemplazar.
@@ -68,12 +85,30 @@ class PlatoService
 
         $ingredientes = $this->normalizarIngredientes($reemplazar ? $datos['ingredientes'] : []);
 
-        unset($datos['ingredientes']);
 
-        $plato = $this->platos->actualizar($plato, $datos);
+        $archivo = $datos['imagen'] ?? null;
+        unset($datos['ingredientes'], $datos['imagen']);
 
-        if ($reemplazar) {
-            $this->platos->sincronizarIngredientes($plato, $ingredientes);
+        $path = $archivo instanceof UploadedFile ? $this->guardarArchivo($archivo) : null;
+
+        if ($path) {
+            $datos['imagen'] = $path;
+        }
+
+        try {
+            $plato = $this->platos->actualizar($plato, $datos);
+
+            if ($reemplazar) {
+                $this->platos->sincronizarIngredientes($plato, $ingredientes);
+            }
+        } catch (\Throwable $e) {
+            $this->borrarArchivo($path);
+            throw $e;
+        }
+
+        // Recién con la BD ya actualizada se borra la imagen vieja.
+        if ($path) {
+            $this->borrarArchivo($anterior);
         }
 
         return $plato->load('ingredientes:id,nombre,precioAdicional');
@@ -247,16 +282,12 @@ class PlatoService
         $plato = $this->platos->conIngredientesOrFail($id);
         $anterior = $plato->imagen;
 
-        $path = $archivo->store('platos', 's3');
-
-        if ($path === false) {
-            throw new \Exception('No se pudo guardar la imagen.');
-        }
+        $path = $this->guardarArchivo($archivo);
 
         try {
             $plato = $this->platos->actualizar($plato, ['imagen' => $path]);
         } catch (\Throwable $e) {
-            Storage::disk('s3')->delete($path); // no dejar huérfanos
+            $this->borrarArchivo($path);
             throw $e;
         }
 
@@ -277,11 +308,29 @@ class PlatoService
         return $plato;
     }
 
-    private function borrarArchivo(?string $path): void
+    private function guardarArchivo(UploadedFile $archivo): string
     {
-        // Las URLs externas viejas no viven en nuestro bucket: no se tocan.
-        if ($path && ! str_starts_with($path, 'http')) {
-            Storage::disk('s3')->delete($path);
+        $path = $archivo->store('platos', 's3');
+
+        if ($path === false) {
+            throw new \Exception('No se pudo guardar la imagen.');
+        }
+
+        // Lo que se persiste en la BD es la URL completa.
+        return Storage::disk('s3')->url($path);
+    }
+
+    private function borrarArchivo(?string $url): void
+    {
+        if (! $url) {
+            return;
+        }
+
+        $base = rtrim(Storage::disk('s3')->url(''), '/') . '/';
+
+        // Las URLs que no son de nuestro bucket (las externas viejas) no se tocan.
+        if (str_starts_with($url, $base)) {
+            Storage::disk('s3')->delete(substr($url, strlen($base)));
         }
     }
 }
