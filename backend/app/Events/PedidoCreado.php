@@ -13,8 +13,9 @@ use Illuminate\Queue\SerializesModels;
  * PEDIDO NUEVO (raíz o hijo) recién creado en `en_curso`.
  *
  * Se emite dentro de la transacción de alta; `afterCommit` difiere el
- * push a la cola hasta el commit. Canal único para cocina y mozos
- * (`empleado.pedidos`).
+ * push a la cola hasta el commit. Duplica el aviso: a los empleados
+ * (`empleado.pedidos`, cocina + mozos) y a la propia mesa
+ * (`mesa.{id}`, el comensal ve el alta de su pedido).
  */
 class PedidoCreado implements ShouldBroadcast
 {
@@ -29,7 +30,10 @@ class PedidoCreado implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('empleado.pedidos')];
+        return [
+            new PrivateChannel('empleado.pedidos'),
+            new PrivateChannel('mesa.'.$this->pedido->mesa_id),
+        ];
     }
 
     public function broadcastAs(): string
