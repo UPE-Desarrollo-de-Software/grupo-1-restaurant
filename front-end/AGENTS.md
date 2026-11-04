@@ -211,6 +211,22 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   `/mozo/mesas/:id` (atención + comanda), hubs de reservas de gerente y mozo
   (reservas), y `/pedido` del comensal (atención: el botón pasa a "Mozo
   avisado" aunque el POST lo haya hecho otro dispositivo de la mesa).
+- **Notificaciones del mozo (campanita + modal)**: los Alerts de atención de
+  `MozoHub`/`MozoMesa` se reemplazaron por un listado acumulado. El store vive
+  en `src/realtime/notificaciones.ts` (módulo, no contexto: memoria + espejo en
+  `localStorage` con clave `gastro_notificaciones_mozo` y tope de
+  `MAXIMO_NOTIFICACIONES = 20`), se lee con `useNotificaciones()`
+  (`src/hooks/useNotificaciones.ts`, `useSyncExternalStore`) y se dibuja en
+  `components/Notificaciones/`: `BotonNotificaciones` (campana en el Navbar,
+  sólo rol Mozo; único punto de suscripción a `empleado.atencion` +
+  `empleado.pedidos`, traduce eventos con `notificacionAtencion` /
+  `notificacionPedidoCreado` / `notificacionPedidoEstado` — este último **sólo
+  cuando `estado === 'listo'`**, para no duplicar avisos en cada transición — y
+  **abre el modal** al llegar un aviso) y `NotificacionModal` (lista con hora,
+  no leídas resaltadas, clic en la fila = marcar esa como leída + navegar a
+  `/mozo/mesas/{id}`, "Marcar todas como leídas" y "Limpiar").
+  `MozoMesa` conserva `usePedidosRealtime` sólo para refrescar datos. Sin Reverb
+  la campana queda visible en 0 (sin regresión).
 - Los manejadores se guardan en un `ref` y la suscripción se arma una sola
   vez por canal (cleanup con `stopListening` por evento, sin re-suscribir en
   cada render).
