@@ -1,0 +1,92 @@
+/* ============ MODAL NOTIFICACIONES (mozo) ============ */
+
+.lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    width: 100%;
+    padding: var(--space-sm);
+    text-align: left;
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-default);
+    background-color: var(--color-surface-container-low);
+    color: var(--color-on-surface);
+}
+
+.item:hover,
+.item:focus-visible {
+    background-color: var(--color-surface-container-high);
+}
+
+/* Aviso todavía no abierto: borde y fondo destacados. */
+.noLeida {
+    border-color: var(--color-primary);
+    background-color: var(--color-surface-container-lowest);
+}
+
+.icono {
+    font-size: 1.25rem;
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.cuerpo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xs);
+}
+
+.titulo {
+    color: var(--color-on-surface);
+}
+
+.detalle {
+    color: var(--color-on-surface-variant);
+}
+
+.hora {
+    color: var(--color-on-surface-variant);
+    flex-shrink: 0;
+}
+
+.punto {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.vacio {
+    text-align: center;
+    color: var(--color-on-surface-variant);
+    padding: var(--space-xl) 0;
+}
+
+.vacio i {
+    font-size: 2rem;
+    color: var(--color-outline);
+    display: block;
+    margin-bottom: var(--space-sm);
+}
+
+.vacio p {
+    margin: 0;
+}
+
+.footer {
+    justify-content: space-between;
+}

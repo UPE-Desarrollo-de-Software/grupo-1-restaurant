@@ -11,6 +11,9 @@ interface FiltroCategoriasProps {
   filtroEstado: FiltroEstadoPlatos
   onFiltroCategoria: (filtro: FiltroCategoriaPlatos) => void
   onFiltroEstado: (filtro: FiltroEstadoPlatos) => void
+  // La carta del cliente sólo filtra por categoría: su endpoint devuelve
+  // únicamente platos disponibles, así que el select de estado no aplica.
+  mostrarEstado?: boolean
 }
 
 export function FiltroCategorias({
@@ -20,6 +23,7 @@ export function FiltroCategorias({
   filtroEstado,
   onFiltroCategoria,
   onFiltroEstado,
+  mostrarEstado = true,
 }: FiltroCategoriasProps) {
   const categoriasOpciones = opcionesCategoriaPlatos(platos, categorias)
   const estadosOpciones = opcionesEstadoPlatos(platos)
@@ -38,18 +42,20 @@ export function FiltroCategorias({
           </option>
         ))}
       </Form.Select>
-      <Form.Select
-        className={`${s.select} text-label-md`}
-        value={filtroEstado}
-        onChange={e => onFiltroEstado(e.target.value as FiltroEstadoPlatos)}
-        aria-label='Filtrar por estado'
-      >
-        {estadosOpciones.map(opcion => (
-          <option key={opcion.clave} value={opcion.clave}>
-            {opcion.etiqueta} {opcion.cantidad}
-          </option>
-        ))}
-      </Form.Select>
+      {mostrarEstado && (
+        <Form.Select
+          className={`${s.select} text-label-md`}
+          value={filtroEstado}
+          onChange={e => onFiltroEstado(e.target.value as FiltroEstadoPlatos)}
+          aria-label='Filtrar por estado'
+        >
+          {estadosOpciones.map(opcion => (
+            <option key={opcion.clave} value={opcion.clave}>
+              {opcion.etiqueta} {opcion.cantidad}
+            </option>
+          ))}
+        </Form.Select>
+      )}
     </div>
   )
 }

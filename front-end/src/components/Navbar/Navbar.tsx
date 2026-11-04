@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom"
 import { useState } from "react"
 import { useRol } from "../../context/RolesContext/useRol"
 import { INICIO_POR_ROL } from "../../navigation/inicios"
+import { BotonNotificaciones } from "../Notificaciones/BotonNotificaciones"
 
 export function NavbarComponent(){
   const navigate = useNavigate()
@@ -41,14 +42,17 @@ export function NavbarComponent(){
         </Navbar.Brand>
         {esStaff && (
           <>
-            <button
-              type="button"
-              className={s.avatar}
-              aria-label="Abrir mi perfil"
-              onClick={() => setShowPerfil(true)}
-            >
-              <i className="bi bi-person-circle" />
-            </button>
+            <div className="d-flex align-items-center gap-2">
+              {nombreRol === 'Mozo' && <BotonNotificaciones />}
+              <button
+                type="button"
+                className={s.avatar}
+                aria-label="Abrir mi perfil"
+                onClick={() => setShowPerfil(true)}
+              >
+                <i className="bi bi-person-circle" />
+              </button>
+            </div>
 
             <Modal
               show={showPerfil}
