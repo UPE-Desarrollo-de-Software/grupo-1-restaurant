@@ -128,4 +128,32 @@ class PlatoController extends Controller
             'message' => 'Plato eliminado exitosamente',
         ], 200);
     }
+
+    public function aumentarPrecios(Request $request)
+    {
+        $datos = $request->validate([
+            'todos' => 'nullable|boolean',
+            'categoria_id' => 'nullable|integer|exists:categorias,id',
+            'tipo' => 'required|in:porcentaje,monto',
+            'valor' => 'required|numeric|min:0',
+            'redondeo' => 'nullable|in:50,100',
+        ]);
+
+        try {
+            $actualizados = ($this->aumentarPrecios)($datos);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'Se actualizaron ' . count($actualizados) . ' platos',
+            'total' => count($actualizados),
+            'actualizados' => array_map(fn($p) => [
+                'id' => $p['id'],
+                'nombre' => $p['nombre'],
+                'precio_anterior' => $p['precio_anterior'],
+                'precio_nuevo' => $p['precio_nuevo'],
+            ], $actualizados),
+        ], 200);
+    }
 }
