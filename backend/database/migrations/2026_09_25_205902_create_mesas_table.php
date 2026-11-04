@@ -27,12 +27,13 @@ return new class extends Migration
      *
      * Resto sin cambios:
      *  - `usuario_id`: mozo responsable (DER: USUARIO "atiende" MESA).
-     *  - `estado`: libre | ocupada | reservada (valores del DER).
-     *  - `ocupada_desde`: corte de la cuenta de la visita (se pone al
-     *    pasar a ocupada con el primer pedido).
+     *  - `estado`: libre | ocupada. Una fila = una visita: al pagar la
+     *    fila se destruye, así que no hay estados intermedios.
+     *  - El corte de la visita es `created_at` de la fila (cualquier
+     *    pedido posterior a ese instante le pertenece).
      *  - `grupo_codigo`: agrupación de lectura (no es FK).
      *  - `capacidad`: asientos de ESTA mesa; la sumatoria de las mesas
-     *    vivas contra `PARAMETRO.capacidad_total` (aforo del lugar).
+     *    vivas contra `CONFIG_MESA.aforo` (aforo del lugar).
      */
     public function up(): void
     {
@@ -46,9 +47,8 @@ return new class extends Migration
 
             $table->string('codigo_acceso')->unique();
             $table->integer('capacidad');
-            $table->enum('estado', ['libre', 'ocupada', 'reservada'])->default('libre');
+            $table->enum('estado', ['libre', 'ocupada'])->default('libre');
             $table->unsignedBigInteger('grupo_codigo')->nullable()->index();
-            $table->dateTime('ocupada_desde')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

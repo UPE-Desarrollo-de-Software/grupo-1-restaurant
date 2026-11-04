@@ -16,9 +16,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *   lo genera el mozo o el sistema al crearla) y no
  *   cambia nunca: es la credencial del cliente (Authorization:
  *   Bearer {codigo_acceso}) hasta que la mesa se destruye.
- * `ocupada_desde`: corte de la cuenta de la visita.
  * `grupo_codigo`: agrupación de lectura para varias mesas (no es FK).
- * `estado`: libre | ocupada | reservada (valores del DER).
+ * `estado`: libre | ocupada.
  * `deleted_at`: borrado LÓGICO = "destrucción" de la mesa (decisión
  *   del rebote 2 con los profes): los pedidos históricos conservan su
  *   FK cascade hacia acá (las ventas no se borran) y para la app la
@@ -28,7 +27,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Ciclo de vida: la crea el mozo (POST /mesas), el primer pedido la
  * pone 'ocupada' y se destruye (borrado lógico) al cerrar la visita
  * (POST /mesas/{mesa}/cerrar: el cliente pagó) o con DELETE
- * (baja administrativa del gerente).
+ * (baja administrativa del gerente). Una fila = una visita: el corte
+ * de la cuenta es `created_at` de la fila.
  */
 class Mesa extends Model
 {
@@ -43,7 +43,6 @@ class Mesa extends Model
         'capacidad',
         'estado',
         'grupo_codigo',
-        'ocupada_desde',
     ];
 
     // ==================== RELACIONES ====================
@@ -66,48 +65,24 @@ class Mesa extends Model
 
     // ==================== MÉTODOS ÚTILES ====================
 
-    public function Reservar(): void
-    {
-        $this->update([
-            'estado' => 'reservada',
-        ]);
-    }
-
-    public function estaReservada(): bool
-    {
-        return $this->estado === 'reservada';
-    }
-
-    public function expirarReserva(): void
-    {
-        $this->update([
-            'estado' => 'libre',
-        ]);
-    }
-
     /**
-     * El primer pedido no finalizado ocupa la mesa.
-     *
-     * `ocupada_desde` es el corte de la cuenta de la visita: se pone en
-     * `now()` SOLO al pasar de libre → ocupada (si ya estaba ocupada se
-     * conserva, así el corte sigue cubriendo la visita completa).
+     * El primer pedido no finalizado ocupa la mesa (o el mozo a mano).
      */
     public function ocupar(): void
     {
         $this->update([
             'estado' => 'ocupada',
-            'ocupada_desde' => $this->estado === 'ocupada' ? $this->ocupada_desde : now(),
         ]);
     }
 
     /**
      * Destruir la mesa (borrado lógico): es la baja definitiva del
-     * servicio de la visita, llamada al cerrar/cancelar el último
-     * pedido activo o por DELETE /mesas/{id}.
+     * servicio de la visita, llamada al cerrar/cancelar la visita
+     * (`POST /mesas/{mesa}/cerrar`) o por DELETE /mesas/{id}.
      *
      * Con `codigo_acceso` borrado de los resultados, el middleware del
      * cliente deja de encontrarla: los comensales quedan afuera solos.
-     * `ocupada_desde` y los pedidos quedan para consultar la cuenta de
+     * `created_at` y los pedidos quedan para consultar la cuenta de
      * la visita terminada (cuenta/resumen leen con trashed).
      */
     public function destruir(): void

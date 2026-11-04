@@ -30,11 +30,11 @@ use Illuminate\Support\Facades\DB;
  *    pedidos de la mesa están confirmados, salen juntos a cocina
  *    (en_curso → enviado, lote). El mozo conserva el envío manual
  *    (confirmarResumen con gate/forzar + enviarPedido) como fallback.
- *  - ESTADOS (8): el tramo de la cocina lo avanza la cocina
+ *  - ESTADOS (7): el tramo de la cocina lo avanza la cocina
  *    (enviado → en_preparacion → listo, permiso preparar_pedidos) y
- *    el resto el mozo (listo → entregado → cerrado; cancelar desde
+ *    el resto el mozo (listo → entregado, final; cancelar desde
  *    cualquier no final, exclusivo del mozo).
- *  - Estados finales (cerrado/cancelado): NO tocan la mesa; la
+ *  - Estados finales (entregado/cancelado): NO tocan la mesa; la
  *    visita termina cuando el mozo la cierra tras el PAGO
  *    (POST /mesas/{mesa}/cerrar, ver MesaService::cerrarVisita).
  *
@@ -92,9 +92,9 @@ class PedidoService
             $pedidoNuevo = false;
 
             if (! $pedido) {
-                // Pedido nuevo (raíz o hijo): ocupamos la mesa ANTES de
-                // crearlo, así ocupada_desde <= fecha y el corte de la
-                // cuenta de la visita lo cubre.
+                // Pedido nuevo (raíz o hijo): ocupamos la mesa antes de
+                // crearlo para que el estado refleje la visita desde el
+                // primer pedido.
                 $mesa->ocupar();
 
                 $pedido = $this->pedidos->crear([
@@ -447,7 +447,7 @@ class PedidoService
 
     /**
      * Avanza el pedido en el tramo del MOZO:
-     *   listo → entregado → cerrado
+     *   listo → entregado (final)
      * y permite cancelar desde cualquier estado no final (el cancel
      * es exclusivo del mozo). También permite deshacer
      * confirmado → en_curso (reabrir resumen). La preparación la
@@ -465,7 +465,6 @@ class PedidoService
             'enviado' => ['cancelado'],
             'en_preparacion' => ['cancelado'],
             'listo' => ['entregado', 'cancelado'],
-            'entregado' => ['cerrado', 'cancelado'],
         ];
 
         return $this->aplicarTransicion($pedidoId, $nuevoEstado, $transiciones);

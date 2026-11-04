@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
  * La cocina solo VE la cola (enviado + en_preparacion) y solo
  * AVANZA su tramo del flujo:
  *   enviado → en_preparacion → listo
- * El resto de los estados (entregado, cerrado, cancel, reabrir) los
+ * El resto de los estados (entregado, cancel, reabrir) los
  * maneja el mozo con PedidoController@cambiarEstado.
  */
 class CocinaController extends Controller

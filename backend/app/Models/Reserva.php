@@ -25,6 +25,13 @@ class Reserva extends Model
 {
     use HasFactory;
 
+    /**
+     * Duración del hold (espera del cliente): [hora, hora + 30 min].
+     * Fuente única de la regla: la usan ReservaService (disponibilidad,
+     * vencimiento) y MesaService (aforo efectivo del salón).
+     */
+    public const ESPERA_MIN = 30;
+
     protected $fillable = [
         'mesa_id', // legacy: nullable y sin uso en el alta nueva
         'contacto_solicitante',
@@ -62,5 +69,22 @@ class Reserva extends Model
     public function inventario(): HasMany
     {
         return $this->hasMany(ReservaInventario::class);
+    }
+
+    /**
+     * ¿El hold de esta reserva contiene al minuto $minutos desde
+     * 00:00 del mismo día?
+     *
+     * `$margenAntes` extiende la protección hacia atrás (usado por
+     * MesaService: una mesa nueva no puede comerse el cupo de una
+     * reserva desde M minutos antes de su hora, no solo durante el
+     * hold [hora, hora + ESPERA_MIN)).
+     */
+    public function holdContieneMinuto(int $minutos, int $margenAntes = 0): bool
+    {
+        [$hora, $minuto] = explode(':', $this->hora);
+        $inicio = ((int) $hora) * 60 + (int) $minuto;
+
+        return $minutos >= $inicio - $margenAntes && $minutos < $inicio + self::ESPERA_MIN;
     }
 }

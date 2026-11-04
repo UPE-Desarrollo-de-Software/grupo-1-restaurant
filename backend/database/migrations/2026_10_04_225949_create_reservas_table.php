@@ -20,9 +20,9 @@ return new class extends Migration
      *  - `estado`: valores del cuadro de notas del DER
      *    (pendiente | cancelada | finalizada | no_asistio).
      *
-     * `mesa_id` nace NOT NULL acá y se vuelve NULLABLE en la migración
-     * posterior (2026_10_22_...): la reserva ya no apunta a una mesa,
-     * reserva CAPACIDADES del inventario (`reserva_inventario`).
+     * `mesa_id` nace NULLABLE: la reserva ya no apunta a una mesa,
+     * reserva CAPACIDADES del inventario (`reserva_inventario`); se
+     * llena solo si en el futuro vuelve a necesitarla.
      */
     public function up(): void
     {
@@ -30,6 +30,7 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('mesa_id')
+                ->nullable()
                 ->constrained('mesas')
                 ->cascadeOnDelete();
 

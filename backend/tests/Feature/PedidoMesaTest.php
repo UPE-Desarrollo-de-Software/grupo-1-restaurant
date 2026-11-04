@@ -178,14 +178,12 @@ test('la visita termina cuando el mozo cierra la mesa tras el pago', function ()
             ->assertStatus(200);
     }
 
-    // ...y recién ahí el mozo la entrega y la cierra.
+    // ...y recién ahí el mozo la entrega (estado final).
     autenticarMozo();
-    foreach (['entregado', 'cerrado'] as $estado) {
-        $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => $estado])
-            ->assertStatus(200);
-    }
+    $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => 'entregado'])
+        ->assertStatus(200);
 
-    expect($pedido->fresh()->estado)->toBe('cerrado');
+    expect($pedido->fresh()->estado)->toBe('entregado');
 
     // El último pedido finalizado NO destruye la mesa: la visita sigue
     // viva hasta que el cliente pague y el mozo la cierre.
@@ -246,7 +244,7 @@ test('no se puede cerrar la mesa con pedidos activos', function () {
         ->assertStatus(422)
         ->assertJsonPath(
             'message',
-            'No se puede cerrar la mesa: quedan pedidos activos. Cobrá la cuenta y cerrá (o cancelá) todos los pedidos primero.'
+            'No se puede cerrar la mesa: quedan pedidos activos. Cobrá la cuenta y entregá (o cancelá) todos los pedidos primero.'
         );
 
     expect(Mesa::find($mesa->id))->not->toBeNull();
@@ -271,25 +269,23 @@ test('el resumen de la mesa muestra tambien los pedidos finalizados de la visita
             'platos' => [['plato_id' => $plato->id, 'cantidad' => 1]],
         ])->assertStatus(201);
     }
-    [$cancelado, $cerrado, $activo] = $mesa->pedidos()->orderBy('id')->pluck('id');
+    [$cancelado, $entregado, $activo] = $mesa->pedidos()->orderBy('id')->pluck('id');
 
     // A: el mozo lo cancela.
     $this->putJson("/api/pedidos/{$cancelado}/estado", ['estado' => 'cancelado'])
         ->assertStatus(200);
 
-    // B: pasa por cocina y queda cerrado.
-    $this->postJson("/api/pedidos/{$cerrado}/confirmar")->assertStatus(200);
-    $this->postJson("/api/pedidos/{$cerrado}/enviar")->assertStatus(200);
+    // B: pasa por cocina y queda entregado (final).
+    $this->postJson("/api/pedidos/{$entregado}/confirmar")->assertStatus(200);
+    $this->postJson("/api/pedidos/{$entregado}/enviar")->assertStatus(200);
     foreach (['en_preparacion', 'listo'] as $estado) {
         conCocina($this, tokenCocina())
-            ->putJson("/api/cocina/pedidos/{$cerrado}/estado", ['estado' => $estado])
+            ->putJson("/api/cocina/pedidos/{$entregado}/estado", ['estado' => $estado])
             ->assertStatus(200);
     }
     autenticarMozo();
-    foreach (['entregado', 'cerrado'] as $estado) {
-        $this->putJson("/api/pedidos/{$cerrado}/estado", ['estado' => $estado])
-            ->assertStatus(200);
-    }
+    $this->putJson("/api/pedidos/{$entregado}/estado", ['estado' => 'entregado'])
+        ->assertStatus(200);
 
     // El resumen ya no es "solo activos": trae los tres, en orden y
     // con sus estados (C sigue en curso), y las líneas siguen ahí.
@@ -297,8 +293,8 @@ test('el resumen de la mesa muestra tambien los pedidos finalizados de la visita
         ->assertStatus(200)
         ->json('pedidos');
 
-    expect(collect($pedidos)->pluck('id')->all())->toBe([$cancelado, $cerrado, $activo])
-        ->and(collect($pedidos)->pluck('estado')->all())->toBe(['cancelado', 'cerrado', 'en_curso'])
+    expect(collect($pedidos)->pluck('id')->all())->toBe([$cancelado, $entregado, $activo])
+        ->and(collect($pedidos)->pluck('estado')->all())->toBe(['cancelado', 'entregado', 'en_curso'])
         ->and($pedidos[0]['lineas'])->toHaveCount(1);
 });
 

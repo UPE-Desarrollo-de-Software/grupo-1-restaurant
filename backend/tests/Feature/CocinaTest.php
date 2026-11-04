@@ -22,7 +22,7 @@ beforeEach(function () {
  * COCINA (GET/PUT /api/cocina/pedidos*, permiso preparar_pedidos).
  * La cocina solo VE la cola (enviado + en_preparacion) y solo AVANZA
  * su tramo del flujo: enviado → en_preparacion → listo. El resto
- * (entregado, cerrado, cancel) es del mozo.
+ * (entregado, cancel) es del mozo.
  *
  * OJO: helpers globales ya definidos en otros tests (autenticarMozo,
  * tokenMozo, conMozo, gerentePromo, tokenReporte…) no se redeclaran
@@ -179,12 +179,11 @@ test('el mozo no prepara: entrega y cierra recien con el pedido listo', function
         ->putJson("/api/cocina/pedidos/{$pedidoId}/estado", ['estado' => 'listo'])
         ->assertOk();
 
-    // ...y recién ahí el mozo entrega y cierra.
+    // ...y recién ahí el mozo lo entrega (estado final).
     identidadDePrueba('Mozo');
     $this->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'entregado'])->assertOk();
-    $this->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'cerrado'])->assertOk();
 
-    expect(Pedido::find($pedidoId)->estado)->toBe('cerrado');
+    expect(Pedido::find($pedidoId)->estado)->toBe('entregado');
 });
 
 test('el cancel sigue siendo exclusivo del mozo', function () {
@@ -238,12 +237,13 @@ test('el historial y el dashboard conocen el estado listo', function () {
     $this->seed(ConfigMesaSeeder::class); // el dashboard deriva el aforo
     identidadDePrueba('Gerente');
 
-    // Historial: filtra por listo (y sin filtro solo finalizados).
+    // Historial: filtra por listo y sin filtro también lo lista
+    // (listo + finalizados).
     $respuesta = $this->getJson('/api/historial/comandas?estado=listo')->assertOk();
     expect($respuesta->json('data'))->toHaveCount(1)
         ->and($respuesta->json('data.0.estado'))->toBe('listo');
 
-    $this->getJson('/api/historial/comandas')->assertOk()->assertJsonPath('total', 0);
+    $this->getJson('/api/historial/comandas')->assertOk()->assertJsonPath('total', 1);
 
     // Dashboard: existe la clave y cuenta el pedido.
     $this->getJson('/api/dashboard')
