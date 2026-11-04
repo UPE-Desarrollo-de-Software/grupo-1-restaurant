@@ -8,7 +8,7 @@ API REST de un restaurante (proyecto final). Laravel 13 + Sanctum. Este AGENTS c
 - Tests: usar `vendor/bin/pest [ruta]` (`--filter='...'` para un caso). **Nunca `php artisan test --compact` en este entorno (Windows/OneDrive)**: se cuelga y corta por timeout; `vendor/bin/pest` corre igual sobre **SQLite en memoria** (`phpunit.xml`), no necesita MySQL.
 - `vendor/bin/pint --dirty` tras tocar cualquier PHP (no hay `pint.json` → preset `laravel`). **No usar `--format agent`** (lo sugieren las guidelines de Boost): en este entorno revienta con `Unknown: ChildProcess.kill`.
     - **Ojo mientras el repo no tenga commits**: sin `HEAD`, `--dirty` evalúa todo el codebase y reformatea los ~31 PHP que no cumplen el preset. Para limitarlo a lo tuyo: `vendor/bin/pint <ruta>`.
-- Setup desde cero: `composer run setup`. Seed: `php artisan db:seed` (permisos + roles + usuarios `gerente@restaurant.com` y un mozo, password `123456`, + la CONFIG_MESA base 25×4 = aforo 100; **no se precrean mesas**: son dinámicas contra el aforo). Si MySQL está caído, validar migraciones+seed con `DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan migrate:fresh --seed`.
+- Setup desde cero: `composer run setup`. Seed: `php artisan db:seed` (permisos + roles + usuarios `gerente@restaurant.com`, un mozo y un cocinero `cocina@restaurant.com`, password `123456`, + la CONFIG_MESA base 25×4 = aforo 100; **no se precrean mesas**: son dinámicas contra el aforo). Si MySQL está caído, validar migraciones+seed con `DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan migrate:fresh --seed`.
 
 ## Entorno
 
