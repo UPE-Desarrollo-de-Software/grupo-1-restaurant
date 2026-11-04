@@ -11,6 +11,7 @@ import { UsuarioCard } from '../Usuarios/UsuarioCard'
 import { PromocionCard } from '../Promociones/PromocionCard'
 import { ReservaCard } from '../Reservas/ReservaCard'
 import { MesaCard } from '../Mesas/MesaCard'
+import { normalizarTexto } from '../../utils/busqueda'
 import s from './Lista.module.css'
 
 type Config = {
@@ -80,26 +81,23 @@ const SIN_FILTRO: Record<Tipo, string> = {
 }
 
 // Minúsculas + sin acentos: "huevo" encuentra "Huevo Frito".
-// No se exporta: react-refresh/only-export-components (ver PlatoCard.formatearPrecio).
-const normalizar = (texto: string): string =>
-  texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-
+// Vive en src/utils/busqueda.ts (la carta del cliente usa la misma regla).
 // La unión es mixta: cada item se busca por los campos que tiene
 // (Reserva no tiene `nombre`; se busca por contacto, estado y mesa).
 function filtrar(items: ItemLista[], busqueda?: string): ItemLista[] {
-  const consulta = normalizar((busqueda ?? '').trim().replace(/^#/, ''))
+  const consulta = normalizarTexto((busqueda ?? '').trim().replace(/^#/, ''))
   if (!consulta) return items
 
   return items.filter(item =>
-    ('nombre' in item && normalizar(item.nombre).includes(consulta))
-    || ('contacto_solicitante' in item && normalizar(item.contacto_solicitante).includes(consulta))
-    || ('estado' in item && typeof item.estado === 'string' && normalizar(item.estado).includes(consulta))
-    || ('mesa' in item && item.mesa != null && normalizar(`mesa ${item.mesa.id}`).includes(consulta))
+    ('nombre' in item && normalizarTexto(item.nombre).includes(consulta))
+    || ('contacto_solicitante' in item && normalizarTexto(item.contacto_solicitante).includes(consulta))
+    || ('estado' in item && typeof item.estado === 'string' && normalizarTexto(item.estado).includes(consulta))
+    || ('mesa' in item && item.mesa != null && normalizarTexto(`mesa ${item.mesa.id}`).includes(consulta))
     || String(item.id).includes(consulta)
     || String(item.id).padStart(2, '0').includes(consulta)
     // Los usuarios también se buscan por email y nombre de rol.
-    || ('email' in item && normalizar(String(item.email)).includes(consulta))
-    || ('rol' in item && item.rol && normalizar(item.rol.nombre).includes(consulta))
+    || ('email' in item && normalizarTexto(String(item.email)).includes(consulta))
+    || ('rol' in item && item.rol && normalizarTexto(item.rol.nombre).includes(consulta))
   )
 }
 

@@ -1,0 +1,10 @@
+/* ============ CARTA DEL CLIENTE ============ */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    max-width: 44rem;
+    margin: 0 auto;
+    padding: var(--gutter-mobile);
+}
