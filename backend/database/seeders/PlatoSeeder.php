@@ -16,15 +16,19 @@ use Illuminate\Database\Seeder;
  * Por cada plato se definen dos listas:
  *  - `ingredientes`: vienen en el plato (por_defecto = true). La
  *    mayoría se puede excluir (opcional = true); los estructurales
- *    (masa, pan, proteína base) quedan con opcional = false.
+ *    (masa, pan, proteína base) y las bebidas quedan con
+ *    opcional = false. Todo plato tiene al menos uno.
  *  - `extras`: no vienen en el plato (por_defecto = false) pero se
  *    pueden agregar (opcional = true) y cobran precioAdicional.
+ *    Algunos platos no tienen extras.
  */
 class PlatoSeeder extends Seeder
 {
     /**
      * Ingredientes estructurales: no se pueden excluir ni agregar
-     * (opcional = false).
+     * (opcional = false). Incluye las bases de los platos (masa, pan,
+     * proteínas) y las bebidas (el ingrediente default de una bebida
+     * es la bebida misma: no tiene sentido excluirla).
      *
      * @var list<string>
      */
@@ -33,6 +37,10 @@ class PlatoSeeder extends Seeder
         'Pan de hamburguesa',
         'Milanesa de ternera',
         'Medallón de carne',
+        'Agua mineral',
+        'Gaseosa',
+        'Cerveza artesanal',
+        'Vino tinto',
     ];
 
     public function run(): void
@@ -57,23 +65,23 @@ class PlatoSeeder extends Seeder
                 ['nombre' => 'Ensalada mixta', 'descripcion' => 'Lechuga, tomate y cebolla', 'precio' => 5500, 'ingredientes' => ['Lechuga', 'Tomate', 'Cebolla']],
             ],
             'Pizzas' => [
-                ['nombre' => 'Pizza muzzarella', 'descripcion' => 'Salsa de tomate y muzzarella', 'precio' => 11000, 'ingredientes' => ['Masa de pizza', 'Salsa de tomate', 'Muzzarella'], 'extras' => ['Aceitunas', 'Morrón asado', 'Panceta']],
-                ['nombre' => 'Pizza fugazzeta', 'descripcion' => 'Cebolla y muzzarella', 'precio' => 12500, 'ingredientes' => ['Masa de pizza', 'Muzzarella', 'Cebolla'], 'extras' => ['Aceitunas']],
-                ['nombre' => 'Pizza napolitana', 'descripcion' => 'Muzzarella, rodajas de tomate y albahaca', 'precio' => 13000, 'ingredientes' => ['Masa de pizza', 'Salsa de tomate', 'Muzzarella', 'Tomate', 'Albahaca'], 'extras' => ['Aceitunas']],
+                ['nombre' => 'Pizza muzzarella', 'descripcion' => 'Salsa de tomate y muzzarella', 'precio' => 11000, 'ingredientes' => ['Masa de pizza', 'Salsa de tomate', 'Muzzarella', 'Orégano'], 'extras' => ['Aceitunas', 'Morrón asado', 'Panceta', 'Salchicha']],
+                ['nombre' => 'Pizza fugazzeta', 'descripcion' => 'Cebolla y muzzarella', 'precio' => 12500, 'ingredientes' => ['Masa de pizza', 'Muzzarella', 'Cebolla', 'Orégano'], 'extras' => ['Aceitunas', 'Salchicha']],
+                ['nombre' => 'Pizza napolitana', 'descripcion' => 'Muzzarella, rodajas de tomate y albahaca', 'precio' => 13000, 'ingredientes' => ['Masa de pizza', 'Salsa de tomate', 'Muzzarella', 'Tomate', 'Albahaca', 'Orégano'], 'extras' => ['Aceitunas', 'Salchicha']],
             ],
             'Hamburguesas' => [
-                ['nombre' => 'Hamburguesa clásica', 'descripcion' => 'Medallón de carne, lechuga y tomate', 'precio' => 9500, 'ingredientes' => ['Pan de hamburguesa', 'Medallón de carne', 'Lechuga', 'Tomate'], 'extras' => ['Queso cheddar', 'Huevo frito', 'Panceta']],
-                ['nombre' => 'Hamburguesa completa', 'descripcion' => 'Medallón, jamón, muzzarella, huevo, lechuga y tomate', 'precio' => 12000, 'ingredientes' => ['Pan de hamburguesa', 'Medallón de carne', 'Jamón cocido', 'Muzzarella', 'Huevo', 'Lechuga', 'Tomate'], 'extras' => ['Queso cheddar', 'Panceta']],
+                ['nombre' => 'Hamburguesa clásica', 'descripcion' => 'Medallón de carne, lechuga, tomate y cebolla', 'precio' => 9500, 'ingredientes' => ['Pan de hamburguesa', 'Medallón de carne', 'Lechuga', 'Tomate', 'Cebolla'], 'extras' => ['Queso cheddar', 'Huevo frito', 'Panceta', 'Carne extra']],
+                ['nombre' => 'Hamburguesa completa', 'descripcion' => 'Medallón, jamón, muzzarella, huevo, lechuga, tomate y cebolla', 'precio' => 12000, 'ingredientes' => ['Pan de hamburguesa', 'Medallón de carne', 'Jamón cocido', 'Muzzarella', 'Huevo', 'Lechuga', 'Tomate', 'Cebolla'], 'extras' => ['Queso cheddar', 'Panceta', 'Carne extra']],
             ],
             'Postres' => [
                 ['nombre' => 'Flan con dulce de leche', 'descripcion' => 'Flan casero con dulce de leche y crema', 'precio' => 5500, 'ingredientes' => ['Dulce de leche', 'Crema']],
                 ['nombre' => 'Helado de crema', 'descripcion' => 'Copa de helado de crema', 'precio' => 4500, 'ingredientes' => ['Helado de crema']],
             ],
             'Bebidas' => [
-                ['nombre' => 'Agua mineral', 'descripcion' => 'Botella de 500 ml, con o sin gas', 'precio' => 2000, 'ingredientes' => []],
-                ['nombre' => 'Gaseosa', 'descripcion' => 'Línea Coca-Cola, 500 ml', 'precio' => 2800, 'ingredientes' => []],
-                ['nombre' => 'Cerveza artesanal', 'descripcion' => 'Pinta de 500 ml', 'precio' => 5000, 'ingredientes' => []],
-                ['nombre' => 'Copa de vino tinto', 'descripcion' => 'Malbec de la casa', 'precio' => 4500, 'ingredientes' => []],
+                ['nombre' => 'Agua mineral', 'descripcion' => 'Botella de 500 ml, con o sin gas', 'precio' => 2000, 'ingredientes' => ['Agua mineral']],
+                ['nombre' => 'Gaseosa', 'descripcion' => 'Línea Coca-Cola, 500 ml', 'precio' => 2800, 'ingredientes' => ['Gaseosa']],
+                ['nombre' => 'Cerveza artesanal', 'descripcion' => 'Pinta de 500 ml', 'precio' => 5000, 'ingredientes' => ['Cerveza artesanal']],
+                ['nombre' => 'Copa de vino tinto', 'descripcion' => 'Malbec de la casa', 'precio' => 4500, 'ingredientes' => ['Vino tinto']],
             ],
         ];
 

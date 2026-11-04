@@ -8,8 +8,9 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Usuarios de prueba: el gerente que se usa para loguearse y un mozo
- * (el mozo queda como responsable de las mesas del MesaSeeder).
+ * Usuarios de prueba: el gerente que se usa para loguearse, un mozo
+ * (el mozo queda como responsable de las mesas del MesaSeeder) y el
+ * cocinero (rol Cocina de RolSeeder, entra a la cola de cocina).
  * Idempotente por email.
  */
 class UsuarioSeeder extends Seeder
@@ -28,6 +29,12 @@ class UsuarioSeeder extends Seeder
                 'email' => 'mozo@restaurant.com',
                 'password' => '123456',
                 'rol' => 'Mozo',
+            ],
+            [
+                'nombre' => 'Cocina',
+                'email' => 'cocina@restaurant.com',
+                'password' => '123456',
+                'rol' => 'Cocina',
             ],
         ];
 
