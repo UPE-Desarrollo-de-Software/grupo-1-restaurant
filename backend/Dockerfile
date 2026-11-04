@@ -2,8 +2,8 @@
 FROM php:8.3-apache
 
 RUN apt-get update && apt-get install -y \
-    git unzip libzip-dev libonig-dev \
-    && docker-php-ext-install pdo_mysql mbstring bcmath zip \
+    git unzip libzip-dev libonig-dev libpq-dev \
+    && docker-php-ext-install pdo_pgsql pdo_mysql mbstring bcmath zip \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
@@ -44,4 +44,6 @@ RUN mkdir -p storage/framework/cache \
 
 EXPOSE 10000
 
-CMD ["apache2-foreground"]
+# Prepara la base (tablas que falten y datos iniciales si está vacía) y levanta Apache
+RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
+CMD ["./docker-entrypoint.sh"]
