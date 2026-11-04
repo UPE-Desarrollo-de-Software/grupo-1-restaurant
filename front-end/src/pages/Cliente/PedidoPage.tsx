@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Spinner } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
-import { getCuentaCliente, llamarMozo } from '../../api/cliente'
+import { ErrorCliente, getCuentaCliente, llamarMozo } from '../../api/cliente'
 import { useCliente } from '../../context/ClienteContext/useCliente'
 import { useMesaRealtime } from '../../realtime/useRealtimeMesa'
 import type { LineaBorrador } from '../../types/Cliente'
@@ -96,15 +96,32 @@ export function PedidoPage() {
     const [avisoEnviado, setAvisoEnviado] = useState(false)
     const [errorAviso, setErrorAviso] = useState<string | null>(null)
 
+    // Refresco disparado por el canal de la mesa (.pedido.creado /
+    // .pedido.estado): el payload sólo trae ids y estados, así que se
+    // vuelve a pedir el resumen. Si el código murió (401/403) el provider
+    // ya limpia la sesión; un fallo de red se muestra en "Pedidos
+    // enviados" sin romper el tiempo real.
+    function refrescarPedidos() {
+        recargarResumen()
+            .then(() => setErrorResumen(null))
+            .catch((err: unknown) => {
+                if (err instanceof ErrorCliente && (err.status === 401 || err.status === 403)) return
+                setErrorResumen(err instanceof Error ? err.message : 'No se pudieron actualizar tus pedidos')
+            })
+    }
+
     // Tiempo real del comensal: el canal privado de su mesa avisa que el
     // mozo fue notificado (el POST /cliente/llamar dispara .mesa.atencion),
     // así el botón queda bloqueado aunque el aviso haya salido de otro
-    // dispositivo de la misma mesa. Al reconectar se refresca el resumen.
+    // dispositivo de la misma mesa. También avisa cada alta y cada cambio
+    // de estado de pedido (la cocina y el mozo los disparan desde el
+    // back), y en esos casos se refresca el resumen para repintar el
+    // badge de estado. Al reconectar se refresca todo.
     useMesaRealtime(mesa?.id ?? null, mesa?.codigo_acceso ?? null, {
         alLlamarMozo: () => setAvisoEnviado(true),
-        // Si la sesión murió, recargarResumen lanza y el efecto de
-        // revalidación del provider ya se encarga de limpiarla.
-        alConectar: () => { recargarResumen().catch(() => { }) },
+        alCrearPedido: refrescarPedidos,
+        alCambiarEstadoPedido: refrescarPedidos,
+        alConectar: refrescarPedidos,
     })
 
     // Pedidos enviados por ESTE comensal (el resumen trae todos los de
