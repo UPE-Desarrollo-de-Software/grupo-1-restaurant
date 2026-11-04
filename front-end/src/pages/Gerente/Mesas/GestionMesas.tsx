@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { Alert } from 'react-bootstrap'
 import { Buscador } from '../../../components/Carta/Buscador'
 import { BotonRedireccion } from '../../../components/Carta/BotonRedireccion'
-import { Resumen } from '../../../components/Carta/Resumen'
+// import { Resumen } from '../../../components/Carta/Resumen'
 import { Lista } from '../../../components/Carta/Lista'
 import { useDatos } from '../../../hooks/useDatos'
 import s from './Mesas.module.css'
@@ -30,7 +30,7 @@ export function GestionMesasPage() {
 
       {aviso && <Alert variant='success' className='text-body-md'>{aviso}</Alert>}
 
-      <Resumen tipo='mesa' items={items} loading={loading} />
+      {/* <Resumen tipo='mesa' items={items} loading={loading} /> */}
       <Lista tipo='mesa' items={items} loading={loading} error={error} busqueda={busqueda} />
     </div>
   )

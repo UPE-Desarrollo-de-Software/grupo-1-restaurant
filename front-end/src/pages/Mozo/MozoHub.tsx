@@ -3,10 +3,9 @@ import { useLocation } from 'react-router-dom'
 import { Alert } from 'react-bootstrap'
 import { Buscador } from '../../components/Carta/Buscador'
 import { BotonRedireccion } from '../../components/Carta/BotonRedireccion'
-import { Resumen } from '../../components/Carta/Resumen'
+// import { Resumen } from '../../components/Carta/Resumen'
 import { Lista } from '../../components/Carta/Lista'
 import { useDatos } from '../../hooks/useDatos'
-import { useAtencionRealtime } from '../../realtime/useRealtimeEmpleado'
 import s from './Mozo.module.css'
 
 // Panel de mesas del mozo: mismo andamiaje que GestionMesas del gerente
@@ -22,11 +21,6 @@ export function MozoPage() {
     const location = useLocation()
     const aviso = (location.state as { aviso?: string } | null)?.aviso
 
-    // Tiempo real: "llamar al mozo" desde la mesa (canal de atención).
-    // Muestra la mesa que pidió ayuda; el detalle se abre desde la lista.
-    const [mesaAtendida, setMesaAtendida] = useState<number | null>(null)
-    useAtencionRealtime({ alLlamar: (evento) => setMesaAtendida(evento.mesa_id) })
-
     return (
         <div className={`${s.page} ${s.hub}`}>
             <Buscador
@@ -41,19 +35,7 @@ export function MozoPage() {
 
             {aviso && <Alert variant='success' className='text-body-md'>{aviso}</Alert>}
 
-            {mesaAtendida !== null && (
-                <Alert
-                    variant='info'
-                    className='text-body-md'
-                    dismissible
-                    onClose={() => setMesaAtendida(null)}
-                >
-                    <i className='bi bi-bell me-1' aria-hidden='true' />
-                    La mesa #{String(mesaAtendida).padStart(2, '0')} pidió atención.
-                </Alert>
-            )}
-
-            <Resumen tipo='mesa' items={items} loading={loading} />
+            {/* <Resumen tipo='mesa' items={items} loading={loading} /> */}
             <Lista tipo='mesa' items={items} loading={loading} error={error} busqueda={busqueda} />
         </div>
     )

@@ -258,7 +258,7 @@ export function PedidoCard({ pedido, onCambio, onAgregar }: PedidoCardProps) {
                             proceso={accion === 'entregado'} bloqueado={ocupado}
                             onClick={() => correr('entregado', async () => {
                                 await cambiarEstadoPedido(pedido.id, 'entregado')
-                                await cambiarEstadoPedido(pedido.id, 'cerrado')
+                                // await cambiarEstadoPedido(pedido.id, 'cerrado')
    
                                 return { mensaje: 'Pedido entregado' }
                             })}

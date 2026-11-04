@@ -114,7 +114,7 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
     }
 
     const opcionesUsuarios = usuarios.filter(
-        user => user.activo || String(user.id) === usuarioId
+        user => user.rol?.nombre === 'Mozo' && (user.activo || String(user.id) === usuarioId)
     )
 
     return (
