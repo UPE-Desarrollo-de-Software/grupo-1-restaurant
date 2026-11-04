@@ -121,7 +121,7 @@ function firmaCanalBroadcast(string $canal, string $socketId): string
 
 // ==================== EMISIONES ====================
 
-test('crear un pedido emite pedido.creado para los empleados', function () {
+test('crear un pedido emite pedido.creado para los empleados y la mesa', function () {
     $plato = Plato::factory()->create();
     $mesa = Mesa::factory()->create();
     $token = tokenBroadcast('Mozo');
@@ -140,7 +140,10 @@ test('crear un pedido emite pedido.creado para los empleados', function () {
 
         return $event instanceof PedidoCreado
             && $event->broadcastAs() === 'pedido.creado'
-            && $event->broadcastOn()[0]->name === 'private-empleado.pedidos'
+            && array_map(fn ($canal) => $canal->name, $event->broadcastOn()) === [
+                'private-empleado.pedidos',
+                'private-mesa.'.$mesa->id,
+            ]
             && $event->broadcastWith() === [
                 'pedido_id' => $pedidoId,
                 'mesa_id' => $mesa->id,
@@ -206,7 +209,10 @@ test('avanzar el flujo emite pedido.estado con el estado anterior', function () 
 
         return $event instanceof PedidoEstadoCambiado
             && $event->broadcastAs() === 'pedido.estado'
-            && $event->broadcastOn()[0]->name === 'private-empleado.pedidos'
+            && array_map(fn ($canal) => $canal->name, $event->broadcastOn()) === [
+                'private-empleado.pedidos',
+                'private-mesa.'.$mesa->id,
+            ]
             && $event->broadcastWith() === [
                 'pedido_id' => $pedidoId,
                 'mesa_id' => $mesa->id,
