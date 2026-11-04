@@ -7,7 +7,7 @@ use Illuminate\Support\Collection;
 
 class EloquentPromocionRepository implements PromocionRepository
 {
-    private const FINALES = ['cerrado', 'cancelado'];
+    private const FINALES = ['entregado', 'cancelado'];
 
     public function listar(): Collection
     {
@@ -47,7 +47,8 @@ class EloquentPromocionRepository implements PromocionRepository
 
     /**
      * Líneas que usan esta promo y están en pedidos NO finales
-     * (los cerrados/cancelados son intocables: su subtotal es histórico).
+     * (los entregados/cancelados son intocables: su subtotal es
+     * histórico).
      *
      * @return Collection<int, DetallePedido> con 'pedido' e 'ingredientes' cargados
      */

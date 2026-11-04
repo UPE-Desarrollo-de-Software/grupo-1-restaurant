@@ -45,9 +45,11 @@ class ReservaService
     private const LEAD_TIME_HORAS = 2;
 
     /**
-     * Duración del hold (espera del cliente): [hora, hora + 30 min].
+     * Duración del hold: alias de la fuente única en el modelo
+     * (Reserva::ESPERA_MIN), usada por todo el cálculo de intervalos
+     * de este service.
      */
-    private const ESPERA_MIN = 30;
+    private const ESPERA_MIN = Reserva::ESPERA_MIN;
 
     /**
      * Inventario defensivo si CONFIG_MESA está vacía (misma defensa

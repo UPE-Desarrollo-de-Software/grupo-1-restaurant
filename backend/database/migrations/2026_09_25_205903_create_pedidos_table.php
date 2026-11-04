@@ -23,9 +23,10 @@ return new class extends Migration
      * Sin cambios:
      *  - `mesa_id`: FK cascade; el mozo responsable se deriva por
      *    PEDIDO → MESA → USUARIO.
-     *  - `estado`: valores exactos del cuadro de notas del DER.
-     *    `cerrado` y `cancelado` son estados finales; al finalizar el
-     *    último pedido activo la mesa se destruye (borrado lógico).
+     *  - `estado`: valores exactos del cuadro de notas del DER;
+     *    `entregado` y `cancelado` son estados finales (no hay
+     *    `cerrado`: la visita se cierra con el pago, vía
+     *    POST /mesas/{mesa}/cerrar, no con el pedido).
      *  - Flujo de envío en dos pasos:
      *      en_curso → confirmado → enviado
      *    (POST /pedidos/{id}/confirmar valida el gate sobre
@@ -56,7 +57,6 @@ return new class extends Migration
                 'en_preparacion',
                 'listo',
                 'entregado',
-                'cerrado',
                 'cancelado',
             ])->default('en_curso');
 

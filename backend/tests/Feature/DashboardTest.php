@@ -21,7 +21,7 @@ beforeEach(function () {
 
 /*
  * DASHBOARD de estadísticas (GET /api/dashboard, permiso ver_dashboard).
- * Ventas del período (entregado + cerrado), pedidos por estado, platos
+ * Ventas del período (entregado), pedidos por estado, platos
  * más vendidos, ocupación actual y reservas de hoy.
  *
  * OJO: helpers globales ya definidos en otros tests (tokenEmpleado,
@@ -61,7 +61,7 @@ function pedidoDashboard(array $atributos = []): Pedido
 {
     return Pedido::create(array_merge([
         'mesa_id' => Mesa::factory()->create()->id,
-        'estado' => 'cerrado',
+        'estado' => 'entregado',
         'total' => 100,
         'fecha' => now()->toDateTimeString(),
     ], $atributos));
@@ -91,7 +91,7 @@ test('el dashboard devuelve el shape completo con los 7 estados en 0', function 
             'pedidos_por_estado',
             'platos_mas_vendidos',
             'ocupacion_actual' => [
-                'mesas' => ['libres', 'ocupadas', 'reservadas', 'total'],
+                'mesas' => ['libres', 'ocupadas', 'total'],
                 'cubiertos_ocupados',
                 'aforo',
                 'porcentaje_aforo',
@@ -108,12 +108,12 @@ test('el dashboard devuelve el shape completo con los 7 estados en 0', function 
     $estados = $respuesta->json('pedidos_por_estado');
     expect(array_keys($estados))->toBe([
         'en_curso', 'confirmado', 'enviado', 'en_preparacion',
-        'listo', 'entregado', 'cerrado', 'cancelado',
+        'listo', 'entregado', 'cancelado',
     ])->and(array_values(array_unique($estados)))->toBe([0]);
 });
 
-test('las ventas del periodo solo cuentan entregado y cerrado', function () {
-    pedidoDashboard(['estado' => 'cerrado', 'total' => 100]);
+test('las ventas del periodo solo cuentan entregado', function () {
+    pedidoDashboard(['estado' => 'entregado', 'total' => 100]);
     pedidoDashboard(['estado' => 'entregado', 'total' => 200]);
     pedidoDashboard(['estado' => 'en_curso', 'total' => 999]);
     pedidoDashboard(['estado' => 'cancelado', 'total' => 999]);
@@ -125,7 +125,7 @@ test('las ventas del periodo solo cuentan entregado y cerrado', function () {
         ->assertJsonPath('ventas.total', 300)
         ->assertJsonPath('ventas.ticket_promedio', 150)
         ->assertJsonPath('pedidos_por_estado.en_curso', 1)
-        ->assertJsonPath('pedidos_por_estado.cerrado', 1)
+        ->assertJsonPath('pedidos_por_estado.entregado', 2)
         ->assertJsonPath('pedidos_por_estado.cancelado', 1);
 });
 
@@ -164,7 +164,6 @@ test('la ocupacion actual cuenta mesas por estado y contra el aforo', function (
         ->assertOk()
         ->assertJsonPath('ocupacion_actual.mesas.libres', 2)
         ->assertJsonPath('ocupacion_actual.mesas.ocupadas', 1)
-        ->assertJsonPath('ocupacion_actual.mesas.reservadas', 0)
         ->assertJsonPath('ocupacion_actual.mesas.total', 3)
         ->assertJsonPath('ocupacion_actual.cubiertos_ocupados', 14)
         ->assertJsonPath('ocupacion_actual.aforo', 100)

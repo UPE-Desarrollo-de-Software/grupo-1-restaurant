@@ -365,7 +365,7 @@ test('editar el valor recalcula lineas de pedidos abiertos y su total', function
         ->and($cuenta['partes'][0]['lineas'][0]['descuento'])->toEqual(200.0);
 });
 
-test('editar el valor NO toca lineas de pedidos cerrados', function () {
+test('editar el valor NO toca lineas de pedidos finalizados', function () {
     gerentePromo();
 
     $plato = platoPromo();
@@ -382,10 +382,10 @@ test('editar el valor NO toca lineas de pedidos cerrados', function () {
         'platos' => [['plato_id' => $plato->id, 'cantidad' => 2]],
     ])->json('pedido.id');
 
-    // Cerrar el pedido: confirmar → enviar → (cocina) en_preparacion →
-    // listo → (mozo) entregado → cerrado (la mesa NO se destruye sola:
-    // la visita se cierra con el pago, vía POST /mesas/{id}/cerrar; aquí
-    // no hace falta para leer la cuenta).
+    // Finalizar el pedido: confirmar → enviar → (cocina) en_preparacion
+    // → listo → (mozo) entregado, estado final (la mesa NO se destruye
+    // sola: la visita se cierra con el pago, vía POST /mesas/{id}/cerrar;
+    // aquí no hace falta para leer la cuenta).
     $this->postJson("/api/pedidos/{$pedidoId}/confirmar")->assertOk();
     $this->postJson("/api/pedidos/{$pedidoId}/enviar")->assertOk();
     foreach (['en_preparacion', 'listo'] as $estado) {
@@ -395,7 +395,6 @@ test('editar el valor NO toca lineas de pedidos cerrados', function () {
     }
     gerentePromo(); // la identidad vuelve al gerente tras pasar por cocina
     $this->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'entregado'])->assertOk();
-    $this->putJson("/api/pedidos/{$pedidoId}/estado", ['estado' => 'cerrado'])->assertOk();
 
     $this->putJson("/api/promociones/{$id}", [
         'nombre' => '50%',

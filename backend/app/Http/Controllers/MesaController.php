@@ -65,7 +65,7 @@ class MesaController extends Controller
     {
         $datos = $request->validate([
             'capacidad' => 'required|integer|min:1',
-            'estado' => 'nullable|in:libre,ocupada,reservada',
+            'estado' => 'nullable|in:libre,ocupada',
             // Mozo responsable de la mesa (DER: USUARIO "atiende" MESA).
             'usuario_id' => 'nullable|exists:usuarios,id',
         ]);
@@ -101,7 +101,7 @@ class MesaController extends Controller
     {
         $datos = $request->validate([
             'capacidad' => 'required|integer|min:1',
-            'estado' => 'required|in:libre,ocupada,reservada',
+            'estado' => 'required|in:libre,ocupada',
             'usuario_id' => 'nullable|exists:usuarios,id',
         ]);
 
@@ -229,8 +229,8 @@ class MesaController extends Controller
 
     /**
      * GET /api/mesas/{mesa}/pedidos — resumen de lectura: TODOS los
-     * pedidos activos de la mesa con sus líneas (varios comensales,
-     * varios pedidos). Comparten mozo y comensal.
+     * pedidos de la visita (activos y finalizados) con sus líneas
+     * (varios comensales, varios pedidos). Comparten mozo y comensal.
      */
     public function resumen(Mesa $mesa)
     {
@@ -239,9 +239,9 @@ class MesaController extends Controller
 
     /**
      * GET /api/mesas/{mesa}/cuenta — cuenta dividida en PARTES por
-     * pedido raíz, cortada por ocupada_desde. Se resuelve SIN el
-     * binding de la ruta: la cuenta sirve aunque la mesa ya se haya
-     * destruido (cuenta de la visita terminada). Id inexistente → 404.
+     * pedido raíz, cortada por `created_at` de la visita. Se resuelve
+     * SIN el binding de la ruta: la cuenta sirve aunque la mesa ya se
+     * haya destruido (cuenta de la visita terminada). Id inexistente → 404.
      */
     public function cuenta(string $id)
     {

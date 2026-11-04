@@ -10,7 +10,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  * (GET /api/historial/comandas, permiso ver_historial_comandas).
  *
  * La comanda = PEDIDO con sus líneas y su mesa (aunque haya sido
- * destruida). Sin filtro `estado` se listan solo los finalizados.
+ * destruida). Sin filtro `estado` se listan `listo` + los finalizados.
  */
 class ListarHistorialComandasUseCase
 {
