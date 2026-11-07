@@ -1,3 +1,17 @@
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.select {
+  flex: 1;
+  min-width: 10rem;
+  border-color: var(--color-outline-variant);
+  border-radius: var(--radius-default);
+}
+
 .wrapper {
   display: flex;
   gap: var(--space-xs);

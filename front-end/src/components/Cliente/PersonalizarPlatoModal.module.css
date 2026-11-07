@@ -1,0 +1,64 @@
+.nombrePlato {
+    margin: 0 0 var(--space-sm);
+    color: var(--color-on-surface);
+}
+
+.cargando {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-md) 0;
+    color: var(--color-on-surface-variant);
+}
+
+.cantidadGrupo {
+    max-width: 8rem;
+    margin-bottom: var(--space-md);
+}
+
+.cantidadInput {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.ingredientes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xs);
+}
+
+.ingredientesTitulo {
+    color: var(--color-on-surface-variant);
+    margin-bottom: var(--space-2xs);
+}
+
+.ingredienteCheck {
+    margin-bottom: var(--space-2xs);
+}
+
+.ingredienteCheck :global(.form-check-input) {
+    cursor: pointer;
+}
+
+.adicional {
+    margin-left: var(--space-xs);
+    font-size: var(--text-label-sm-size);
+    font-weight: var(--text-label-sm-weight);
+    color: var(--color-primary);
+}
+
+.ingredienteFijo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs);
+    color: var(--color-on-surface-variant);
+}
+
+.ingredienteFijo i {
+    color: var(--color-secondary);
+}
+
+.sinIngredientes {
+    color: var(--color-on-surface-variant);
+    margin: 0;
+}

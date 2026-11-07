@@ -15,7 +15,9 @@ use Illuminate\Queue\SerializesModels;
  * que el front pueda validar/diferenciar la transición.
  *
  * Se emite dentro de la transacción del cambio; `afterCommit` difiere
- * el push hasta el commit. Canal `empleado.pedidos` (cocina + mozos).
+ * el push hasta el commit. Duplica el aviso: a los empleados
+ * (`empleado.pedidos`, cocina + mozos) y a la propia mesa
+ * (`mesa.{id}`, el comensal ve el estado de sus pedidos en vivo).
  */
 class PedidoEstadoCambiado implements ShouldBroadcast
 {
@@ -33,7 +35,10 @@ class PedidoEstadoCambiado implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('empleado.pedidos')];
+        return [
+            new PrivateChannel('empleado.pedidos'),
+            new PrivateChannel('mesa.'.$this->pedido->mesa_id),
+        ];
     }
 
     public function broadcastAs(): string

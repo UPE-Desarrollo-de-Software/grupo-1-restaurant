@@ -57,6 +57,16 @@ class ReservaService
      */
     private const INV_DEFECTO = [4 => 25];
 
+    /**
+     * Franja fija de turnos de reserva: 12:00 a 23:00 cada 30 min
+     * (23 horarios). Es la grilla pública del cliente.
+     */
+    private const SLOT_INICIO_MIN = 12 * 60;
+
+    private const SLOT_FIN_MIN = 23 * 60;
+
+    private const SLOT_PASO_MIN = 30;
+
     public function __construct(
         private ReservaRepository $reservas,
         private ConfigMesaRepository $configMesas,
@@ -113,6 +123,48 @@ class ReservaService
                     array_map(fn (array $fila) => $fila['capacidad'] * $fila['cantidad'], $filas)
                 ),
             ];
+        });
+    }
+
+    /**
+     * Disponibilidad PÚBLICA de todo el día: un slot por cada horario
+     * fijo de la franja (12:00–23:00 cada 30 min) con el aforo que
+     * queda libre en su intervalo. Las pendientes del día se leen UNA
+     * vez y se reutilizan para los 23 slots.
+     *
+     * @return array{fecha: string, slots: list<array{hora: string, inicio: string, fin: string, disponible: list<array{capacidad: int, cantidad: int}>, aforo_disponible: int}>}
+     */
+    public function disponibilidadDia(string $fecha): array
+    {
+        $fecha = Carbon::parse($fecha)->toDateString();
+
+        return DB::transaction(function () use ($fecha) {
+            $this->vencerVencidas();
+
+            $pendientes = $this->reservas->pendientesDeFecha($fecha);
+
+            $slots = [];
+            foreach ($this->horariosDelDia() as $hora) {
+                [$inicio, $fin] = $this->intervalo($hora);
+                $disponible = $this->disponiblePorCapacidad($fecha, $inicio, $fin, $pendientes);
+
+                $filas = [];
+                foreach ($disponible as $capacidad => $cantidad) {
+                    $filas[] = ['capacidad' => $capacidad, 'cantidad' => $cantidad];
+                }
+
+                $slots[] = [
+                    'hora' => $hora,
+                    'inicio' => $this->minutosAHora($inicio),
+                    'fin' => $this->minutosAHora($fin),
+                    'disponible' => $filas,
+                    'aforo_disponible' => (int) array_sum(
+                        array_map(fn (array $fila) => $fila['capacidad'] * $fila['cantidad'], $filas)
+                    ),
+                ];
+            }
+
+            return ['fecha' => $fecha, 'slots' => $slots];
         });
     }
 
@@ -276,8 +328,12 @@ class ReservaService
      *
      * @return array<int, int> capacidad => cantidad libre (> 0)
      */
-    private function disponiblePorCapacidad(string $fecha, int $inicio, int $fin): array
-    {
+    private function disponiblePorCapacidad(
+        string $fecha,
+        int $inicio,
+        int $fin,
+        ?Collection $pendientes = null,
+    ): array {
         $disponible = [];
 
         foreach ($this->configMesas->filas() as $fila) {
@@ -289,7 +345,7 @@ class ReservaService
             $disponible = self::INV_DEFECTO;
         }
 
-        $pendientes = $this->reservas->pendientesDeFecha($fecha);
+        $pendientes ??= $this->reservas->pendientesDeFecha($fecha);
 
         foreach ($pendientes as $reserva) {
             if (! $this->solapa($reserva, $inicio, $fin)) {
@@ -444,6 +500,22 @@ class ReservaService
     }
 
     // ==================== TIEMPO ====================
+
+    /**
+     * Turnos fijos de la grilla pública: 12:00, 12:30, …, 23:00.
+     *
+     * @return list<string>
+     */
+    private function horariosDelDia(): array
+    {
+        $horarios = [];
+
+        for ($minutos = self::SLOT_INICIO_MIN; $minutos <= self::SLOT_FIN_MIN; $minutos += self::SLOT_PASO_MIN) {
+            $horarios[] = $this->minutosAHora($minutos);
+        }
+
+        return $horarios;
+    }
 
     /**
      * 'H:i:s' | 'H:i' → minutos desde 00:00.

@@ -1,0 +1,121 @@
+.pagina {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-md) var(--space-2xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.encabezado {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background: var(--color-primary-container);
+    color: var(--color-on-primary-container);
+    font-size: 1.5rem;
+}
+
+.intro {
+    max-width: 34rem;
+    margin: 0;
+    color: var(--color-on-surface-variant);
+}
+
+.tarjetaIdentificada {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-md);
+    background: var(--color-secondary-container);
+    border: 1px solid var(--color-secondary);
+}
+
+.tarjetaIdentificada > i {
+    color: var(--color-on-secondary-container);
+    font-size: 1.75rem;
+}
+
+.tarjetaIdentificada > div:first-of-type {
+    flex: 1 1 auto;
+}
+
+.textoIdentificada {
+    margin: var(--space-2xs) 0 0;
+    color: var(--color-on-secondary-container);
+}
+
+.accionesIdentificada {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+}
+
+.tarjeta {
+    background: var(--color-surface-container-lowest);
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-md);
+    padding: var(--space-xl) var(--space-lg);
+    box-shadow: var(--shadow-level-1);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.tituloFormulario {
+    margin: 0;
+}
+
+.codigoInput {
+    text-align: center;
+    letter-spacing: 0.5rem;
+    font-variant-numeric: tabular-nums;
+    min-height: 3.25rem;
+    font-size: 1.5rem;
+}
+
+.alerta {
+    margin-bottom: 0;
+}
+
+.botonConfirmar {
+    margin-top: var(--space-2xs);
+}
+
+.ayuda {
+    border-top: 1px dashed var(--color-outline-variant);
+    padding-top: var(--space-sm);
+}
+
+.ayuda p {
+    margin-bottom: var(--space-xs);
+    color: var(--color-on-surface-variant);
+}
+
+.ayudaTitulo {
+    font-weight: 600;
+    color: var(--color-on-surface);
+}
+
+@media (max-width: 480px) {
+    .accionesIdentificada {
+        width: 100%;
+    }
+
+    .accionesIdentificada .btn {
+        flex: 1 1 auto;
+    }
+}

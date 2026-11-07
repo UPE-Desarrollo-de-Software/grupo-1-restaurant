@@ -9,6 +9,7 @@ use App\UseCases\Reservas\ListarReservasUseCase;
 use App\UseCases\Reservas\MarcarNoAsistioUseCase;
 use App\UseCases\Reservas\ObtenerReservaUseCase;
 use App\UseCases\Reservas\SolicitarReservaWebUseCase;
+use App\UseCases\Reservas\VerDisponibilidadDiaReservaUseCase;
 use App\UseCases\Reservas\VerDisponibilidadReservaUseCase;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -30,6 +31,7 @@ class ReservaController extends Controller
         private CrearReservaUseCase $crear,
         private SolicitarReservaWebUseCase $solicitarWeb,
         private VerDisponibilidadReservaUseCase $disponibilidad,
+        private VerDisponibilidadDiaReservaUseCase $disponibilidadDia,
         private ListarReservasUseCase $listar,
         private ObtenerReservaUseCase $obtener,
         private CancelarReservaUseCase $cancelar,
@@ -101,6 +103,23 @@ class ReservaController extends Controller
 
         return response()->json(
             ($this->disponibilidad)($datos['fecha'], $datos['hora']),
+            200
+        );
+    }
+
+    /**
+     * GET /api/cliente/reservas/disponibilidad-dia?fecha= (público con
+     * throttle): grilla de turnos fijos (12:00–23:00 cada 30 min) con
+     * el aforo libre de cada uno.
+     */
+    public function disponibilidadDia(Request $request)
+    {
+        $datos = $request->validate([
+            'fecha' => 'required|date',
+        ]);
+
+        return response()->json(
+            ($this->disponibilidadDia)($datos['fecha']),
             200
         );
     }

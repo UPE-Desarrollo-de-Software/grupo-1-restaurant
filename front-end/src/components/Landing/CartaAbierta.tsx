@@ -15,7 +15,7 @@ export function CartaAbierta(){
         Explorá nuestra carta, conocé nuestras opciones y encontrá
         la propuesta ideal para disfrutar tu próxima experiencia.
       </p>
-      <Link to="/menu" className={`btn btn-primary ${s.cta}`}>
+      <Link to="/carta" className={`btn btn-primary ${s.cta}`}>
         Ver la carta
       </Link>
     </section>

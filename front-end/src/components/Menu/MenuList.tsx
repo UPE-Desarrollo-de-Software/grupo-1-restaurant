@@ -1,27 +1,42 @@
-import { useProductos } from '../../hooks/useProductos'
+import type { PlatoListar } from '../../types/Menu'
 import s from './MenuList.module.css'
-import { ProductoCard } from './ProductCard'
+import { PlatoCard } from './PlatoCard'
 
-export function MenuList(){
-  const {productos, loading, error} = useProductos()
+interface MenuListProps {
+  platos: PlatoListar[]
+  loading: boolean
+  error: string | null
+  // Texto del buscador: cambia el mensaje cuando el filtro no devuelve nada.
+  busqueda?: string
+}
 
-  if(loading){
-    return <p className='text-body-md text-center'>Cargando productos...</p>
+// Lista de la carta: recibe los platos ya filtrados (el fetch y los
+// controles viven en la página) y sólo se ocupa del estado y las tarjetas.
+export function MenuList({ platos, loading, error, busqueda }: MenuListProps) {
+  if (loading) {
+    return <p className='text-body-md text-center'>Cargando platos...</p>
   }
 
-  if(error){
+  if (error) {
     return <p className='text-body-md text-center'>{error}</p>
   }
 
-  if(productos.length === 0){
-    return <p className='text-body-md text-center'>No hay productos cargados todavía</p>
+  if (platos.length === 0) {
+    const consulta = (busqueda ?? '').trim()
+    return (
+      <p className='text-body-md text-center'>
+        {consulta
+          ? `Sin resultados para «${consulta}»`
+          : 'No hay platos cargados todavía'}
+      </p>
+    )
   }
 
-  return(
+  return (
     <ul className={s.list}>
-      {productos.map(p => (
+      {platos.map(p => (
         <li key={p.id}>
-          <ProductoCard producto={p}/>
+          <PlatoCard plato={p} />
         </li>
       ))}
     </ul>

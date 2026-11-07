@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "../config/env";
-import type { LoginInput, RegisterInput, Rol, UsuarioSesion } from "../types/Auth";
-import type { LoginResponse, RegisterResponse } from "../types/Auth";
+import type { LoginInput, Rol, UsuarioSesion } from "../types/Auth";
+import type { LoginResponse } from "../types/Auth";
 
 
 export async function login(credenciales: LoginInput, signal?: AbortSignal): Promise<LoginResponse> {
@@ -19,24 +19,9 @@ export async function login(credenciales: LoginInput, signal?: AbortSignal): Pro
     return data as LoginResponse
 }
 
-export async function register(credenciales: RegisterInput, signal?: AbortSignal): Promise<RegisterResponse> {
-    const response = await fetch(`${API_BASE_URL}/usuarios`,{
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Authorization": `Bearer ${getToken()}`},
-        body: JSON.stringify(credenciales),
-        signal
-    })
-
-    const data = await response.json().catch(()=>null)
-
-    if(!response.ok){
-        throw new Error(data?.message ?? `Error ${response.status} al registrar usuario`)
-    }
-    return data as RegisterResponse
-}
+// El registro de usuarios vive en api/usuarios.ts (createUsuario →
+// POST /usuarios/registrar). El register() viejo apuntaba a POST /usuarios
+// (405 en el backend) y fue eliminado.
 
 export function setSesion(token: string, usuario: UsuarioSesion){
     localStorage.setItem('token', token)
@@ -77,7 +62,10 @@ export async function logoutSesion(): Promise<void>{
 }
 
 export async function getRoles(signal?: AbortSignal):Promise<Rol[]>{
-    const response = await fetch(`${API_BASE_URL}/roles`, {signal})
+    const response = await fetch(`${API_BASE_URL}/roles`, {
+        signal,
+        headers: { "Authorization": `Bearer ${getToken()}` }
+    })
     
     const data =  await response.json().catch(() => null)
     
