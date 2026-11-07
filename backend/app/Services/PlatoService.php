@@ -25,7 +25,7 @@ class PlatoService
     public function obtenerDisponibles()
     {
         return $this->platos->disponiblesConCategoria()
-            ->map(fn(Plato $plato) => $this->conPromoVigente($plato));
+            ->map(fn (Plato $plato) => $this->conPromoVigente($plato));
     }
 
     public function obtenerConIngredientes(int $id): Plato
@@ -47,8 +47,6 @@ class PlatoService
         $archivo = $datos['imagen'] ?? null;
         $ingredientes = $this->normalizarIngredientes($datos['ingredientes'] ?? []);
 
-
-
         $path = $archivo instanceof UploadedFile ? $this->guardarArchivo($archivo) : null;
 
         unset($datos['ingredientes'], $datos['imagen']);
@@ -67,7 +65,6 @@ class PlatoService
             throw $e;
         }
 
-
         return $plato->load('ingredientes:id,nombre,precioAdicional');
     }
 
@@ -84,7 +81,6 @@ class PlatoService
         $reemplazar = array_key_exists('ingredientes', $datos) && is_array($datos['ingredientes']);
 
         $ingredientes = $this->normalizarIngredientes($reemplazar ? $datos['ingredientes'] : []);
-
 
         $archivo = $datos['imagen'] ?? null;
         unset($datos['ingredientes'], $datos['imagen']);
@@ -326,7 +322,7 @@ class PlatoService
             return;
         }
 
-        $base = rtrim(Storage::disk('s3')->url(''), '/') . '/';
+        $base = rtrim(Storage::disk('s3')->url(''), '/').'/';
 
         // Las URLs que no son de nuestro bucket (las externas viejas) no se tocan.
         if (str_starts_with($url, $base)) {
