@@ -21,6 +21,9 @@ class ReservaFactory extends Factory
             // pasan a mano.
             'mesa_id' => null,
             'contacto_solicitante' => fake()->phoneNumber(),
+            // PIN de 4 dígitos (string: los ceros a la izquierda
+            // importan, igual que el codigo_acceso de las mesas).
+            'codigo' => str_pad((string) fake()->unique()->numberBetween(0, 9999), 4, '0', STR_PAD_LEFT),
             'fecha' => now()->addDay()->toDateString(),
             // Mismo formato que guarda el service (H:i:s): el solape
             // de intervalos compara la hora exacta.

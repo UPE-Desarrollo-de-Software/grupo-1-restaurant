@@ -5,6 +5,7 @@ use App\Models\Mesa;
 use App\Models\Reserva;
 use App\Models\Rol;
 use App\Models\Usuario;
+use App\Repositories\ReservaRepository;
 use Database\Seeders\PermisoSeeder;
 use Database\Seeders\RolSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -370,6 +371,99 @@ test('listar reservas filtra por estado y fecha', function () {
         ->assertStatus(422);
 
     $mzo->getJson('/api/reservas?fecha='.now()->addDays(3)->toDateString())
+        ->assertOk()
+        ->assertJsonCount(1);
+});
+
+test('el alta responde el codigo PIN de 4 digitos y mesa_id sigue null', function () {
+    // Alta pública (cliente web).
+    $publica = $this->postJson('/api/cliente/reservas', [
+        'contacto_solicitante' => '9999-8888',
+        'fecha' => now()->addDays(3)->toDateString(),
+        'hora' => '20:00',
+        'cantPersonas' => 2,
+    ])->assertStatus(201);
+
+    $pinPublico = $publica->json('reserva.codigo');
+    expect($pinPublico)->toMatch('/^\d{4}$/')
+        ->and($publica->json('reserva.mesa_id'))->toBeNull();
+
+    // Alta del empleado.
+    $mzo = empleadoReserva($this, tokenReserva('Mozo'));
+    $empleado = $mzo->postJson('/api/reservas', [
+        'contacto_solicitante' => '5555-6666',
+        'fecha' => now()->addDays(4)->toDateString(),
+        'hora' => '21:00',
+        'cantPersonas' => 4,
+    ])->assertStatus(201);
+
+    // El PIN se guarda como string: los ceros a la izquierda importan
+    // (igual que el codigo_acceso de las mesas).
+    $pinEmpleado = $empleado->json('reserva.codigo');
+    expect($pinEmpleado)->toMatch('/^\d{4}$/')
+        ->and($empleado->json('reserva.mesa_id'))->toBeNull();
+
+    $guardada = Reserva::findOrFail($empleado->json('reserva.id'));
+    expect($guardada->codigo)->toBe($pinEmpleado)
+        ->and($guardada->codigo)->toBeString();
+});
+
+test('dos reservas pendientes no comparten codigo y al finalizar se recicla', function () {
+    // Generador con unicidad entre pendientes: dos altas seguidas
+    // tienen que dar PIN distintos.
+    $primera = $this->postJson('/api/cliente/reservas', [
+        'contacto_solicitante' => '1',
+        'fecha' => now()->addDays(3)->toDateString(),
+        'hora' => '20:00',
+        'cantPersonas' => 2,
+    ])->assertStatus(201)->json('reserva.codigo');
+
+    $segunda = $this->postJson('/api/cliente/reservas', [
+        'contacto_solicitante' => '2',
+        'fecha' => now()->addDays(3)->toDateString(),
+        'hora' => '21:00',
+        'cantPersonas' => 2,
+    ])->assertStatus(201)->json('reserva.codigo');
+
+    expect($primera)->not->toBe($segunda);
+
+    // Una reserva creada por factory con ese PIN ocupa el lugar…
+    $ocupada = Reserva::factory()->create(['codigo' => '7777']);
+    expect(app(ReservaRepository::class)->codigoExiste('7777'))->toBeTrue();
+
+    // …y al dejar de estar pendiente lo libera (reciclaje: sin esto
+    // los 10.000 códigos se agotarían y el generador quedaría en
+    // loop infinito).
+    $ocupada->update(['estado' => 'finalizada']);
+    expect(app(ReservaRepository::class)->codigoExiste('7777'))->toBeFalse();
+});
+
+test('la agenda se filtra por codigo PIN', function () {
+    $conPin = Reserva::factory()->create(['codigo' => '0421']);
+    Reserva::factory()->create(['codigo' => '9999']);
+
+    $mzo = empleadoReserva($this, tokenReserva('Mozo'));
+
+    // Búsqueda exacta: encuentra solo la del PIN (y respeta los
+    // ceros a la izquierda).
+    $mzo->getJson('/api/reservas?codigo=0421')
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.id', $conPin->id)
+        ->assertJsonPath('0.codigo', '0421');
+
+    // PIN inexistente → respuesta vacía (200 con message, como el
+    // resto de los filtros).
+    $mzo->getJson('/api/reservas?codigo=0000')
+        ->assertOk()
+        ->assertJsonPath('message', 'No se encontraron reservas');
+
+    // Formato distinto de 4 dígitos → 422.
+    $mzo->getJson('/api/reservas?codigo=421')->assertStatus(422);
+    $mzo->getJson('/api/reservas?codigo=04ab')->assertStatus(422);
+
+    // Combinable con los demás filtros.
+    $mzo->getJson('/api/reservas?codigo=0421&estado=pendiente')
         ->assertOk()
         ->assertJsonCount(1);
 });

@@ -27,11 +27,11 @@ interface ReservaRepository
 
     /**
      * Listado de reservas con filtros opcionales (estado, fecha,
-     * mesa_id); siempre con mesa e inventario cargados.
+     * mesa_id, código PIN); siempre con mesa e inventario cargados.
      *
      * @return Collection<int, Reserva>
      */
-    public function filtradas(?string $estado, ?string $fecha, ?int $mesaId): Collection;
+    public function filtradas(?string $estado, ?string $fecha, ?int $mesaId, ?string $codigo): Collection;
 
     /**
      * Pendientes de una fecha con su inventario, con `lockForUpdate`
@@ -68,4 +68,18 @@ interface ReservaRepository
      * @return array{por_estado: array<string, int>, total_personas_pendientes: int}
      */
     public function resumenDelDia(string $fecha): array;
+
+    /**
+     * ¿Existe ya una reserva PENDIENTE con ese código PIN? Solo las
+     * pendientes cuentan: al finalizar/cancelar el código se libera y
+     * puede volver a emitirse (unicidad global agotaría los 10.000
+     * combinaciones en la historia del local).
+     */
+    public function codigoExiste(string $codigo): bool;
+
+    /**
+     * Código PIN libre: 4 dígitos (con ceros a la izquierda),
+     * generado en el alta de la reserva y único entre las pendientes.
+     */
+    public function nuevoCodigoAcceso(): string;
 }

@@ -23,6 +23,14 @@ return new class extends Migration
      * `mesa_id` nace NULLABLE: la reserva ya no apunta a una mesa,
      * reserva CAPACIDADES del inventario (`reserva_inventario`); se
      * llena solo si en el futuro vuelve a necesitarla.
+     *
+     * `codigo`: PIN de 4 dígitos que recibe el cliente al hacer la
+     * reserva y presenta al llegar. Lo genera ReservaService en el
+     * alta; es único solo entre las PENDIENTES (se recicla al
+     * finalizar/cancelar: 10.000 combinaciones no alcanzarían para
+     * todas las reservas de la historia), por eso NO lleva unique en
+     * la BD (MySQL no admite índices parciales) y el chequeo de
+     * unicidad es en la aplicación.
      */
     public function up(): void
     {
@@ -38,6 +46,7 @@ return new class extends Migration
             $table->date('fecha');
             $table->time('hora');
             $table->unsignedInteger('cantPersonas');
+            $table->string('codigo', 4)->index();
             $table->enum('estado', ['pendiente', 'cancelada', 'finalizada', 'no_asistio'])
                 ->default('pendiente');
 
