@@ -176,9 +176,9 @@ class PlatoController extends Controller
         }
 
         return response()->json([
-            'message' => 'Se actualizaron ' . count($actualizados) . ' platos',
+            'message' => 'Se actualizaron '.count($actualizados).' platos',
             'total' => count($actualizados),
-            'actualizados' => array_map(fn($p) => [
+            'actualizados' => array_map(fn ($p) => [
                 'id' => $p['id'],
                 'nombre' => $p['nombre'],
                 'precio_anterior' => $p['precio_anterior'],

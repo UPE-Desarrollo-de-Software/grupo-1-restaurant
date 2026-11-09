@@ -2,8 +2,8 @@ FROM php:8.3-apache
 
 # 1. Instalar dependencias del sistema, librerías PHP y Supervisor
 RUN apt-get update && apt-get install -y \
-    git unzip libzip-dev libonig-dev supervisor \
-    && docker-php-ext-install pdo_mysql mbstring bcmath zip \
+    git unzip libzip-dev libonig-dev libpq-dev supervisor \
+    && docker-php-ext-install pdo_pgsql pdo_mysql mbstring bcmath zip pcntl \
     && a2enmod rewrite proxy proxy_wstunnel proxy_http \
     && rm -rf /var/lib/apt/lists/*
 
@@ -21,17 +21,19 @@ RUN sed -i 's/Listen 80/Listen 10000/' /etc/apache2/ports.conf \
     && sed -i 's/<VirtualHost \*:80>/<VirtualHost *:10000>/' \
     /etc/apache2/sites-available/000-default.conf
 
-# 4. Reglas de Laravel y Reverse Proxy para Reverb (puerto interno 8080)
+# 4. Reglas de Laravel
 RUN printf '<Directory /var/www/html/public>\n\
     AllowOverride All\n\
     Require all granted\n\
-</Directory>\n\n\
-RewriteEngine On\n\
-RewriteCond %%{HTTP:Upgrade} =websocket [NC]\n\
-RewriteRule /(.*) ws://127.0.0.1:8080/$1 [P,L]\n\
-RewriteCond %%{HTTP:Upgrade} !=websocket [NC]\n\
-RewriteRule /(.*) http://127.0.0.1:8080/$1 [P,L]\n' > /etc/apache2/conf-available/laravel.conf \
+</Directory>\n' > /etc/apache2/conf-available/laravel.conf \
     && a2enconf laravel
+
+# 4b. Reverse proxy a Reverb (puerto interno 8080). Va dentro del VirtualHost: las reglas
+#     del config global no se aplican al sitio. Solo se deriva /app/, que es la ruta de los
+#     websockets; el resto (incluida /api) lo sigue atendiendo Laravel. Laravel publica los
+#     eventos directo en 127.0.0.1:8080, así que /apps no se expone.
+RUN sed -i 's#</VirtualHost>#\tProxyPass /app/ http://127.0.0.1:8080/app/ upgrade=websocket\n\tProxyPassReverse /app/ http://127.0.0.1:8080/app/\n</VirtualHost>#' \
+    /etc/apache2/sites-available/000-default.conf
 
 # 5. Copiar código fuente
 COPY . .
@@ -55,5 +57,7 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE 10000
 
-# 9. Iniciar el demonio de Supervisor que gestiona Apache, Reverb y Queue Worker
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# 9. Preparar la base (tablas que falten y datos iniciales si está vacía) y después
+#    iniciar Supervisor, que gestiona Apache, Reverb y el Queue Worker
+RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
+CMD ["./docker-entrypoint.sh"]

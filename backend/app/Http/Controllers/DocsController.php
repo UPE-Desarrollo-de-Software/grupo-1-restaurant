@@ -87,6 +87,7 @@ class DocsController extends Controller
         'PlatoController@store' => 'Crear un plato con su categoría, promo de catálogo (opcional) e ingredientes.',
         'PlatoController@update' => 'Actualizar un plato (incluye los flags de sus ingredientes).',
         'PlatoController@destroy' => 'Eliminar un plato.',
+        'PlatoController@aumentarPrecios' => 'Aumento masivo de precios por categoría o toda la carta (porcentaje o monto fijo, redondeo opcional a 50/100). Devuelve los platos afectados con precio_anterior y precio_nuevo.',
         'PromocionController@index' => 'Listar todas las promociones del catálogo.',
         'PromocionController@show' => 'Obtener una promoción por ID.',
         'PromocionController@store' => 'Crear una promoción (tipo porcentaje, monto_fijo, precio_fijo o 2x1). El alcance en la carta se setea desde el plato (promocion_id).',
