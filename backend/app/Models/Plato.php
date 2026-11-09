@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * PLATO (DER v2.2). Antes se llamaba Producto (tabla `productos`); el
@@ -18,6 +20,8 @@ class Plato extends Model
     use HasFactory;
 
     protected $table = 'platos';
+
+    protected $appends = ['imagen_url'];
 
     protected $fillable = [
         'categoria_id',
@@ -66,5 +70,22 @@ class Plato extends Model
     {
         $this->disponible = ! $this->disponible;
         $this->save();
+    }
+
+
+    protected function imagenUrl(): Attribute
+    {
+        return Attribute::get(function () {
+            if (! $this->imagen) {
+                return null;
+            }
+
+            // Compatibilidad: si ya había una URL externa guardada, se respeta.
+            if (str_starts_with($this->imagen, 'http')) {
+                return $this->imagen;
+            }
+
+            return Storage::disk('s3')->url($this->imagen);
+        });
     }
 }
