@@ -1,0 +1,98 @@
+# docker-compose.dokploy.yml
+# ---------------------------------------------------------------------
+# Despliegue en Dokploy (servidor de la UPE). Se usa el mismo archivo en los
+# dos ambientes (dev desde `develop`, producción desde `main`): lo único que
+# cambia son las variables de la pestaña Environment de Dokploy (ver
+# .env.dokploy.example).
+#
+#   - No trae base: usa la instancia Postgres compartida de la UPE, a la que la
+#     API llega por `dokploy-network` con el usuario `resto`.
+#   - No publica puertos: Traefik entra por `dokploy-network` solo hacia `web`
+#     (dominio configurado en Dokploy, puerto 80). La API no tiene dominio
+#     propio: el nginx de `web` le reenvía /api/ y los websockets (/app/).
+#   - `web` le habla a la API por el alias `resto-api-interno`, que existe solo
+#     en la red propia de este compose. Por `dokploy-network` pasan las apps de
+#     todos los grupos y los dos ambientes: un nombre como `api` ahí podría
+#     resolver al contenedor de otro ambiente.
+#
+# La base se prepara sola al arrancar la API: migraciones pendientes y, si está
+# vacía, los datos iniciales (backend/docker-entrypoint.sh).
+services:
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      APP_NAME: GastroApp
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_KEY: ${APP_KEY:?Falta APP_KEY (base64:... de 32 bytes)}
+      APP_URL: https://${APP_DOMAIN:?Falta APP_DOMAIN (dominio del servicio web, sin https)}
+      LOG_CHANNEL: stderr
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+      DB_CONNECTION: pgsql
+      DB_HOST: ${DB_HOST:?Falta DB_HOST (host interno de la instancia Postgres)}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:?Falta DB_DATABASE (restoapp o restoapp-dev)}
+      DB_USERNAME: ${DB_USERNAME:-resto}
+      DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD}
+
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+
+      # Reverb corre dentro de este contenedor (Supervisor) en 127.0.0.1:8080:
+      # Laravel le publica los eventos directo ahí.
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID:?Falta REVERB_APP_ID}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:?Falta REVERB_APP_KEY}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:?Falta REVERB_APP_SECRET}
+      REVERB_HOST: 127.0.0.1
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+
+      # Imágenes de los platos (S3 o compatible). Sin esto la app anda, pero
+      # subir una imagen da error.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_BUCKET: ${AWS_BUCKET:-}
+      AWS_URL: ${AWS_URL:-}
+      AWS_ENDPOINT: ${AWS_ENDPOINT:-}
+      AWS_USE_PATH_STYLE_ENDPOINT: ${AWS_USE_PATH_STYLE_ENDPOINT:-false}
+    healthcheck:
+      # start_period largo: el primer arranque sobre una base vacía corre todas
+      # las migraciones y los datos iniciales antes de levantar Apache.
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:10000/up >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 120s
+    networks:
+      default:
+        aliases: [resto-api-interno]
+      dokploy-network: {}
+
+  web:
+    build:
+      context: ./front-end
+      args:
+        VITE_API_URL: /api
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY}
+        VITE_REVERB_HOST: ${APP_DOMAIN}
+        VITE_REVERB_PORT: 443
+        VITE_REVERB_SCHEME: https
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: resto-api-interno:10000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - default
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
