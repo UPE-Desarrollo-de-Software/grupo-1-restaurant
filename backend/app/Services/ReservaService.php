@@ -75,13 +75,13 @@ class ReservaService
     // ==================== CONSULTA ====================
 
     /**
-     * Listado con filtros opcionales (estado, fecha, mesa_id).
+     * Listado con filtros opcionales (estado, fecha, mesa_id, código).
      *
      * @return Collection<int, Reserva>
      */
-    public function obtenerListado(?string $estado, ?string $fecha, ?int $mesaId): Collection
+    public function obtenerListado(?string $estado, ?string $fecha, ?int $mesaId, ?string $codigo): Collection
     {
-        return $this->reservas->filtradas($estado, $fecha, $mesaId);
+        return $this->reservas->filtradas($estado, $fecha, $mesaId, $codigo);
     }
 
     /**
@@ -202,10 +202,15 @@ class ReservaService
                 );
             }
 
+            // El PIN lo genera SIEMPRE el service (igual que la mesa):
+            // 4 dígitos únicos entre las reservas pendientes.
+            $datos['codigo'] = $this->reservas->nuevoCodigoAcceso();
+
             $reserva = $this->reservas->crear([
                 // Null explícito para que la clave SIEMPRE aparezca en
                 // la respuesta (es legacy y no se llena nunca).
                 'mesa_id' => null,
+                'codigo' => $datos['codigo'],
                 'contacto_solicitante' => $datos['contacto_solicitante'],
                 'fecha' => $fecha,
                 'hora' => $hora,
@@ -467,8 +472,8 @@ class ReservaService
         if ($momentoReserva->lt($limite)) {
             throw new \Exception(
                 'La reserva debe hacerse con al menos '
-                .self::LEAD_TIME_HORAS
-                ." horas de anticipacion (lo mas temprano seria {$limite->format('H:i')})."
+                    .self::LEAD_TIME_HORAS
+                    ." horas de anticipacion (lo mas temprano seria {$limite->format('H:i')})."
             );
         }
     }

@@ -125,8 +125,9 @@ class ReservaController extends Controller
     }
 
     /**
-     * GET /api/reservas?estado=&fecha=&mesa_id= (empleado): filtros
-     * opcionales para la agenda del día o de la semana.
+     * GET /api/reservas?estado=&fecha=&mesa_id=&codigo= (empleado):
+     * filtros opcionales para la agenda del día o de la semana.
+     * `codigo` es el PIN de 4 dígitos que muestra el cliente.
      */
     public function index(Request $request)
     {
@@ -134,12 +135,14 @@ class ReservaController extends Controller
             'estado' => 'sometimes|nullable|in:pendiente,cancelada,finalizada,no_asistio',
             'fecha' => 'sometimes|nullable|date_format:Y-m-d',
             'mesa_id' => 'sometimes|nullable|integer',
+            'codigo' => ['sometimes', 'nullable', 'string', 'regex:/^\d{4}$/'],
         ]);
 
         $reservas = ($this->listar)(
             $datos['estado'] ?? null,
             $datos['fecha'] ?? null,
             isset($datos['mesa_id']) ? (int) $datos['mesa_id'] : null,
+            $datos['codigo'] ?? null,
         );
 
         if ($reservas->isEmpty()) {

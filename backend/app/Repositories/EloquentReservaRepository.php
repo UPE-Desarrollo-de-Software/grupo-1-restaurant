@@ -17,12 +17,13 @@ class EloquentReservaRepository implements ReservaRepository
         return Reserva::create($datos);
     }
 
-    public function filtradas(?string $estado, ?string $fecha, ?int $mesaId): Collection
+    public function filtradas(?string $estado, ?string $fecha, ?int $mesaId, ?string $codigo): Collection
     {
         return Reserva::with(['mesa', 'inventario'])
             ->when($estado !== null, fn ($q) => $q->where('estado', $estado))
             ->when($fecha !== null, fn ($q) => $q->where('fecha', $fecha))
             ->when($mesaId !== null, fn ($q) => $q->where('mesa_id', $mesaId))
+            ->when($codigo !== null, fn ($q) => $q->where('codigo', $codigo))
             ->orderBy('fecha')
             ->orderBy('hora')
             ->get();
@@ -70,5 +71,25 @@ class EloquentReservaRepository implements ReservaRepository
             'por_estado' => $porEstado,
             'total_personas_pendientes' => $personasPendientes,
         ];
+    }
+
+    public function codigoExiste(string $codigo): bool
+    {
+        // Solo las PENDIENTES ocupan su código: las finalizadas /
+        // canceladas / no_asistio lo liberan (la reserva no usa
+        // SoftDeletes, no hay con qué filtrar "muertas"). Sin unique
+        // en la BD: MySQL no admite índices parciales.
+        return Reserva::where('estado', 'pendiente')
+            ->where('codigo', $codigo)
+            ->exists();
+    }
+
+    public function nuevoCodigoAcceso(): string
+    {
+        do {
+            $codigo = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        } while ($this->codigoExiste($codigo));
+
+        return $codigo;
     }
 }
