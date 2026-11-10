@@ -68,6 +68,10 @@ class MesaController extends Controller
             'estado' => 'nullable|in:libre,ocupada',
             // Mozo responsable de la mesa (DER: USUARIO "atiende" MESA).
             'usuario_id' => 'nullable|exists:usuarios,id',
+            // Reserva para la que se arma la mesa (opcional): la
+            // primera mesa de la reserva hereda su PIN como
+            // codigo_acceso. El código NUNCA viene en el request.
+            'reserva_id' => 'sometimes|nullable|exists:reservas,id',
         ]);
 
         try {
