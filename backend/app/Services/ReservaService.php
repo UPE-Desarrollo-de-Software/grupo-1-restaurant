@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Events\ReservaCancelada;
 use App\Events\ReservaCreada;
+use App\Events\ReservaEstadoCambiado;
 use App\Models\Reserva;
 use App\Repositories\ConfigMesaRepository;
 use App\Repositories\ReservaRepository;
@@ -267,8 +268,11 @@ class ReservaService
         $reserva = $this->reservas->porIdOrFail($id);
         $this->exigirPendiente($reserva, 'finalizar');
 
+        $estadoAnterior = $reserva->estado;
         $reserva->estado = 'finalizada';
         $reserva->save();
+
+        event(new ReservaEstadoCambiado($reserva, $estadoAnterior));
 
         return $reserva->load(['mesa', 'inventario']);
     }
@@ -283,8 +287,11 @@ class ReservaService
         $this->exigirPendiente($reserva, 'registrar la inasistencia de');
         $this->exigirHoraPasada($reserva);
 
+        $estadoAnterior = $reserva->estado;
         $reserva->estado = 'no_asistio';
         $reserva->save();
+
+        event(new ReservaEstadoCambiado($reserva, $estadoAnterior));
 
         return $reserva->load(['mesa', 'inventario']);
     }
@@ -305,8 +312,11 @@ class ReservaService
                 ->addMinutes(self::ESPERA_MIN);
 
             if ($ahora->gt($fin)) {
+                $estadoAnterior = $reserva->estado;
                 $reserva->estado = 'no_asistio';
                 $reserva->save();
+
+                event(new ReservaEstadoCambiado($reserva, $estadoAnterior));
             }
         }
     }

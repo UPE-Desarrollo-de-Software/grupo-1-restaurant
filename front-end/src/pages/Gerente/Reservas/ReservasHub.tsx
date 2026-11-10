@@ -27,9 +27,14 @@ export function ReservasHubPage() {
     // Se sirve bajo /gerente/reservas (Gerente) y /mozo/reservas (Mozo).
     const base = baseReservas(useLocation().pathname)
 
-    // Tiempo real: altas y cancelaciones hechas por otros usuarios (o
-    // por el propio cliente desde la web) refrescan el listado.
-    useReservasRealtime({ alCrear: recargar, alCancelar: recargar, alConectar: recargar })
+    // Tiempo real: altas, cancelaciones, llegadas e inasistencias
+    // (propia o de otros usuarios) refrescan el listado.
+    useReservasRealtime({
+        alCrear: recargar,
+        alCancelar: recargar,
+        alCambiarEstado: recargar,
+        alConectar: recargar,
+    })
 
     const reservas = items.filter((item): item is Reserva => 'contacto_solicitante' in item)
     const filtradas = reservas.filter(r =>

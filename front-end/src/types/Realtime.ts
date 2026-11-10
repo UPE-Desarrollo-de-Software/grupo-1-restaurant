@@ -17,6 +17,7 @@ export type EventoReserva = {
     fecha: string
     hora: string
     estado: EstadoReserva
+    estado_anterior?: EstadoReserva
     cantPersonas?: number
 }
 

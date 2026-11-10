@@ -5,6 +5,7 @@ use App\Events\PedidoCreado;
 use App\Events\PedidoEstadoCambiado;
 use App\Events\ReservaCancelada;
 use App\Events\ReservaCreada;
+use App\Events\ReservaEstadoCambiado;
 use App\Models\Mesa;
 use App\Models\Plato;
 use App\Models\Reserva;
@@ -356,6 +357,101 @@ test('destruir una mesa emite reserva.cancelada por cada pendiente legada', func
         ->map(fn ($job) => $job->event->broadcastWith()['reserva_id']);
 
     expect($eventos->all())->toEqualCanonicalizing([$pendiente1->id, $pendiente2->id]);
+});
+
+test('finalizar una reserva emite reserva.estado con la llegada', function () {
+    $reserva = Reserva::factory()->create();
+    $token = tokenBroadcast('Mozo');
+
+    Queue::fake();
+
+    empleadoBroadcast($this, $token)
+        ->patchJson("/api/reservas/{$reserva->id}/finalizar")
+        ->assertOk()
+        ->assertJsonPath('reserva.estado', 'finalizada');
+
+    Queue::assertPushed(BroadcastEvent::class, function ($job) use ($reserva) {
+        $event = $job->event;
+
+        return $event instanceof ReservaEstadoCambiado
+            && $event->broadcastAs() === 'reserva.estado'
+            && $event->broadcastOn()[0]->name === 'private-empleado.reservas'
+            && $event->broadcastWith() === [
+                'reserva_id' => $reserva->id,
+                'mesa_id' => null,
+                'fecha' => $reserva->fecha,
+                'hora' => $reserva->hora,
+                'estado' => 'finalizada',
+                'estado_anterior' => 'pendiente',
+            ]
+            && $job->afterCommit === true;
+    });
+});
+
+test('registrar la inasistencia emite reserva.estado con no_asistio', function () {
+    $reserva = Reserva::factory()->create([
+        'fecha' => now()->subDay()->toDateString(),
+        'hora' => '20:00:00',
+    ]);
+    $token = tokenBroadcast('Mozo');
+
+    Queue::fake();
+
+    empleadoBroadcast($this, $token)
+        ->patchJson("/api/reservas/{$reserva->id}/inasistio")
+        ->assertOk()
+        ->assertJsonPath('reserva.estado', 'no_asistio');
+
+    Queue::assertPushed(BroadcastEvent::class, function ($job) use ($reserva) {
+        $event = $job->event;
+
+        return $event instanceof ReservaEstadoCambiado
+            && $event->broadcastAs() === 'reserva.estado'
+            && $event->broadcastOn()[0]->name === 'private-empleado.reservas'
+            && $event->broadcastWith() === [
+                'reserva_id' => $reserva->id,
+                'mesa_id' => null,
+                'fecha' => $reserva->fecha,
+                'hora' => $reserva->hora,
+                'estado' => 'no_asistio',
+                'estado_anterior' => 'pendiente',
+            ]
+            && $job->afterCommit === true;
+    });
+});
+
+test('vencer la espera emite reserva.estado con no_asistio automatico', function () {
+    $this->travelTo('2026-11-10 19:00:00');
+    $reserva = Reserva::factory()->create([
+        'fecha' => '2026-11-10',
+        'hora' => '21:00:00',
+    ]);
+
+    // Pasó la espera (21:00 + 30): la próxima consulta de agenda
+    // vence sola la pendiente y debe avisar a gerente y mozo.
+    $this->travelTo('2026-11-10 21:31:00');
+
+    Queue::fake();
+
+    $this->getJson('/api/cliente/reservas/disponibilidad?fecha=2026-11-10&hora=21:00')
+        ->assertOk();
+
+    Queue::assertPushed(BroadcastEvent::class, function ($job) use ($reserva) {
+        $event = $job->event;
+
+        return $event instanceof ReservaEstadoCambiado
+            && $event->broadcastAs() === 'reserva.estado'
+            && $event->broadcastOn()[0]->name === 'private-empleado.reservas'
+            && $event->broadcastWith() === [
+                'reserva_id' => $reserva->id,
+                'mesa_id' => null,
+                'fecha' => '2026-11-10',
+                'hora' => '21:00:00',
+                'estado' => 'no_asistio',
+                'estado_anterior' => 'pendiente',
+            ]
+            && $job->afterCommit === true;
+    });
 });
 
 // ==================== LLAMAR AL MOZO ====================

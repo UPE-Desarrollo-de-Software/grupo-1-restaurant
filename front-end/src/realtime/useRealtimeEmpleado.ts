@@ -51,14 +51,16 @@ export function usePedidosRealtime({ alCrear, alCambiarEstado, alConectar }: Man
 export type ManejadoresReservas = {
     alCrear?: (evento: EventoReserva) => void
     alCancelar?: (evento: EventoReserva) => void
+    alCambiarEstado?: (evento: EventoReserva) => void
     alConectar?: () => void
 }
 
 // private-empleado.reservas (gestionar_reservas: Gerente, Mozo).
-export function useReservasRealtime({ alCrear, alCancelar, alConectar }: ManejadoresReservas) {
+export function useReservasRealtime({ alCrear, alCancelar, alCambiarEstado, alConectar }: ManejadoresReservas) {
     useCanal('empleado.reservas', {
         '.reserva.creada': (evento: EventoReserva) => alCrear?.(evento),
         '.reserva.cancelada': (evento: EventoReserva) => alCancelar?.(evento),
+        '.reserva.estado': (evento: EventoReserva) => alCambiarEstado?.(evento),
     }, alConectar)
 }
 
