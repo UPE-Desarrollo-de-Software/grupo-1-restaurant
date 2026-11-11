@@ -5,11 +5,13 @@ import s from './Platos.module.css'
 import { useCategorias } from '../../../../hooks/useCategorias'
 import { useIngredientes } from '../../../../hooks/useIngredientes'
 import { usePromociones } from '../../../../hooks/usePromociones'
+import { useVistaPreviaImagen } from '../../../../hooks/useVistaPreviaImagen'
 import { etiquetaPromocion } from '../../../../components/Platos/promocionEtiqueta'
 import { ExitoModal } from '../../../../components/Exito/ExitoModal'
 import { formatearPrecio } from '../../../../utils/historial'
 import { platoSchema } from '../../../../schemas/carta'
-import { createPlato } from '../../../../api/platos'
+import { createPlato, subirImagenPlato } from '../../../../api/platos'
+import { validarImagenPlato } from '../../../../utils/imagenPlato'
 import {
     ETIQUETAS_ESTADO_INGREDIENTE,
     flagsDesdeEstado,
@@ -23,10 +25,17 @@ export function CrearPlatoPage() {
     const [nombre, setNombre] = useState('')
     const [descripcion, setDescripcion] = useState('')
     const [precio, setPrecio] = useState('')
-    const [imagen, setImagen] = useState('')
+    // La imagen se sube como archivo después del alta (POST /platos/{id}/imagen).
+    const [archivo, setArchivo] = useState<File | null>(null)
+    const [errorImagen, setErrorImagen] = useState<string | null>(null)
+    // Fuerza el remount del <input type=file> (es no controlado) al limpiar
+    // el formulario o descartar un archivo inválido.
+    const [recargaInput, setRecargaInput] = useState(0)
     const [disponible, setDisponible] = useState(true)
     // Estado por ingrediente id; los no presentes quedan fuera del plato.
     const [ingredientes, setIngredientes] = useState<Record<number, EstadoIngredientePlato>>({})
+
+    const vistaPrevia = useVistaPreviaImagen(archivo)
 
     const {categorias, loadingCategorias, errorCategorias} = useCategorias()
     const {listaIngredientes, loadingIngredientes, errorIngredientes} = useIngredientes()
@@ -50,7 +59,6 @@ export function CrearPlatoPage() {
         nombre,
         descripcion,
         precio,
-        imagen,
         disponible,
         ingredientes: ingredientesConFlags,
     })
@@ -72,6 +80,19 @@ export function CrearPlatoPage() {
         })
     }
 
+    function elegirArchivo(elegido: File | null) {
+        if (!elegido) {
+            setArchivo(null)
+            setErrorImagen(null)
+            return
+        }
+        const problema = validarImagenPlato(elegido)
+        setErrorImagen(problema)
+        setArchivo(problema ? null : elegido)
+        // Un archivo inválido no queda seleccionado en el input.
+        if (problema) setRecargaInput(n => n + 1)
+    }
+
     async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setTocado(true)
@@ -80,9 +101,25 @@ export function CrearPlatoPage() {
 
         if (!resultados.success) return
 
+        const problemaImagen = archivo ? validarImagenPlato(archivo) : null
+        if (problemaImagen) {
+            setErrorImagen(problemaImagen)
+            return
+        }
+
         setEnviando(true)
         try {
-            await createPlato(resultados.data)
+            const rta = await createPlato(resultados.data)
+            // La imagen va por su propio endpoint: el alta ya no acepta
+            // `imagen` en el body. Si falla, el plato YA existe: se avisa
+            // sin volver a crearlo (la imagen se puede subir desde Editar).
+            if (archivo) {
+                try {
+                    await subirImagenPlato(rta.plato.id, archivo)
+                } catch (err) {
+                    setErrorApi(`El plato se creó, pero la imagen no se pudo subir: ${err instanceof Error ? err.message : 'error desconocido'}`)
+                }
+            }
             setPlatoCreado({
                 nombre: resultados.data.nombre,
                 precio: resultados.data.precio,
@@ -92,7 +129,9 @@ export function CrearPlatoPage() {
             setNombre('')
             setDescripcion('')
             setPrecio('')
-            setImagen('')
+            setArchivo(null)
+            setErrorImagen(null)
+            setRecargaInput(n => n + 1)
             setDisponible(true)
             setIngredientes({})
             setTocado(false)
@@ -179,16 +218,23 @@ export function CrearPlatoPage() {
                         </Form.Group>
 
                         <Form.Group className={s.field} controlId='abm-plato-imagen'>
-                            <Form.Label className={`text-label-md ${s.label}`}>Imagen (URL)</Form.Label>
+                            <Form.Label className={`text-label-md ${s.label}`}>Imagen</Form.Label>
                             <Form.Control
-                                className={s.input}
-                                type='text'
-                                placeholder='https://...'
-                                value={imagen}
-                                onChange={(e) => setImagen(e.target.value)}
-                                isInvalid={tocado &&  !!errores.imagen}
+                                key={recargaInput}
+                                className={`${s.input}`}
+                                type='file'
+                                accept='image/jpeg,image/png,image/webp'
+                                onChange={(e) => elegirArchivo((e.target as HTMLInputElement).files?.[0] ?? null)}
+                                isInvalid={!!errorImagen}
+                                disabled={enviando}
                             />
-                            <Form.Control.Feedback type='invalid'>{errores.imagen}</Form.Control.Feedback>
+                            <Form.Control.Feedback type='invalid'>{errorImagen}</Form.Control.Feedback>
+                            <p className={`text-body-sm ${s.ayuda}`}>
+                                JPG, PNG o WEBP de hasta 2 MB. La imagen se sube al crear el plato.
+                            </p>
+                            {vistaPrevia && (
+                                <img className={s.vistaPrevia} src={vistaPrevia} alt='Vista previa de la imagen' />
+                            )}
                         </Form.Group>
                     </div>
 

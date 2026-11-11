@@ -6,6 +6,7 @@ export interface ClienteMesa {
 
 // Snapshot mínimo del plato dentro del borrador: permite renderizar y
 // calcular importes sin volver a pedir el detalle (y sobrevive a recargas).
+// `imagen` es la URL pública (`imagen_url` del backend), no el path de S3.
 export interface PlatoBorrador {
     id: number
     nombre: string

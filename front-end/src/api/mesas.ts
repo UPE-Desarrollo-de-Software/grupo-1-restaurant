@@ -5,8 +5,8 @@ import { mensajeErrorApi } from "./error";
 
 // Un solo lugar de normalización (patrón del proyecto): el backend manda
 // ids y montos sueltos; el front trabaja con números.
-// `codigo_acceso` jamás se mapea acá: la lista no lo trae y, cuando
-// llega (getMesa / ocupar), se devuelve aparte.
+// `codigo_acceso` viene en la lista (GET /mesas) y se expone como string
+// para preservar los ceros a la izquierda.
 function normalizarMesa(m: Record<string, unknown>): Mesa {
     return {
         id: Number(m.id),
@@ -15,6 +15,7 @@ function normalizarMesa(m: Record<string, unknown>): Mesa {
         usuario_id: m.usuario_id == null ? null : Number(m.usuario_id),
         grupo_codigo: m.grupo_codigo == null ? null : Number(m.grupo_codigo),
         ocupada_desde: m.ocupada_desde == null ? null : String(m.ocupada_desde),
+        codigo_acceso: m.codigo_acceso == null ? null : String(m.codigo_acceso),
     }
 }
 
@@ -22,8 +23,8 @@ const mensajeDe = (data: { message?: string } | null, porDefecto: string): strin
     typeof data?.message === 'string' ? data.message : porDefecto
 
 // GET /mesas: cualquier empleado autenticado. Se quedan solo los
-// campos que usa el front (el modelo también trae codigo_acceso, que
-// la lista nunca expone).
+// campos que usa el front (incluido codigo_acceso, que se muestra en
+// los paneles internos de gerente y mozo).
 export async function getMesas(signal?: AbortSignal): Promise<Mesa[]> {
     const response = await fetch(`${API_BASE_URL}/mesas`, {
         headers: { 'Authorization': `Bearer ${getToken()}` },

@@ -99,6 +99,25 @@
   margin: var(--space-2xs) 0 0 0;
 }
 
+/* Imagen del plato: vista previa (archivo elegido o la del server). */
+.imagenActual {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.vistaPrevia {
+  display: block;
+  width: 100%;
+  max-width: 12rem;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-default);
+  background-color: var(--color-surface-container);
+}
+
 .button {
   width: 100%;
   margin-top: var(--space-sm);

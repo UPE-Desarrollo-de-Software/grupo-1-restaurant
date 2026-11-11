@@ -7,6 +7,7 @@ import { getMesa, updateMesa } from '../../../api/mesas'
 import { getConfiguracion } from '../../../api/configuracion'
 import { getUsuarios } from '../../../api/usuarios'
 import { CerrarMesaModal } from '../../../components/Mesas/CerrarMesaModal'
+import { QrMesaModal } from '../../../components/Mesas/QrMesaModal'
 import type { Usuario } from '../../../types/Auth'
 
 export function EditarMesaPage() {
@@ -23,6 +24,7 @@ export function EditarMesaPage() {
     const [copiado, setCopiado] = useState(false)
     const [aforoInfo, setAforoInfo] = useState<string | null>(null)
     const [modalCerrar, setModalCerrar] = useState(false)
+    const [qrAbierto, setQrAbierto] = useState(false)
 
     const [usuarios, setUsuarios] = useState<Usuario[]>([])
     const [cargandoUsuarios, setCargandoUsuarios] = useState(true)
@@ -169,16 +171,28 @@ export function EditarMesaPage() {
                             <p className={`text-label-sm ${s.pinEtiqueta}`}>Código de acceso (PIN)</p>
                             <p className={`text-headline-md ${s.pinValor}`}>{codigo}</p>
                         </div>
-                        <Button
-                            size='sm'
-                            variant={copiado ? 'success' : 'outline-secondary'}
-                            className='text-label-md'
-                            type='button'
-                            onClick={handlerCopiar}
-                        >
-                            <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
-                            {copiado ? 'Copiado' : 'Copiar'}
-                        </Button>
+                        <div className='d-flex flex-wrap gap-2'>
+                            <Button
+                                size='sm'
+                                variant={copiado ? 'success' : 'outline-secondary'}
+                                className='text-label-md'
+                                type='button'
+                                onClick={handlerCopiar}
+                            >
+                                <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
+                                {copiado ? 'Copiado' : 'Copiar'}
+                            </Button>
+                            <Button
+                                size='sm'
+                                variant='outline-secondary'
+                                className='text-label-md'
+                                type='button'
+                                onClick={() => setQrAbierto(true)}
+                            >
+                                <i className='bi bi-qr-code me-1' aria-hidden='true' />
+                                Ver QR
+                            </Button>
+                        </div>
                     </div>
                 )}
 
@@ -250,6 +264,11 @@ export function EditarMesaPage() {
                     código deja de valer y se cancelan sus reservas pendientes.
                 </p>
             </div>
+
+            <QrMesaModal
+                mesa={qrAbierto && codigo ? { id: mesaId, codigo_acceso: codigo } : null}
+                onCerrar={() => setQrAbierto(false)}
+            />
 
             <CerrarMesaModal
                 visible={modalCerrar}

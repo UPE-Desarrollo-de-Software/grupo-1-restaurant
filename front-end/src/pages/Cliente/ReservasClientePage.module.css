@@ -85,10 +85,10 @@
     transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.slot:hover:not(:disabled) {
+/* .slot:hover:not(:disabled) {
     border-color: var(--color-primary);
     color: var(--color-primary);
-}
+} */
 
 .slot[aria-pressed='true'] {
     background-color: var(--color-primary);

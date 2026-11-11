@@ -56,7 +56,7 @@ export function PlatoCard({ plato, onCambio }: PlatoCardProps) {
             <span className={`text-label-sm ${s.indice}`}>#{String(plato.id).padStart(2, '0')}</span>
             <img
               className={s.imagen}
-              src={plato.imagen ?? undefined}
+              src={plato.imagen_url ?? undefined}
               alt={plato.nombre}
               loading='lazy'
             />

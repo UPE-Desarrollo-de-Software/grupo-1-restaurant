@@ -164,7 +164,8 @@ export async function updatePlato(id: number, plato: PlatoInput): Promise<PlatoR
 // PUT "enfocado" que solo alterna la disponibilidad desde la tarjeta del
 // hub: el backend valida los campos requeridos pero el service no toca el
 // pivot de ingredientes si la key viene ausente (el PUT puede ser solo
-// para cambiar un flag), y `imagen` es nullable.
+// para cambiar un flag). La imagen no va en el body: tiene sus propios
+// endpoints (POST/DELETE /platos/{id}/imagen).
 export async function cambiarDisponibilidad(plato: PlatoListar, disponible: boolean): Promise<PlatoResponse> {
     const response = await fetch(`${API_BASE_URL}/platos/${plato.id}`, {
         method: 'PUT',
@@ -179,7 +180,6 @@ export async function cambiarDisponibilidad(plato: PlatoListar, disponible: bool
             nombre: plato.nombre,
             descripcion: plato.descripcion,
             precio: plato.precio,
-            imagen: plato.imagen,
             disponible,
         }),
     })
@@ -213,6 +213,78 @@ export async function createPlato(plato: PlatoInput, signal?: AbortSignal): Prom
     const data = await response.json().catch(() => null)
     if (!response.ok) {
         throw new Error(mensajeErrorApi(response.status, data, `Error ${response.status} al crear el plato`))
+    }
+
+    return {
+        ...data,
+        plato: normalizarPlatoObtener(data.plato as PlatoConIngredientesJSON),
+    }
+}
+
+// POST /platos/{id}/imagen (multipart, campo `imagen`): la imagen viaja
+// como archivo, no como URL en el body del alta/edición. El backend valida
+// JPG/JPEG/PNG/WEBP de hasta 2 MB y devuelve el plato con `imagen` (path)
+// e `imagen_url` (URL pública) ya actualizados.
+export async function subirImagenPlato(id: number, archivo: File, signal?: AbortSignal): Promise<PlatoResponse> {
+    const cuerpo = new FormData()
+    cuerpo.append('imagen', archivo)
+
+    const response = await fetch(`${API_BASE_URL}/platos/${id}/imagen`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${getToken()}`,
+            // Sin Content-Type: el navegador agrega el boundary del multipart.
+        },
+        body: cuerpo,
+        signal,
+    })
+
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        // El 422 de Laravel viene con el texto de validación en inglés:
+        // se reemplaza por el mismo criterio que valida el front.
+        if (response.status === 422) {
+            throw new Error('No se pudo subir la imagen: verificá que sea JPG, PNG o WEBP de hasta 2 MB.')
+        }
+        // El controller responde 404 tanto si el plato no existe como si
+        // falló el almacenamiento (el mensaje interno viene en inglés).
+        if (response.status === 404) {
+            throw new Error('No se pudo subir la imagen: el plato no existe o el almacenamiento no está disponible.')
+        }
+        throw new Error(mensajeErrorApi(response.status, data, `Error ${response.status} al subir la imagen`))
+    }
+    if (!data?.plato) {
+        throw new Error(data?.message ?? 'No se pudo guardar la imagen del plato')
+    }
+
+    return {
+        ...data,
+        plato: normalizarPlatoObtener(data.plato as PlatoConIngredientesJSON),
+    }
+}
+
+// DELETE /platos/{id}/imagen: borra el archivo del bucket y deja el campo
+// en null (borrado lógico de la imagen, no del plato).
+export async function quitarImagenPlato(id: number, signal?: AbortSignal): Promise<PlatoResponse> {
+    const response = await fetch(`${API_BASE_URL}/platos/${id}/imagen`, {
+        method: 'DELETE',
+        headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${getToken()}`,
+        },
+        signal,
+    })
+
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        if (response.status === 404) {
+            throw new Error('No se pudo quitar la imagen: el plato no existe.')
+        }
+        throw new Error(mensajeErrorApi(response.status, data, `Error ${response.status} al quitar la imagen`))
+    }
+    if (!data?.plato) {
+        throw new Error(data?.message ?? 'No se pudo quitar la imagen del plato')
     }
 
     return {

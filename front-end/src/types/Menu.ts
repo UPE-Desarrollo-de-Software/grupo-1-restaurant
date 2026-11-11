@@ -31,7 +31,12 @@ export interface PlatoListar {
   nombre: string;
   descripcion: string;
   precio: number;
+  // Path en el bucket (o URL externa heredada). NO usar para mostrar:
+  // la imagen visible es `imagen_url`.
   imagen: string | null;
+  // URL pública que calcula el backend (accessor `imagen_url`): sirve
+  // tanto para archivos subidos a S3 como para URLs externas viejas.
+  imagen_url: string | null;
   disponible: boolean;
 }
 
@@ -65,7 +70,10 @@ export interface PlatoObtener {
     nombre: string;
     descripcion: string;
     precio: number;
+    // Path en el bucket (o URL externa heredada); para mostrar va `imagen_url`.
     imagen: string | null;
+    // URL pública resuelta por el backend (S3 o la URL externa tal cual).
+    imagen_url: string | null;
     disponible: boolean;
     ingredientes: IngredientePlato[]
 }

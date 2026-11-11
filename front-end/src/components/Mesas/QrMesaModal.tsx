@@ -6,20 +6,24 @@ import type { MesaConCodigo } from '../../types/Mesa'
 import s from './QrMesaModal.module.css'
 
 interface QrMesaModalProps {
-  // Mesa recién creada (null = modal oculto).
-  mesa: MesaConCodigo | null
-  // "Listo": cierra el modal y vuelve a la lista de mesas.
-  onListo: () => void
+  // Mesa a mostrar (null = modal oculto). Sólo se usan id y código, así
+  // lo pueden pasar el alta, los detalles de mozo/gerente y el cliente.
+  mesa: Pick<MesaConCodigo, 'id' | 'codigo_acceso'> | null
+  // Cierre simple (vistas de detalle y cliente): sin botones de alta.
+  onCerrar?: () => void
+  // "Listo": cierra el modal y vuelve a la lista de mesas (alta).
+  onListo?: () => void
   // "Crear más": cierra el modal y resetea el formulario de alta.
-  onCrearMas: () => void
+  onCrearMas?: () => void
 }
 
 // QR de la visita: codifica `${origin}/mesa?codigo={codigo_acceso}`, así
 // el cliente escanea y queda identificado sin tipear el PIN. El código
 // es la credencial: muere con la mesa (borrado lógico al cerrar visita).
-export function QrMesaModal({ mesa, onListo, onCrearMas }: QrMesaModalProps) {
+export function QrMesaModal({ mesa, onCerrar, onListo, onCrearMas }: QrMesaModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
+  const cerrar = onListo ?? onCerrar ?? (() => undefined)
   const destino = mesa
     ? `${window.location.origin}/mesa?codigo=${mesa.codigo_acceso}`
     : ''
@@ -34,7 +38,7 @@ export function QrMesaModal({ mesa, onListo, onCrearMas }: QrMesaModalProps) {
   // }
 
   return (
-    <Modal show={mesa !== null} onHide={onListo} centered aria-labelledby='qr-mesa-titulo'>
+    <Modal show={mesa !== null} onHide={cerrar} centered aria-labelledby='qr-mesa-titulo'>
       <Modal.Header closeButton className='no-print'>
         <Modal.Title id='qr-mesa-titulo' className='text-headline-sm'>
           QR de la mesa
@@ -74,12 +78,14 @@ export function QrMesaModal({ mesa, onListo, onCrearMas }: QrMesaModalProps) {
           <i className='bi bi-download me-1' aria-hidden='true' />
           Descargar PNG
         </Button> */}
-        <Button variant='outline-primary' className='text-label-md' type='button' onClick={onCrearMas}>
-          <i className='bi bi-plus-circle me-1' aria-hidden='true' />
-          Crear más
-        </Button>
-        <Button variant='primary' className='text-label-md' type='button' onClick={onListo}>
-          Listo
+        {onCrearMas && (
+          <Button variant='outline-primary' className='text-label-md' type='button' onClick={onCrearMas}>
+            <i className='bi bi-plus-circle me-1' aria-hidden='true' />
+            Crear más
+          </Button>
+        )}
+        <Button variant='primary' className='text-label-md' type='button' onClick={cerrar}>
+          {onCrearMas ? 'Listo' : 'Cerrar'}
         </Button>
       </Modal.Footer>
 

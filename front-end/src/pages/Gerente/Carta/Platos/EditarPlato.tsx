@@ -5,9 +5,11 @@ import s from './Platos.module.css'
 import { useCategorias } from '../../../../hooks/useCategorias'
 import { useIngredientes } from '../../../../hooks/useIngredientes'
 import { usePromociones } from '../../../../hooks/usePromociones'
+import { useVistaPreviaImagen } from '../../../../hooks/useVistaPreviaImagen'
 import { etiquetaPromocion } from '../../../../components/Platos/promocionEtiqueta'
 import { platoSchema } from '../../../../schemas/carta'
-import { deletePlato, getPlato, updatePlato } from '../../../../api/platos'
+import { deletePlato, getPlato, quitarImagenPlato, subirImagenPlato, updatePlato } from '../../../../api/platos'
+import { validarImagenPlato } from '../../../../utils/imagenPlato'
 import { ZonaPeligro } from '../../../../components/ZonaPeligro/ZonaPeligro'
 import {
   ETIQUETAS_ESTADO_INGREDIENTE,
@@ -26,11 +28,24 @@ export function EditarPlatoPage() {
   const [nombre, setNombre] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [precio, setPrecio] = useState('')
-  const [imagen, setImagen] = useState('')
+  // Imagen vigente en el server (URL pública) y archivo nuevo elegido.
+  // La imagen no viaja en el PUT: tiene sus propios endpoints.
+  const [imagenActual, setImagenActual] = useState<string | null>(null)
+  const [archivo, setArchivo] = useState<File | null>(null)
+  const [errorImagen, setErrorImagen] = useState<string | null>(null)
+  // true = al guardar se ejecuta DELETE /platos/{id}/imagen.
+  const [quitarImagen, setQuitarImagen] = useState(false)
+  // Remount del <input type=file> (no controlado) al limpiarlo.
+  const [recargaInput, setRecargaInput] = useState(0)
   const [disponible, setDisponible] = useState(true)
   // Estado por ingrediente id; los no presentes quedan fuera del plato.
   // El PUT reemplaza la lista completa del pivot con estos flags.
   const [ingredientes, setIngredientes] = useState<Record<number, EstadoIngredientePlato>>({})
+
+  const vistaPrevia = useVistaPreviaImagen(archivo)
+  // Lo que se muestra: el archivo nuevo, o la imagen del server mientras
+  // no se haya pedido quitarla.
+  const imagenVisible = vistaPrevia ?? (quitarImagen ? null : imagenActual)
 
   const {categorias, loadingCategorias, errorCategorias} = useCategorias()
   const {listaIngredientes, loadingIngredientes, errorIngredientes} = useIngredientes()
@@ -52,7 +67,7 @@ export function EditarPlatoPage() {
         setNombre(plato.nombre)
         setDescripcion(plato.descripcion)
         setPrecio(String(plato.precio))
-        setImagen(plato.imagen ?? '')
+        setImagenActual(plato.imagen_url)
         setDisponible(plato.disponible)
         // `estadoDesdePivot` devuelve null para el caso inerte (sin flags):
         // ese ingrediente queda fuera del plato.
@@ -86,7 +101,6 @@ export function EditarPlatoPage() {
     nombre,
     descripcion,
     precio,
-    imagen,
     disponible,
     ingredientes: ingredientesConFlags,
   })
@@ -108,6 +122,28 @@ export function EditarPlatoPage() {
     })
   }
 
+  function elegirArchivo(elegido: File | null) {
+    if (!elegido) {
+      setArchivo(null)
+      setErrorImagen(null)
+      return
+    }
+    const problema = validarImagenPlato(elegido)
+    setErrorImagen(problema)
+    setArchivo(problema ? null : elegido)
+    // Elegir un archivo nuevo descarta el "quitar" pendiente.
+    if (!problema) setQuitarImagen(false)
+    // Un archivo inválido no queda seleccionado en el input.
+    if (problema) setRecargaInput(n => n + 1)
+  }
+
+  function descartarImagen() {
+    setArchivo(null)
+    setErrorImagen(null)
+    setRecargaInput(n => n + 1)
+    setQuitarImagen(true)
+  }
+
   async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setTocado(true)
@@ -116,11 +152,38 @@ export function EditarPlatoPage() {
 
     if (!resultados.success) return
 
+    const problemaImagen = archivo ? validarImagenPlato(archivo) : null
+    if (problemaImagen) {
+      setErrorImagen(problemaImagen)
+      return
+    }
+
     setEnviando(true)
     try {
       const rta = await updatePlato(Number(id), resultados.data)
       setExito(rta.message)
       setTocado(false)
+
+      // Imagen: va después de guardar los datos (endpoints propios). Si
+      // falla, los datos YA quedaron guardados: se avisa sin revertir.
+      if (archivo) {
+        try {
+          const subida = await subirImagenPlato(Number(id), archivo)
+          setImagenActual(subida.plato.imagen_url)
+          setArchivo(null)
+          setRecargaInput(n => n + 1)
+        } catch (err) {
+          setErrorApi(`Los datos se guardaron, pero la imagen no se pudo actualizar: ${err instanceof Error ? err.message : 'error desconocido'}`)
+        }
+      } else if (quitarImagen && imagenActual) {
+        try {
+          const sinImagen = await quitarImagenPlato(Number(id))
+          setImagenActual(sinImagen.plato.imagen_url)
+          setQuitarImagen(false)
+        } catch (err) {
+          setErrorApi(`Los datos se guardaron, pero la imagen no se pudo quitar: ${err instanceof Error ? err.message : 'error desconocido'}`)
+        }
+      }
     } catch (err) {
       setErrorApi(err instanceof Error ? err.message : 'Error desconocido al actualizar el plato')
     } finally {
@@ -243,16 +306,39 @@ export function EditarPlatoPage() {
               </Form.Group>
 
               <Form.Group className={s.field} controlId='editar-plato-imagen'>
-                <Form.Label className={`text-label-md ${s.label}`}>Imagen (URL)</Form.Label>
+                <Form.Label className={`text-label-md ${s.label}`}>Imagen</Form.Label>
+                {imagenVisible ? (
+                  <div className={s.imagenActual}>
+                    <img className={s.vistaPrevia} src={imagenVisible} alt='Imagen del plato' />
+                    <Button
+                      className='text-label-sm'
+                      variant='outline-danger'
+                      size='sm'
+                      type='button'
+                      disabled={enviando}
+                      onClick={descartarImagen}
+                    >
+                      <i className='bi bi-trash me-1' aria-hidden='true' />
+                      Quitar imagen
+                    </Button>
+                  </div>
+                ) : (
+                  <p className={`text-body-sm ${s.ayuda}`}>Sin imagen cargada.</p>
+                )}
                 <Form.Control
+                  key={recargaInput}
                   className={s.input}
-                  type='text'
-                  placeholder='https://...'
-                  value={imagen}
-                  onChange={(e) => setImagen(e.target.value)}
-                  isInvalid={tocado &&  !!errores.imagen}
+                  type='file'
+                  accept='image/jpeg,image/png,image/webp'
+                  onChange={(e) => elegirArchivo((e.target as HTMLInputElement).files?.[0] ?? null)}
+                  isInvalid={!!errorImagen}
+                  disabled={enviando}
                 />
-                <Form.Control.Feedback type='invalid'>{errores.imagen}</Form.Control.Feedback>
+                <Form.Control.Feedback type='invalid'>{errorImagen}</Form.Control.Feedback>
+                <p className={`text-body-sm ${s.ayuda}`}>
+                  JPG, PNG o WEBP de hasta 2 MB.
+                  {quitarImagen && ' La imagen se quitará al guardar los cambios.'}
+                </p>
               </Form.Group>
             </div>
 
@@ -277,17 +363,17 @@ export function EditarPlatoPage() {
               <p className={`text-body-sm ${s.ayuda}`}>
                 {loadingPromociones
                   ? 'Cargando promociones...'
-                  : 'La promoción seleccionada se muestra en la tarjeta del plato y el descuento se aplica al precio al realizar el pedido.'}
+                  : 'El descuento se aplica al precio al realizar el pedido.'}
               </p>
             </Form.Group>
 
             <Form.Group className={s.field} controlId='editar-plato-ingredientes'>
               <Form.Label className={`text-label-md ${s.label}`}>Ingredientes</Form.Label>
-              <p className={`text-body-sm ${s.ayuda}`}>
+              {/* <p className={`text-body-sm ${s.ayuda}`}>
                 Definí cómo participa cada ingrediente en el plato: obligatorio (siempre va),
                 por defecto (el cliente puede quitarlo) o para agregar (el cliente lo agrega y
                 se le cobra su precio adicional).
-              </p>
+              </p> */}
               <div className={s.ingredientsBox}>
                 {loadingIngredientes ? (
                   <p className={`text-body-sm ${s.empty}`}>Cargando ingredientes...</p>

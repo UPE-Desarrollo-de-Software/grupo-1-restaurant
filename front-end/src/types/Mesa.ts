@@ -1,6 +1,7 @@
 // Mínimo de mesa que necesita el front (select de alta de reserva y
-// la relación `mesa` de una reserva). El backend trae más campos
-// (codigo_acceso, etc.); jamás se muestran en la UI pública.
+// la relación `mesa` de una reserva). `codigo_acceso` llega en el
+// listado de mesas (GET /mesas) y se muestra en los paneles internos
+// (gerente y mozo); nunca en la UI pública del comensal.
 
 import z from "zod";
 import type { mesaSchema } from "../schemas/mesas";
@@ -14,10 +15,13 @@ export interface Mesa {
     usuario_id?: number | null
     grupo_codigo?: number | null
     ocupada_desde?: string | null
+    // PIN de 4 dígitos (string, preserva ceros a la izquierda). Opcional
+    // porque no todas las respuestas lo traen (ej. relaciones anidadas).
+    codigo_acceso?: string | null
 }
 
-// Única fuente del PIN en el front: GET /mesas/{id} y la respuesta de
-// ocupar. La lista (GET /mesas) sigue sin traerlo.
+// Variante con el PIN obligatorio: GET /mesas/{id} y la respuesta de
+// crear/ocupar.
 export interface MesaConCodigo extends Mesa {
     codigo_acceso: string
 }

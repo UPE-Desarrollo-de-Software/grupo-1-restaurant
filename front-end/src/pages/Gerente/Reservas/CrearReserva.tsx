@@ -20,6 +20,13 @@ function formatearFechaLarga(fecha: string): string {
     return fechaDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
+// PIN que el cliente presenta al llegar: el `codigo` de 4 dígitos que
+// genera el backend (string, conserva los ceros a la izquierda). El id
+// queda sólo como fallback por si una respuesta vieja no lo trae.
+function pinReserva(reserva: Reserva): string {
+    return reserva.codigo ?? String(reserva.id)
+}
+
 function horaAMinutos(hora: string): number {
     const [horas, minutos] = hora.split(':').map(Number)
     return horas * 60 + minutos
@@ -158,7 +165,7 @@ export function CrearReservaPage() {
     async function handlerCopiar() {
         if (!reservaCreada) return
         try {
-            await navigator.clipboard.writeText(reservaCreada.id.toString())
+            await navigator.clipboard.writeText(pinReserva(reservaCreada))
             setCopiado(true)
         } catch {
             setCopiado(false)
@@ -379,7 +386,7 @@ export function CrearReservaPage() {
                     <div className={`${s.pinBox} mt-3`}>
                         <div>
                             <p className={`text-label-sm ${s.pinEtiqueta}`}>Código reserva (PIN)</p>
-                            <p className={`text-headline-md ${s.pinValor}`}>{reservaCreada.id}</p>
+                            <p className={`text-headline-md ${s.pinValor}`}>{pinReserva(reservaCreada)}</p>
                         </div>
                         <Button
                             size='sm'
