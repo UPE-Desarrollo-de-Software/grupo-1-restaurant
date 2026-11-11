@@ -15,10 +15,17 @@ use Illuminate\Support\Collection;
 interface ReservaRepository
 {
     /**
-     * Reserva por id con su mesa y su inventario cargados; lanza
-     * ModelNotFoundException (404) si no existe.
+     * Reserva por id con su mesa, su inventario y su pre-orden
+     * cargados; lanza ModelNotFoundException (404) si no existe.
      */
     public function porIdOrFail(int $id): Reserva;
+
+    /**
+     * Reserva por su PIN de 4 dígitos (edición pública de la
+     * pre-orden). Prefiere la PENDIENTE (los códigos se reciclan al
+     * finalizar/cancelar); null si no hay ninguna con ese PIN.
+     */
+    public function porCodigo(string $codigo): ?Reserva;
 
     /**
      * @param  array<string, mixed>  $datos
@@ -27,7 +34,8 @@ interface ReservaRepository
 
     /**
      * Listado de reservas con filtros opcionales (estado, fecha,
-     * mesa_id, código PIN); siempre con mesa e inventario cargados.
+     * mesa_id, código PIN); siempre con mesa, inventario y pre-orden
+     * cargados (la agenda pinta qué viene para la llegada).
      *
      * @return Collection<int, Reserva>
      */

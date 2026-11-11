@@ -70,12 +70,14 @@ class ReservaService
     public function __construct(
         private ReservaRepository $reservas,
         private ConfigMesaRepository $configMesas,
+        private PreordenService $preorden
     ) {}
 
     // ==================== CONSULTA ====================
 
     /**
      * Listado con filtros opcionales (estado, fecha, mesa_id, código).
+     * Siempre trae la pre-orden cargada: la agenda pinta qué viene.
      *
      * @return Collection<int, Reserva>
      */
@@ -227,6 +229,13 @@ class ReservaService
                 ]);
             }
 
+            // Pre-orden opcional (carrito del cliente): mismo bloque de
+            // transacción, así si una línea es inválida no queda reserva
+            // a medias. Merge por plato_id (PreordenService::guardar).
+            if (! empty($datos['preorden'])) {
+                $this->preorden->guardar($reserva, $datos['preorden']);
+            }
+
             $reserva = $reserva->load('inventario');
 
             event(new ReservaCreada($reserva));
@@ -270,7 +279,15 @@ class ReservaService
         $reserva->estado = 'finalizada';
         $reserva->save();
 
-        return $reserva->load(['mesa', 'inventario']);
+        // "Quien llega último convierte": si la reserva ya tenía mesa
+        // vinculada, la pre-orden se convierte ACÁ; si no, la convertirá
+        // POST /mesas {reserva_id} (MesaService::crearMesa). Sin mesa o
+        // sin pre-orden, esto es un no-op.
+        if ($reserva->mesa_id !== null) {
+            $this->preorden->convertirPreOrdenEnPedido($reserva->id);
+        }
+
+        return $reserva->load(['mesa', 'inventario', 'preordenes']);
     }
 
     /**

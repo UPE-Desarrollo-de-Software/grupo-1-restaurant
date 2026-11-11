@@ -2,17 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DetallePreOrden;
+use App\UseCases\Reservas\ActualizarPreordenUseCase;
+use App\UseCases\Reservas\ActualizarPreordenWebUseCase;
 use App\UseCases\Reservas\CancelarReservaUseCase;
+use App\UseCases\Reservas\ConvertirPreordenUseCase;
 use App\UseCases\Reservas\CrearReservaUseCase;
+use App\UseCases\Reservas\EliminarPreordenWebUseCase;
 use App\UseCases\Reservas\FinalizarReservaUseCase;
 use App\UseCases\Reservas\ListarReservasUseCase;
 use App\UseCases\Reservas\MarcarNoAsistioUseCase;
+use App\UseCases\Reservas\ObtenerPreordenReservaUseCase;
+use App\UseCases\Reservas\ObtenerPreordenUseCase;
 use App\UseCases\Reservas\ObtenerReservaUseCase;
 use App\UseCases\Reservas\SolicitarReservaWebUseCase;
 use App\UseCases\Reservas\VerDisponibilidadDiaReservaUseCase;
 use App\UseCases\Reservas\VerDisponibilidadReservaUseCase;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * RESERVAS (DER v3.0).
@@ -37,6 +45,12 @@ class ReservaController extends Controller
         private CancelarReservaUseCase $cancelar,
         private FinalizarReservaUseCase $finalizar,
         private MarcarNoAsistioUseCase $noAsistio,
+        private ObtenerPreordenUseCase $obtenerPreordenWeb,
+        private ActualizarPreordenWebUseCase $actualizarPreordenWeb,
+        private EliminarPreordenWebUseCase $eliminarPreordenWeb,
+        private ObtenerPreordenReservaUseCase $obtenerPreorden,
+        private ActualizarPreordenUseCase $actualizarPreorden,
+        private ConvertirPreordenUseCase $convertirPreorden,
     ) {}
 
     /**
@@ -50,6 +64,9 @@ class ReservaController extends Controller
             'fecha' => 'required|date',
             'hora' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'],
             'cantPersonas' => 'required|integer|min:1',
+            'preorden' => 'sometimes|array',
+            'preorden.*.plato_id' => 'required|integer|exists:platos,id',
+            'preorden.*.cantidad' => 'required|integer|min:1',
         ]);
 
         try {
@@ -75,6 +92,9 @@ class ReservaController extends Controller
             'fecha' => 'required|date',
             'hora' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'],
             'cantPersonas' => 'required|integer|min:1',
+            'preorden' => 'sometimes|array',
+            'preorden.*.plato_id' => 'required|integer|exists:platos,id',
+            'preorden.*.cantidad' => 'required|integer|min:1',
         ]);
 
         try {
@@ -127,7 +147,8 @@ class ReservaController extends Controller
     /**
      * GET /api/reservas?estado=&fecha=&mesa_id=&codigo= (empleado):
      * filtros opcionales para la agenda del día o de la semana.
-     * `codigo` es el PIN de 4 dígitos que muestra el cliente.
+     * `codigo` es el PIN de 4 dígitos que muestra el cliente. Toda
+     * reserva trae su `preorden` (qué viene para la llegada).
      */
     public function index(Request $request)
     {
@@ -224,5 +245,171 @@ class ReservaController extends Controller
             'mensaje' => 'Inasistencia registrada',
             'reserva' => $reserva,
         ], 200);
+    }
+
+    // ==================== PRE-ORDEN ====================
+
+    /**
+     * GET /api/cliente/reservas/{codigo}/preordenes (público con
+     * throttle): la pre-orden de la reserva con su PIN de 4 dígitos.
+     * Mismo criterio que /acceso: PIN mal formado → 422, PIN que no
+     * corresponde a ninguna reserva → 401.
+     */
+    public function preordenCliente(string $codigo)
+    {
+        if (! preg_match('/^\d{4}$/', $codigo)) {
+            return response()->json(['message' => 'El PIN debe ser de exactamente 4 dígitos.'], 422);
+        }
+
+        try {
+            $preordenes = ($this->obtenerPreordenWeb)($codigo);
+        } catch (ModelNotFoundException) {
+            return response()->json(['message' => 'PIN de reserva invalido o expirado.'], 401);
+        }
+
+        return response()->json($this->lineasPreorden($preordenes), 200);
+    }
+
+    /**
+     * PUT /api/cliente/reservas/{codigo}/preordenes (público con
+     * throttle): el cliente rearma su carrito mientras la reserva
+     * siga pendiente (merge por plato_id).
+     */
+    public function actualizarPreordenCliente(string $codigo, Request $request)
+    {
+        if (! preg_match('/^\d{4}$/', $codigo)) {
+            return response()->json(['message' => 'El PIN debe ser de exactamente 4 dígitos.'], 422);
+        }
+
+        $datos = $this->validarLineas($request);
+
+        try {
+            $preordenes = ($this->actualizarPreordenWeb)($codigo, $datos['preorden']);
+        } catch (ModelNotFoundException) {
+            return response()->json(['message' => 'PIN de reserva invalido o expirado.'], 401);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'mensaje' => 'Preorden actualizada correctamente',
+            'preorden' => $this->lineasPreorden($preordenes),
+        ], 200);
+    }
+
+    /**
+     * DELETE /api/cliente/reservas/{codigo}/preordenes (público con
+     * throttle): vacía la pre-orden mientras la reserva siga
+     * pendiente.
+     */
+    public function eliminarPreordenCliente(string $codigo)
+    {
+        if (! preg_match('/^\d{4}$/', $codigo)) {
+            return response()->json(['message' => 'El PIN debe ser de exactamente 4 dígitos.'], 422);
+        }
+
+        try {
+            ($this->eliminarPreordenWeb)($codigo);
+        } catch (ModelNotFoundException) {
+            return response()->json(['message' => 'PIN de reserva invalido o expirado.'], 401);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['mensaje' => 'Preorden eliminada correctamente'], 200);
+    }
+
+    /**
+     * GET /api/reservas/{id}/preordenes (empleado): la pre-orden de
+     * la reserva (la agenda ya la trae en cada reserva).
+     */
+    public function preorden(int $id)
+    {
+        try {
+            $preordenes = ($this->obtenerPreorden)($id);
+        } catch (ModelNotFoundException) {
+            return response()->json(['message' => 'Reserva no encontrada'], 404);
+        }
+
+        return response()->json($this->lineasPreorden($preordenes), 200);
+    }
+
+    /**
+     * PUT /api/reservas/{id}/preordenes (empleado): rearmar el
+     * carrito de la reserva (merge por plato_id, solo pendiente).
+     */
+    public function actualizarPreorden(int $id, Request $request)
+    {
+        $datos = $this->validarLineas($request);
+
+        try {
+            $preordenes = ($this->actualizarPreorden)($id, $datos['preorden']);
+        } catch (ModelNotFoundException) {
+            return response()->json(['message' => 'Reserva no encontrada'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'mensaje' => 'Preorden actualizada correctamente',
+            'preorden' => $this->lineasPreorden($preordenes),
+        ], 200);
+    }
+
+    /**
+     * POST /api/reservas/{id}/preordenes/convertir (empleado):
+     * respaldo manual de la conversión, por si el mozo creó la mesa
+     * sin pasar `reserva_id`. Doble conversión → 422.
+     */
+    public function convertirPreordenEnPedido(int $id, Request $request)
+    {
+        $datos = $request->validate([
+            'mesa_id' => 'required|integer|exists:mesas,id',
+        ]);
+
+        try {
+            $pedido = ($this->convertirPreorden)($id, (int) $datos['mesa_id']);
+        } catch (ModelNotFoundException) {
+            return response()->json(['message' => 'Reserva no encontrada'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'mensaje' => 'Preorden convertida en pedido correctamente',
+            'pedido' => $pedido,
+        ], 200);
+    }
+
+    /**
+     * Body de edición de pre-orden: { preorden: [{plato_id, cantidad}] }.
+     *
+     * @return array{preorden: array<int, array<string, mixed>>}
+     */
+    private function validarLineas(Request $request): array
+    {
+        return $request->validate([
+            'preorden' => 'required|array',
+            'preorden.*.plato_id' => 'required|integer|exists:platos,id',
+            'preorden.*.cantidad' => 'required|integer|min:1',
+        ]);
+    }
+
+    /**
+     * Líneas en el shape del contrato del front
+     * (`[{plato_id, cantidad}]`).
+     *
+     * @param  Collection<int, DetallePreOrden>  $preordenes
+     * @return array<int, array{plato_id: int, cantidad: int}>
+     */
+    private function lineasPreorden(Collection $preordenes): array
+    {
+        return $preordenes
+            ->map(fn ($linea): array => [
+                'plato_id' => $linea->plato_id,
+                'cantidad' => $linea->cantidad,
+            ])
+            ->values()
+            ->all();
     }
 }

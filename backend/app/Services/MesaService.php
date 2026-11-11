@@ -54,6 +54,7 @@ class MesaService
         private DetallePedidoRepository $detalles,
         private ConfigMesaRepository $configMesas,
         private ReservaRepository $reservas,
+        private PreordenService $preordenes,
     ) {}
 
     // ==================== CRUD Y CICLO DE VIDA ====================
@@ -167,6 +168,15 @@ class MesaService
         if ($hereda) {
             $reserva->mesa_id = $mesa->id;
             $reserva->save();
+
+            // "Quien llega último convierte": si la reserva ya estaba
+            // finalizada (el cliente llegó antes que la mesa), la
+            // pre-orden se convierte ACÁ en un pedido de esta mesa.
+            // Si sigue pendiente, la convertirá finalizar(). Idempotente
+            // (PreordenService): sin pre-orden o ya convertida, no-op.
+            if ($reserva->estado === 'finalizada') {
+                $this->preordenes->convertirPreOrdenEnPedido($reserva->id);
+            }
         }
 
         return $mesa;
