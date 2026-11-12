@@ -80,7 +80,7 @@ services:
       args:
         VITE_API_URL: /api
         VITE_REVERB_APP_KEY: ${REVERB_APP_KEY}
-        VITE_REVERB_HOST: ${APP_DOMAIN}
+        VITE_REVERB_HOST: ${FRONTEND_DOMAIN}
         VITE_REVERB_PORT: 443
         VITE_REVERB_SCHEME: https
     restart: unless-stopped
