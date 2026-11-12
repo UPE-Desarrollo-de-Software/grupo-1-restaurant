@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Alert, Button, Card, Spinner } from 'react-bootstrap'
 import { getCuentaMesa, getMesa, getResumenMesa } from '../../api/mesas'
 import { CerrarMesaModal } from '../../components/Mesas/CerrarMesaModal'
+import { QrMesaModal } from '../../components/Mesas/QrMesaModal'
 import { PedidoCard } from '../../components/Pedidos/PedidoCard'
 import { TomarPedido } from '../../components/Pedidos/TomarPedido'
 import { usePedidosRealtime } from '../../realtime/useRealtimeEmpleado'
@@ -74,6 +75,7 @@ export function MozoMesaPage() {
     const [mostrarTomar, setMostrarTomar] = useState(false)
     const [copiado, setCopiado] = useState(false)
     const [modalCerrar, setModalCerrar] = useState(false)
+    const [qrAbierto, setQrAbierto] = useState(false)
     // La página está cargando mientras la combinación (mesa, vista)
     // actual no se haya resuelto: deriva del estado en vez de hacer
     // setState síncrono dentro del effect (regla react-hooks/set-state-in-effect).
@@ -222,16 +224,28 @@ export function MozoMesaPage() {
                         <p className={`text-label-sm ${s.pinEtiqueta}`}>Código de Mesa</p>
                         <p className={`text-headline-sm ${s.pinValor}`}>{codigo}</p>
                     </div>
-                    <Button
-                        size='sm'
-                        variant={copiado ? 'success' : 'outline-primary'}
-                        className='text-label-md'
-                        type='button'
-                        onClick={copiarPin}
-                    >
-                        <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
-                        {copiado ? 'Copiado' : 'Copiar PIN'}
-                    </Button>
+                    <div className='d-flex flex-wrap gap-2'>
+                        <Button
+                            size='sm'
+                            variant={copiado ? 'success' : 'outline-primary'}
+                            className='text-label-md'
+                            type='button'
+                            onClick={copiarPin}
+                        >
+                            <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
+                            {copiado ? 'Copiado' : 'Copiar PIN'}
+                        </Button>
+                        <Button
+                            size='sm'
+                            variant='outline-primary'
+                            className='text-label-md'
+                            type='button'
+                            onClick={() => setQrAbierto(true)}
+                        >
+                            <i className='bi bi-qr-code me-1' aria-hidden='true' />
+                            Ver QR
+                        </Button>
+                    </div>
                 </div>
             )}
 
@@ -380,6 +394,11 @@ export function MozoMesaPage() {
                 numeroMesa={mesaId}
                 onCancelar={() => setModalCerrar(false)}
                 onCerrada={(aviso) => navigate('/mozo', { state: { aviso } })}
+            />
+
+            <QrMesaModal
+                mesa={qrAbierto && codigo ? { id: mesaId, codigo_acceso: codigo } : null}
+                onCerrar={() => setQrAbierto(false)}
             />
         </div>
     )

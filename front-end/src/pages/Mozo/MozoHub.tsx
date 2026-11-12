@@ -24,7 +24,7 @@ export function MozoPage() {
     return (
         <div className={`${s.page} ${s.hub}`}>
             <Buscador
-                placeHolder='Buscar mesa por id...'
+                placeHolder='Buscar mesa por id o código...'
                 valor={busqueda}
                 onCambio={setBusqueda}
             />

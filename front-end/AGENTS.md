@@ -25,7 +25,12 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   de otra mesa, pide confirmación antes de cambiar (se descarta el borrador sin
   enviar); el parámetro se limpia de la URL tras procesarse. El PIN muere con la
   visita (borrado lógico al cerrar la mesa). El formulario manual de `/mesa`
-  sigue siendo el fallback (PIN tipeado o QR inválido).
+  sigue siendo el fallback (PIN tipeado o QR inválido). **El mismo `QrMesaModal`
+  también se abre desde el detalle de la mesa** (botón "Ver QR" en `MozoMesa`,
+  `EditarMesa` y en la tarjeta "Mesa identificada" de `MesaPage`): ahí `onListo`/
+  `onCrearMas` son opcionales y el footer queda en "Cerrar"; el prop `mesa` sólo
+  exige `{id, codigo_acceso}`. En `MesaPage` el cliente además ve y copia su
+  código para pasárselo a otro comensal.
 - La credencial del comensal es el `codigo_acceso` de la mesa (4 dígitos, lo reparte
   el mozo; el backend valida `size:4` y preserva ceros a la izquierda). Viaja como
   `Authorization: Bearer <codigo>` en `/cliente/*` (middleware `cliente` del backend;
@@ -69,8 +74,15 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   (`ReservasClientePage`) cachea la grilla por fecha, filtra por personas
   (`aforo_disponible >= cantPersonas`) y deshabilita los turnos de hoy con menos
   de 2 h de anticipación (front) y los que no tienen aforo (422 real lo sigue
-  validando el back al crear). El alta no cambia. La respuesta trae
-  `reserva.id`: mostrarlo en el modal de éxito. El alta incluye un único
+  validando el back al crear). El alta no cambia. **La respuesta trae
+  `reserva.codigo`** (PIN de 4 dígitos, string con ceros a la izquierda, único
+  entre pendientes; lo genera el back): es lo que se muestra/copia/descarga en el
+  modal de éxito y en el PDF — el `reserva.id` ya NO se muestra (`pinReserva()`
+  en `ReservasClientePage`/`CrearReserva` deja el id sólo como fallback). **La
+  agenda** (`ReservasHub`, sirve Gerente y Mozo) busca por ese código en el
+  cliente (`filtrar()` de `Carta/Lista.tsx`, búsqueda parcial) y la `ReservaCard`
+  lo muestra en lugar del `#id`. El endpoint `GET /reservas?codigo=` del back
+  queda sin usar (el hub ya baja todas las reservas). El alta incluye un único
   `contacto_solicitante` (la capa API arma "Nombre (Tel: ...)").
 - BottomNavbar (`useBottomNav`, `src/navigation/useBottomNav.ts`): sin sesión
   staff → `NAV_PUBLICO` (Carta, Mi pedido, Reservas, Mesa — todas con ruta); con
@@ -117,6 +129,11 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   campo `estado` se conserva internamente en tipos/normalización porque el
   backend lo exige en `POST/PUT /mesas` (`mesaSchema`). `ClienteMesa.estado` y
   `EstadoMesa` fueron eliminados.
+- **Código de acceso de la mesa visible en los paneles internos**: `GET /mesas`
+  trae `codigo_acceso` (el repo no lo oculta); `normalizarMesa()` lo mapea como
+  string (preserva ceros) y `MesaCard` lo muestra ("Código: 1234") para gerente y
+  mozo. La búsqueda de ambos hubs (`filtrar()` de `Carta/Lista.tsx`) filtra por id
+  o por ese código, parcial. Sigue sin exponerse en la UI pública del comensal.
 - **El salón real es el CONFIG_MESA** (`GET /configuracion` público a empleados,
   `PUT /configuracion` del gerente con replace-all de filas `capacidad × cantidad`):
   aforo = Σ capacidad×cantidad (personas simultáneas máximas) y mesas máximas =
@@ -254,9 +271,10 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
 
 ## Arquitectura y convenciones
 
-- Los datos reales vienen de la API del backend. `src/data/platos.json` es solo un mock de diseño con otro schema (`restaurante/categorias/platos`); no tomarlo como contrato de la API. Los tipos de dominio viven en `src/types/Menu.ts`: `PlatoListar` (lista, con `categoria_nombre`, sin `ingredientes`), `PlatoObtener` (show/respuesta de POST, con `ingredientes` y `categoria_id`, sin `categoria_nombre`), `PlatoInput` (= `z.infer` de `platoSchema`) y `PlatoResponse`. `types/Plato.ts` fue eliminado; no reintroducirlo.
+- Los datos reales vienen de la API del backend. `src/data/platos.json` es solo un mock de diseño con otro schema (`restaurante/categorias/platos`); no tomarlo como contrato de la API. Los tipos de dominio viven en `src/types/Menu.ts`: `PlatoListar` (lista, con `categoria_nombre`, sin `ingredientes`), `PlatoObtener` (show/respuesta de POST, con `ingredientes` y `categoria_id`, sin `categoria_nombre`), `PlatoInput` (= `z.infer` de `platoSchema`) y `PlatoResponse`. Ambos tipos traen `imagen` (path interno) e `imagen_url` (URL pública): **para mostrar usar siempre `imagen_url`**. `types/Plato.ts` fue eliminado; no reintroducirlo.
 - **Tipos de datos, no de presentación**: `precio: number` y `disponible: boolean` en los tipos de dominio. El backend manda `precio` como string en GET y number en POST (sin `$casts`), y `disponible` como 1/0 en GET y boolean en POST — **no se toca el backend**; la conversión ocurre UNA sola vez en la capa de API (`src/api/platos.ts`, `Number()`/`Boolean()` al recibir). `formatearPrecio()` se aplica solo en la vista. No repetir conversiones en componentes.
 - Capa de API en `src/api/` (`platos.ts`, `categorias.ts`, `ingredientes.ts`, `pedidos.ts`, `cliente.ts`, `cocina.ts`, `historial.ts`, `reservas.ts`, `mesas.ts`, `auth.ts`, `error.ts`, `usuarios.ts`, `promociones.ts`, `dashboard.ts`, `configuracion.ts`): funciones que hablan con `API_BASE_URL`, lanzan `Error` en español si el status no es 2xx, y normalizan tipos. El ABM usa `createPlatos` (POST) en vez de fetch inline. `cliente.ts` usa `ErrorCliente` (con `status`) para distinguir 401 (código muerto) de 422 (regla de negocio) en el flujo del comensal.
+- **Imagen del plato (`POST/DELETE /platos/{id}/imagen`)**: el alta y la edición (`POST/PUT /platos`) **no** aceptan `imagen` (el backend dejó de validarla); la foto se sube aparte como multipart con el campo `imagen` (JPG/PNG/WEBP ≤ 2 MB, `subirImagenPlato`/`quitarImagenPlato` en `api/platos.ts`). El backend guarda el path en `platos.imagen` y expone `imagen_url` (accessor: URL de S3, o la URL externa heredada). `CrearPlato` crea el plato y después sube el archivo (si la subida falla el plato ya existe y se avisa, sin duplicarlo); `EditarPlato` permite reemplazar (nuevo archivo) o quitar la imagen (`quitarImagen`) y muestra la vigente. Validación espejo en `utils/imagenPlato.ts` y preview del archivo con `useVistaPreviaImagen` (revoca el object URL).
 - Validación con Zod **v4** en `src/schemas/` (ver `schemas/menu.ts` → `platoSchema`, `schemas/auth.ts`, `schemas/cliente.ts`); los tipos de input se derivan con `z.infer<>`. Zod v4: mensajes con `{ error: '...' }`, fecha con `z.iso.date()`. `precio` usa `.positive()` (precio $0 no permitido — decisión, mantener).
 - Estilos: Bootstrap + CSS Modules por componente (`*.module.css`, importados como `s`). Los design tokens viven en `src/styles/tokens.css`, importados DESPUÉS de `bootstrap.min.css` en `src/main.tsx` — preservar ese orden. Clases utilitarias como `text-headline-lg`, `text-body-md`, `text-price-display`, `elevation-1` son tokens propios, no de Bootstrap; preferirlas sobre colores/fuentes hardcodeadas.
 - Fetch de datos: hooks en `src/hooks` (`usePlatos`, `useCategorias`, `useIngredientes`) consultan `API_BASE_URL` con `AbortController`; seguir este patrón en fetches nuevos (abortar al desmontar, mensaje de error en español si el status no es 2xx). Dentro de componentes, el set de estado va en los callbacks async (`.then`/`.catch` o `try/catch` de una IIFE) — ver `usePlatos` o `CrearReserva`.

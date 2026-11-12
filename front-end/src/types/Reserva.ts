@@ -21,6 +21,11 @@ export interface Reserva {
     hora: string
     cantPersonas: number
     estado: EstadoReserva
+    // PIN de 4 dígitos con ceros a la izquierda (ej. "0182") que el
+    // cliente presenta al llegar. Lo genera el backend en el alta; es
+    // único entre las reservas pendientes (se recicla al finalizar o
+    // cancelar). Opcional por compatibilidad con respuestas viejas.
+    codigo?: string
 }
 
 export type ReservaInput = z.infer<typeof reservaSchema>

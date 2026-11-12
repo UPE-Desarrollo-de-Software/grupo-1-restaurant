@@ -34,7 +34,7 @@ export function PlatoCard({plato}: PlatoCardProps){
         </div>
       </Card.Body>
       <div className={s.media}>
-        <Card.Img className={s.imagen} src={plato.imagen ?? undefined} alt={plato.nombre} loading="lazy"/>
+        <Card.Img className={s.imagen} src={plato.imagen_url ?? undefined} alt={plato.nombre} loading="lazy"/>
         <Link className={s.link} to={`/plato/${plato.id}`}>
           <p className="text-body-sm">Ver detalles</p>
         </Link>

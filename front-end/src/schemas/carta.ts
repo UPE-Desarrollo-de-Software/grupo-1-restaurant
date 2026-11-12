@@ -11,7 +11,8 @@ export const platoSchema = z.object({
     nombre: z.string().trim().min(1, "Ingresá un nombre"),
     descripcion: z.string().trim(),
     precio: z.coerce.number().positive("El precio debe ser positivo"),
-    imagen: z.string().trim(),
+    // La imagen NO va en el body: se sube aparte con
+    // POST /platos/{id}/imagen (multipart) y se quita con el DELETE.
     disponible: z.boolean(),
     // La API acepta ids sueltos (`[1, 2]`, flags default) u objetos con los flags
     // del pivot (`opcional` / `por_defecto`). El form manda ids; al editar se

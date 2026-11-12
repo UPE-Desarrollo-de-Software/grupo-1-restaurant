@@ -25,6 +25,12 @@ const formatearFecha = (fecha: string): string => {
   return `${dia}/${mes}/${anio}`
 }
 
+// PIN que el cliente presenta al llegar: el `codigo` de 4 dígitos del
+// backend (string, conserva los ceros a la izquierda). Fallback al id por
+// respuestas viejas.
+const pinReserva = (reserva: Reserva): string =>
+  reserva.codigo ?? String(reserva.id).padStart(2, '0')
+
 interface ReservaCardProps {
   reserva: Reserva
 }
@@ -37,7 +43,9 @@ export function ReservaCard({ reserva }: ReservaCardProps) {
     <Card className={s.card}>
       <Card.Body className={s.body}>
         <div className={s.fila}>
-          <span className={`text-label-sm ${s.indice}`}>#{String(reserva.id).padStart(2, '0')}</span>
+          <span className={`text-label-sm ${s.indice}`} title='Código de reserva'>
+            {pinReserva(reserva)}
+          </span>
 
           <div className={s.info}>
             <div className={s.badges}>

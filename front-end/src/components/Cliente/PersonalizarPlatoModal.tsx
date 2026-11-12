@@ -141,7 +141,7 @@ function ContenidoModal({ platoId, lineaInicial, detallePrecargado, onCerrar, on
                 plato: {
                     id: detalle.id,
                     nombre: detalle.nombre,
-                    imagen: detalle.imagen,
+                    imagen: detalle.imagen_url,
                     precio: Number(detalle.precio),
                 },
                 cantidad,

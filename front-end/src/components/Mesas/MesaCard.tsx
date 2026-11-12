@@ -31,6 +31,9 @@ export function MesaCard({ mesa }: { mesa: Mesa }) {
               </div>
             )} */}
             <h3 className={`text-headline-sm ${s.titulo}`}>{mesa.capacidad} lugares</h3>
+            {mesa.codigo_acceso && (
+              <p className={`text-body-sm ${s.detalle}`}>Código: {mesa.codigo_acceso}</p>
+            )}
             {/* <p className={`text-body-sm ${s.detalle}`}>
               {mesa.ocupada_desde
                 ? `Ocupada desde ${formatearFecha(mesa.ocupada_desde)}`

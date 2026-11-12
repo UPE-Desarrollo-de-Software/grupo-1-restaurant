@@ -17,6 +17,13 @@ function formatearFechaLarga(fecha: string): string {
     return fechaDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
+// PIN que el cliente presenta al llegar: el `codigo` de 4 dígitos que
+// genera el backend (string, conserva los ceros a la izquierda). El id
+// queda sólo como fallback por si una respuesta vieja no lo trae.
+function pinReserva(reserva: Reserva): string {
+    return reserva.codigo ?? String(reserva.id)
+}
+
 function horaAMinutos(hora: string): number {
     const [horas, minutos] = hora.split(':').map(Number)
     return horas * 60 + minutos
@@ -162,7 +169,7 @@ export function ReservasClientePage() {
     async function handlerCopiar() {
         if (!reservaCreada) return
         try {
-            await navigator.clipboard.writeText(reservaCreada.id.toString())
+            await navigator.clipboard.writeText(pinReserva(reservaCreada))
             setCopiado(true)
         } catch {
             setCopiado(false)
@@ -172,13 +179,14 @@ export function ReservasClientePage() {
     function descargarComprobante() {
         if (!reservaCreada) return
 
+        const pin = pinReserva(reservaCreada)
         const doc = new jsPDF()
 
         doc.setFontSize(20)
         doc.text('Reserva confirmada', 20, 25)
 
         doc.setFontSize(12)
-        doc.text(`Código de reserva: ${reservaCreada.id}`, 20, 45)
+        doc.text(`Código de reserva: ${pin}`, 20, 45)
         doc.text(`Fecha: ${reservaCreada.fecha}`, 20, 55)
         doc.text(`Hora: ${reservaCreada.hora}`, 20, 65)
         doc.text(`Personas: ${reservaCreada.cantPersonas}`, 20, 75)
@@ -190,7 +198,7 @@ export function ReservasClientePage() {
             95
         )
 
-        doc.save(`comprobante-reserva-${reservaCreada.id}.pdf`)
+        doc.save(`comprobante-reserva-${pin}.pdf`)
     }
 
     async function manejarSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -420,7 +428,7 @@ export function ReservasClientePage() {
                             <div className={s.pinBox}>
                                 <div>
                                     <p className={`text-label-sm ${s.pinEtiqueta}`}>Código reserva (PIN)</p>
-                                    <p className={`text-headline-md ${s.pinValor}`}>{reservaCreada.id}</p>
+                                    <p className={`text-headline-md ${s.pinValor}`}>{pinReserva(reservaCreada)}</p>
                                 </div>
                                 <Button
                                     size='sm'

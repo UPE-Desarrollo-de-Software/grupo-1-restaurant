@@ -54,6 +54,7 @@ class MesaService
         private DetallePedidoRepository $detalles,
         private ConfigMesaRepository $configMesas,
         private ReservaRepository $reservas,
+        private PreordenService $preordenes,
     ) {}
 
     // ==================== CRUD Y CICLO DE VIDA ====================
@@ -86,12 +87,40 @@ class MesaService
      * CONFIG_MESA) y genera el único código de acceso de la mesa
      * (4 dígitos) ANTES de crearla.
      *
-     * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?}
+     * `reserva_id` (opcional): si viene, la mesa se arma PARA esa
+     * reserva (pendiente o finalizada). La PRIMERA de la reserva
+     * (la que llena `reservas.mesa_id`) es la mesa principal y
+     * HEREDA el PIN de la reserva como `codigo_acceso`, así el
+     * cliente usa el mismo código desde la reserva hasta el último
+     * pedido (POST /acceso). Como `codigo_acceso` es UNIQUE para
+     * siempre (incluso mesas destruidas, `codigoExiste` es
+     * withTrashed) y el PIN de reserva se recicla, si el candidato
+     * ya está tomado se hace fallback a un código generado. El
+     * `codigo_acceso` NUNCA viene del request.
      *
-     * @throws \Exception aforo o tope de mesas superado
+     * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?, reserva_id?}
+     *
+     * @throws \Exception aforo o tope de mesas superado, reserva en estado inválido
      */
     public function crearMesa(array $datos): Mesa
     {
+        // Resolución de la reserva ANTES de validar el aforo: una
+        // reserva cancelada / no_asistio no arma mesa (422).
+        $reserva = null;
+
+        if (isset($datos['reserva_id']) && $datos['reserva_id'] !== null) {
+            $reserva = $this->reservas->porIdOrFail((int) $datos['reserva_id']);
+
+            if ($reserva->estado !== 'pendiente' && $reserva->estado !== 'finalizada') {
+                throw new \Exception(
+                    'Solo se pueden armar mesas de reservas pendientes o finalizadas'
+                        ." (la reserva {$reserva->id} está {$reserva->estado})."
+                );
+            }
+        }
+
+        unset($datos['reserva_id']);
+
         $capacidad = (int) ($datos['capacidad'] ?? 0);
 
         $aforo = $this->configMesas->aforo();
@@ -116,11 +145,41 @@ class MesaService
         }
 
         // El código lo genera SIEMPRE el service: es la credencial del
-        // cliente y debe ser único (no viene del request).
-        $datos['codigo_acceso'] = $this->mesas->nuevoCodigoAcceso();
+        // cliente y debe ser único (no viene del request). Con
+        // `reserva_id`, la mesa principal hereda el PIN de la reserva
+        // (continuidad: el mismo código de la reserva hasta el último
+        // pedido); si ya está tomado por una mesa (viva o destruida)
+        // → fallback a un código generado.
+        $hereda = $reserva !== null && $reserva->mesa_id === null;
+
+        if ($hereda && ! $this->mesas->codigoExiste($reserva->codigo)) {
+            $datos['codigo_acceso'] = $reserva->codigo;
+        } else {
+            $datos['codigo_acceso'] = $this->mesas->nuevoCodigoAcceso();
+        }
+
         $datos['estado'] = $datos['estado'] ?? 'libre';
 
-        return $this->mesas->crear($datos);
+        $mesa = $this->mesas->crear($datos);
+
+        // La reserva queda vinculada a SU mesa principal: a partir de
+        // acá las mesas siguientes de la misma reserva generan código
+        // propio (solo una puede heredar el PIN).
+        if ($hereda) {
+            $reserva->mesa_id = $mesa->id;
+            $reserva->save();
+
+            // "Quien llega último convierte": si la reserva ya estaba
+            // finalizada (el cliente llegó antes que la mesa), la
+            // pre-orden se convierte ACÁ en un pedido de esta mesa.
+            // Si sigue pendiente, la convertirá finalizar(). Idempotente
+            // (PreordenService): sin pre-orden o ya convertida, no-op.
+            if ($reserva->estado === 'finalizada') {
+                $this->preordenes->convertirPreOrdenEnPedido($reserva->id);
+            }
+        }
+
+        return $mesa;
     }
 
     /**

@@ -83,7 +83,8 @@ const SIN_FILTRO: Record<Tipo, string> = {
 // Minúsculas + sin acentos: "huevo" encuentra "Huevo Frito".
 // Vive en src/utils/busqueda.ts (la carta del cliente usa la misma regla).
 // La unión es mixta: cada item se busca por los campos que tiene
-// (Reserva no tiene `nombre`; se busca por contacto, estado y mesa).
+// (Reserva no tiene `nombre`; se busca por contacto, estado, mesa y
+// código PIN de 4 dígitos).
 function filtrar(items: ItemLista[], busqueda?: string): ItemLista[] {
   const consulta = normalizarTexto((busqueda ?? '').trim().replace(/^#/, ''))
   if (!consulta) return items
@@ -92,6 +93,10 @@ function filtrar(items: ItemLista[], busqueda?: string): ItemLista[] {
     ('nombre' in item && normalizarTexto(item.nombre).includes(consulta))
     || ('contacto_solicitante' in item && normalizarTexto(item.contacto_solicitante).includes(consulta))
     || ('estado' in item && typeof item.estado === 'string' && normalizarTexto(item.estado).includes(consulta))
+    // PIN de reserva: búsqueda parcial ("36" encuentra "3658").
+    || ('codigo' in item && typeof item.codigo === 'string' && normalizarTexto(item.codigo).includes(consulta))
+    // Código de acceso de la mesa (mismos 4 dígitos, búsqueda parcial).
+    || ('codigo_acceso' in item && typeof item.codigo_acceso === 'string' && normalizarTexto(item.codigo_acceso).includes(consulta))
     || ('mesa' in item && item.mesa != null && normalizarTexto(`mesa ${item.mesa.id}`).includes(consulta))
     || String(item.id).includes(consulta)
     || String(item.id).padStart(2, '0').includes(consulta)

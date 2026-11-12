@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
 import { Link, useSearchParams } from 'react-router-dom'
 import { acceder } from '../../api/cliente'
+import { QrMesaModal } from '../../components/Mesas/QrMesaModal'
 import { useCliente } from '../../context/ClienteContext/useCliente'
 import { codigoMesaSchema } from '../../schemas/cliente'
 import type { ClienteMesa } from '../../types/Cliente'
@@ -26,6 +27,8 @@ export function MesaPage() {
     const [errorCampo, setErrorCampo] = useState<string | null>(null)
     const [errorApi, setErrorApi] = useState<string | null>(null)
     const [validando, setValidando] = useState(false)
+    const [copiado, setCopiado] = useState(false)
+    const [qrAbierto, setQrAbierto] = useState(false)
 
     // QR en la URL (?codigo=XXXX): se procesa una sola vez (al terminar
     // se limpia el parámetro con replace, así un refresh no reintenta).
@@ -104,6 +107,17 @@ export function MesaPage() {
         }
     }
 
+    async function copiarCodigo() {
+        if (!mesa) return
+        try {
+            await navigator.clipboard.writeText(mesa.codigo_acceso)
+            setCopiado(true)
+            setTimeout(() => setCopiado(false), 2000)
+        } catch {
+            // Sin soporte de clipboard: el código queda visible en pantalla.
+        }
+    }
+
     if (mesa) {
         return (
             <div className={s.pagina}>
@@ -121,10 +135,21 @@ export function MesaPage() {
                         <p className={`text-body-sm ${s.textoIdentificada}`}>
                             Ya podés armar tu pedido.
                         </p>
+                        <p className={`text-body-sm ${s.textoIdentificada}`}>
+                            Código de la mesa: <strong>{mesa.codigo_acceso}</strong>
+                        </p>
                     </div>
                     <div className={s.accionesIdentificada}>
                         <Link to='/carta' className='btn btn-primary text-label-md'>Ir a la Carta</Link>
                         <Link to='/pedido' className='btn btn-outline-primary text-label-md'>Mi pedido</Link>
+                        <Button variant='outline-primary' className='text-label-md' type='button' onClick={copiarCodigo}>
+                            <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
+                            {copiado ? 'Copiado' : 'Copiar código'}
+                        </Button>
+                        <Button variant='outline-primary' className='text-label-md' type='button' onClick={() => setQrAbierto(true)}>
+                            <i className='bi bi-qr-code me-1' aria-hidden='true' />
+                            Mostrar QR
+                        </Button>
                     </div>
                 </section>
 
@@ -159,6 +184,11 @@ export function MesaPage() {
                         </Button>
                     </Modal.Footer>
                 </Modal>
+
+                <QrMesaModal
+                    mesa={qrAbierto ? { id: mesa.id, codigo_acceso: mesa.codigo_acceso } : null}
+                    onCerrar={() => setQrAbierto(false)}
+                />
             </div>
         )
     }

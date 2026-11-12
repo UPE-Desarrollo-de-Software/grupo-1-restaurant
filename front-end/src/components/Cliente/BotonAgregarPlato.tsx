@@ -42,7 +42,7 @@ export function BotonAgregarPlato({ plato }: { plato: PlatoListar }) {
                 plato: {
                     id: obtenido.id,
                     nombre: obtenido.nombre,
-                    imagen: obtenido.imagen,
+                    imagen: obtenido.imagen_url,
                     precio: Number(obtenido.precio),
                 },
                 cantidad: 1,

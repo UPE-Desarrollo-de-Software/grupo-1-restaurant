@@ -81,7 +81,7 @@ export function DetallePlatoPage() {
                     <div className={s.media}>
                         <img
                             className={s.imagen}
-                            src={plato.imagen ?? undefined}
+                            src={plato.imagen_url ?? undefined}
                             alt={plato.nombre}
                         />
                     </div>
