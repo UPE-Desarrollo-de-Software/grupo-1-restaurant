@@ -71,12 +71,14 @@ class ReservaService
     public function __construct(
         private ReservaRepository $reservas,
         private ConfigMesaRepository $configMesas,
+        private PreordenService $preorden
     ) {}
 
     // ==================== CONSULTA ====================
 
     /**
      * Listado con filtros opcionales (estado, fecha, mesa_id, código).
+     * Siempre trae la pre-orden cargada: la agenda pinta qué viene.
      *
      * @return Collection<int, Reserva>
      */
@@ -121,7 +123,7 @@ class ReservaService
                 'fin' => $this->minutosAHora($fin),
                 'disponible' => $filas,
                 'aforo_disponible' => (int) array_sum(
-                    array_map(fn (array $fila) => $fila['capacidad'] * $fila['cantidad'], $filas)
+                    array_map(fn(array $fila) => $fila['capacidad'] * $fila['cantidad'], $filas)
                 ),
             ];
         });
@@ -160,7 +162,7 @@ class ReservaService
                     'fin' => $this->minutosAHora($fin),
                     'disponible' => $filas,
                     'aforo_disponible' => (int) array_sum(
-                        array_map(fn (array $fila) => $fila['capacidad'] * $fila['cantidad'], $filas)
+                        array_map(fn(array $fila) => $fila['capacidad'] * $fila['cantidad'], $filas)
                     ),
                 ];
             }
@@ -228,6 +230,13 @@ class ReservaService
                 ]);
             }
 
+            // Pre-orden opcional (carrito del cliente): mismo bloque de
+            // transacción, así si una línea es inválida no queda reserva
+            // a medias. Merge por plato_id (PreordenService::guardar).
+            if (! empty($datos['preorden'])) {
+                $this->preorden->guardar($reserva, $datos['preorden']);
+            }
+
             $reserva = $reserva->load('inventario');
 
             event(new ReservaCreada($reserva));
@@ -275,6 +284,15 @@ class ReservaService
         event(new ReservaEstadoCambiado($reserva, $estadoAnterior));
 
         return $reserva->load(['mesa', 'inventario']);
+        // "Quien llega último convierte": si la reserva ya tenía mesa
+        // vinculada, la pre-orden se convierte ACÁ; si no, la convertirá
+        // POST /mesas {reserva_id} (MesaService::crearMesa). Sin mesa o
+        // sin pre-orden, esto es un no-op.
+        if ($reserva->mesa_id !== null) {
+            $this->preorden->convertirPreOrdenEnPedido($reserva->id);
+        }
+
+        return $reserva->load(['mesa', 'inventario', 'preordenes']);
     }
 
     /**
@@ -308,7 +326,7 @@ class ReservaService
         $ahora = Carbon::now();
 
         foreach ($this->reservas->pendientesHastaFecha($ahora->toDateString()) as $reserva) {
-            $fin = Carbon::parse($reserva->fecha.' '.$reserva->hora)
+            $fin = Carbon::parse($reserva->fecha . ' ' . $reserva->hora)
                 ->addMinutes(self::ESPERA_MIN);
 
             if ($ahora->gt($fin)) {
@@ -374,7 +392,7 @@ class ReservaService
             }
         }
 
-        $disponible = array_filter($disponible, fn ($cantidad) => $cantidad > 0);
+        $disponible = array_filter($disponible, fn($cantidad) => $cantidad > 0);
         arsort($disponible);
 
         return $disponible;
@@ -482,8 +500,8 @@ class ReservaService
         if ($momentoReserva->lt($limite)) {
             throw new \Exception(
                 'La reserva debe hacerse con al menos '
-                    .self::LEAD_TIME_HORAS
-                    ." horas de anticipacion (lo mas temprano seria {$limite->format('H:i')})."
+                    . self::LEAD_TIME_HORAS
+                    . " horas de anticipacion (lo mas temprano seria {$limite->format('H:i')})."
             );
         }
     }
@@ -506,7 +524,7 @@ class ReservaService
     private function exigirHoraPasada(Reserva $reserva): void
     {
         $momentoReserva = Carbon::parse(
-            $reserva->fecha.' '.$reserva->hora
+            $reserva->fecha . ' ' . $reserva->hora
         );
 
         if (Carbon::now()->lt($momentoReserva)) {

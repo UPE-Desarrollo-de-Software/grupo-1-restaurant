@@ -118,6 +118,15 @@ Route::get('/cliente/reservas/disponibilidad', [ReservaController::class, 'dispo
 Route::get('/cliente/reservas/disponibilidad-dia', [ReservaController::class, 'disponibilidadDia'])
     ->middleware('throttle:60,1');
 
+Route::get('/cliente/reservas/{codigo}/preordenes', [ReservaController::class, 'preordenCliente'])
+    ->middleware('throttle:60,1');
+
+Route::put('/cliente/reservas/{codigo}/preordenes', [ReservaController::class, 'actualizarPreordenCliente'])
+    ->middleware('throttle:60,1');
+
+Route::delete('/cliente/reservas/{codigo}/preordenes', [ReservaController::class, 'eliminarPreordenCliente'])
+    ->middleware('throttle:60,1');
+
 // ==================== CUALQUIER EMPLEADO AUTENTICADO ====================
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -220,6 +229,12 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_reservas'])->group(functio
     Route::patch('/reservas/{id}/cancelar', [ReservaController::class, 'cancelar'])->whereNumber('id');
     Route::patch('/reservas/{id}/finalizar', [ReservaController::class, 'finalizar'])->whereNumber('id');
     Route::patch('/reservas/{id}/inasistio', [ReservaController::class, 'inasistio'])->whereNumber('id');
+
+    //  Preordenes de la reserva (solo desde el restaurante, no web): el
+    //  cliente web no puede verlas ni modificarlas (solo su propio pedido). El mozo puede verlas y editarlas.
+    Route::get('/reservas/{id}/preordenes', [ReservaController::class, 'preorden'])->whereNumber('id');
+    Route::put('/reservas/{id}/preordenes', [ReservaController::class, 'actualizarPreorden'])->whereNumber('id');
+    Route::post('/reservas/{id}/preordenes/convertir', [ReservaController::class, 'convertirPreordenEnPedido'])->whereNumber('id');
 });
 
 // nuevo, ruta para traer todos los roles de la base de datos, para despues mostrarlos en el front

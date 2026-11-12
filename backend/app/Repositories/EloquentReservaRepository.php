@@ -9,7 +9,20 @@ class EloquentReservaRepository implements ReservaRepository
 {
     public function porIdOrFail(int $id): Reserva
     {
-        return Reserva::with(['mesa', 'inventario'])->findOrFail($id);
+        return Reserva::with(['mesa', 'inventario', 'preordenes'])->findOrFail($id);
+    }
+
+    public function porCodigo(string $codigo): ?Reserva
+    {
+        // Los PINs se reciclan al finalizar/cancelar: puede haber más
+        // de una reserva con el mismo código. Siempre manda la
+        // PENDIENTE (la que el cliente está editando); si no hay,
+        // se devuelve la última de todas.
+        return Reserva::with(['mesa', 'inventario', 'preordenes'])
+            ->where('codigo', $codigo)
+            ->orderByRaw("CASE WHEN estado = 'pendiente' THEN 0 ELSE 1 END")
+            ->orderByDesc('id')
+            ->first();
     }
 
     public function crear(array $datos): Reserva
@@ -19,7 +32,7 @@ class EloquentReservaRepository implements ReservaRepository
 
     public function filtradas(?string $estado, ?string $fecha, ?int $mesaId, ?string $codigo): Collection
     {
-        return Reserva::with(['mesa', 'inventario'])
+        return Reserva::with(['mesa', 'inventario', 'preordenes'])
             ->when($estado !== null, fn ($q) => $q->where('estado', $estado))
             ->when($fecha !== null, fn ($q) => $q->where('fecha', $fecha))
             ->when($mesaId !== null, fn ($q) => $q->where('mesa_id', $mesaId))

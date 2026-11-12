@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -42,6 +43,15 @@ class Reserva extends Model
         'estado',
     ];
 
+    /**
+     * La pre-orden viaja SIEMPRE en el JSON de la reserva (agenda,
+     * detalle y altas: el front pinta qué viene para la llegada).
+     * Se serializa como `preorden` con el shape del contrato
+     * `[{plato_id, cantidad}]`; la relación cruda (`preordenes`) es
+     * la que se eager-load-ea en los listados.
+     */
+    protected $appends = ['preorden'];
+
     protected function casts(): array
     {
         return [
@@ -70,6 +80,31 @@ class Reserva extends Model
     public function inventario(): HasMany
     {
         return $this->hasMany(ReservaInventario::class);
+    }
+
+    /**
+     * Líneas de la pre-orden del carrito (entidad `detalle_preorden`).
+     *
+     * @return HasMany<int, DetallePreOrden>
+     */
+    public function preordenes(): HasMany
+    {
+        return $this->hasMany(DetallePreOrden::class);
+    }
+
+    /**
+     * Pre-orden en el shape del contrato del front
+     * (`[{plato_id, cantidad}]`), la que viaja en `preorden` del JSON.
+     */
+    protected function preorden(): Attribute
+    {
+        return Attribute::get(fn (): array => $this->preordenes
+            ->map(fn (DetallePreOrden $linea): array => [
+                'plato_id' => $linea->plato_id,
+                'cantidad' => $linea->cantidad,
+            ])
+            ->values()
+            ->all());
     }
 
     /**

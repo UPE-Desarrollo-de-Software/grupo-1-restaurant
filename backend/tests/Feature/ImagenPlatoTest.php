@@ -41,7 +41,7 @@ function tokenImagen(string $rol): string
  */
 function rutaS3(string $url): string
 {
-    $base = rtrim(Storage::disk('s3')->url(''), '/') . '/';
+    $base = rtrim(Storage::disk('s3')->url(''), '/').'/';
 
     return Str::after($url, $base);
 }
