@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Alert, Spinner } from 'react-bootstrap'
+import { Alert } from 'react-bootstrap'
 import { Link, useParams } from 'react-router-dom'
 import { getPlato } from '../../api/platos'
 import { useCategorias } from '../../hooks/useCategorias'
 import type { PlatoObtener } from '../../types/Menu'
+import GastroLoader from '../../components/GastroLoader/GastroLoader'
 import s from './DetallePlatoPage.module.css'
 
 const formatearPrecio = (precio: number): string =>
@@ -69,8 +70,7 @@ export function DetallePlatoPage() {
 
             {cargando && (
                 <div className={s.cargando}>
-                    <Spinner animation='border' size='sm' />
-                    <span className='text-body-md'>Cargando plato…</span>
+                    <GastroLoader messages={['Cargando plato…']} size={80} />
                 </div>
             )}
 

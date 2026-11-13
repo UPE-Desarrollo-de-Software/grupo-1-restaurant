@@ -9,6 +9,7 @@ import type { EstadoPedido, ParteCuenta, PedidoResumen } from '../../types/Mesa'
 import { importeLinea, unitarioLinea } from '../../utils/borrador'
 import { ConfirmacionModal } from '../../components/Cliente/ConfirmacionModal'
 import { PersonalizarPlatoModal } from '../../components/Cliente/PersonalizarPlatoModal'
+import GastroLoader from '../../components/GastroLoader/GastroLoader'
 import s from './PedidoPage.module.css'
 
 type Vista = 'pedido' | 'cuenta'
@@ -435,8 +436,7 @@ export function PedidoPage() {
 
                             {cargandoResumen && (
                                 <div className={s.cargandoGlobal}>
-                                    <Spinner animation='border' size='sm' />
-                                    <span className='text-body-md'>Cargando tus pedidos…</span>
+                                    <GastroLoader messages={['Cargando tus pedidos…']} size={80} />
                                 </div>
                             )}
 
@@ -507,8 +507,7 @@ export function PedidoPage() {
 
                     {cargandoCuenta && (
                         <div className={s.cargandoGlobal}>
-                            <Spinner animation='border' size='sm' />
-                            <span className='text-body-md'>Cargando la cuenta…</span>
+                            <GastroLoader messages={['Cargando la cuenta…']} size={80} />
                         </div>
                     )}
 

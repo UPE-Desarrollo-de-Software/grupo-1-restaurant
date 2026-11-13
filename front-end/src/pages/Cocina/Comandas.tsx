@@ -3,6 +3,7 @@ import { Alert, Button, Spinner } from 'react-bootstrap'
 import { avanzarPedidoCocina } from '../../api/cocina'
 import { DetalleComanda } from '../../components/Cocina/DetalleComanda'
 import { EstadoComanda } from '../../components/Cocina/EstadoComanda'
+import GastroLoader from '../../components/GastroLoader/GastroLoader'
 import { useAhora } from '../../hooks/useAhora'
 import { useCocinaPedidos } from '../../hooks/useCocinaPedidos'
 import { usePedidosRealtime } from '../../realtime/useRealtimeEmpleado'
@@ -78,9 +79,7 @@ export function ComandasCocinaPage() {
 
                     {cargando ? (
                         <div className={s.centro}>
-                            <Spinner animation='border' role='status'>
-                                <span className='visually-hidden'>Cargando comandas…</span>
-                            </Spinner>
+                            <GastroLoader messages={['Cargando comandas…']} size={96} />
                         </div>
                     ) : ordenados.length === 0 ? (
                         <p className={`text-body-md ${s.vacio}`}>
@@ -142,7 +141,7 @@ export function ComandasCocinaPage() {
                 <section className={s.detallePanel} aria-label='Detalle de la comanda'>
                     {cargando ? (
                         <div className={`${s.panelVacio} ${s.panelVacioCargando}`}>
-                            <Spinner animation='border' />
+                            <GastroLoader messages={['Cargando comanda…']} size={96} />
                         </div>
                     ) : seleccionado ? (
                         <DetalleComanda

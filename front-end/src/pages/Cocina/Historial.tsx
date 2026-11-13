@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Alert, Button, ButtonGroup, Form, Spinner } from 'react-bootstrap'
 import { DetalleComandaHistorial } from '../../components/Cocina/DetalleComandaHistorial'
 import { EstadoComanda } from '../../components/Cocina/EstadoComanda'
+import GastroLoader from '../../components/GastroLoader/GastroLoader'
 import { useBusquedaComandaHistorial } from '../../hooks/useBusquedaComandaHistorial'
 import { useHistorialComandas } from '../../hooks/useHistorialComandas'
 import type { ComandaHistorial } from '../../types/Historial'
@@ -307,9 +308,7 @@ export function HistorialCocinaPage() {
                     {enBusqueda ? (
                         buscando ? (
                             <div className={s.centro}>
-                                <Spinner animation='border' role='status'>
-                                    <span className='visually-hidden'>Buscando comanda…</span>
-                                </Spinner>
+                                <GastroLoader messages={['Buscando comanda…']} size={80} />
                             </div>
                         ) : errorBusqueda ? (
                             <Alert variant='danger' className='text-body-sm mb-0'>
@@ -336,9 +335,7 @@ export function HistorialCocinaPage() {
                         )
                     ) : cargando ? (
                         <div className={s.centro}>
-                            <Spinner animation='border' role='status'>
-                                <span className='visually-hidden'>Cargando historial…</span>
-                            </Spinner>
+                            <GastroLoader messages={['Cargando historial…']} size={80} />
                         </div>
                     ) : error ? (
                         <Alert variant='danger' className='text-body-sm mb-0'>
@@ -488,9 +485,7 @@ function PanelVacio({
     return (
         <div className={s.panelVacio}>
             {cargando ? (
-                <Spinner animation='border' role='status'>
-                    <span className='visually-hidden'>Cargando…</span>
-                </Spinner>
+                <GastroLoader messages={[]} size={72} />
             ) : (
                 <i className={`bi ${icono}`} aria-hidden='true' />
             )}

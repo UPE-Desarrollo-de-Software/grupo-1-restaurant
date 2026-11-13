@@ -12,6 +12,10 @@ export function usePlatos() {
 
         async function cargarFetch(){
             try {
+                // TEMPORAL: probar GastroLoader — abrir /carta?loader para ver la animación completa.
+                if (new URLSearchParams(window.location.search).has('loader')) {
+                    await new Promise(r => setTimeout(r, 8000))
+                }
                 const data = await getPlatos(controller.signal)
                 setPlatos(data)
                 setError(null)

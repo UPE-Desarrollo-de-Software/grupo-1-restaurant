@@ -5,6 +5,7 @@ import type { Reserva } from '../../types/Reserva'
 import type { Mesa } from '../../types/Mesa'
 import type { Usuario } from '../../types/Auth'
 import { PlatoCard } from '../Platos/PlatoCard'
+import GastroLoader from '../GastroLoader/GastroLoader'
 import { IngredienteCard } from '../Ingredientes/IngredienteCard'
 import { CategoriaCard } from '../Categorias/CategoriaCard'
 import { UsuarioCard } from '../Usuarios/UsuarioCard'
@@ -123,7 +124,13 @@ type ListaProps = {
 export function Lista({ tipo, items, loading, error, busqueda, total, onItemCambiado }: ListaProps) {
   const { Card, cargando, vacio } = CONFIG[tipo]
 
-  if (loading) return <p className='text-body-md text-center'>{cargando}</p>
+  if (loading) {
+    return (
+      <div className='d-flex justify-content-center py-5'>
+        <GastroLoader messages={[cargando]} />
+      </div>
+    )
+  }
   if (error) return <p className='text-body-md text-center'>{error}</p>
 
   const filtrados = filtrar(items, busqueda)

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Alert, Button, Card, Spinner } from 'react-bootstrap'
+import { Alert, Button, Card } from 'react-bootstrap'
+import GastroLoader from '../../components/GastroLoader/GastroLoader'
 import { getCuentaMesa, getMesa, getResumenMesa } from '../../api/mesas'
 import { CerrarMesaModal } from '../../components/Mesas/CerrarMesaModal'
 import { QrMesaModal } from '../../components/Mesas/QrMesaModal'
@@ -260,7 +261,7 @@ export function MozoMesaPage() {
 
             {cargando ? (
                 <div className='d-flex justify-content-center py-4'>
-                    <Spinner animation='border' />
+                    <GastroLoader messages={['Cargando datos de la mesa…']} size={96} />
                 </div>
             ) : vista === 'comanda' && comanda ? (
                 <div className='d-flex flex-column gap-3'>

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Alert, Spinner } from 'react-bootstrap'
+import { Alert } from 'react-bootstrap'
 import { useRol } from '../../../context/RolesContext/useRol'
 import { getDashboard } from '../../../api/dashboard'
 import type { DashboardDatos } from '../../../types/Dashboard'
+import GastroLoader from '../../../components/GastroLoader/GastroLoader'
 import s from '../gerente.module.css'
 
 const formatearPrecio = (precio: number): string =>
@@ -73,8 +74,7 @@ export function DashboardPage() {
 
                 {cargando && (
                     <div className={s.empty}>
-                        <Spinner animation='border' />
-                        <p className='text-body-sm'>Cargando estadísticas...</p>
+                        <GastroLoader messages={['Cargando estadísticas…']} />
                     </div>
                 )}
 

@@ -58,8 +58,8 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
       AWS_BUCKET: ${AWS_BUCKET:-}
-      AWS_URL: ${AWS_URL:-}
-      AWS_ENDPOINT: ${AWS_ENDPOINT:-}
+      # AWS_URL: ${AWS_URL:-}
+      # AWS_ENDPOINT: ${AWS_ENDPOINT:-}
       AWS_USE_PATH_STYLE_ENDPOINT: ${AWS_USE_PATH_STYLE_ENDPOINT:-false}
     healthcheck:
       # start_period largo: el primer arranque sobre una base vacía corre todas
