@@ -3,7 +3,7 @@ import { Alert, Button, Form, Spinner } from 'react-bootstrap'
 import { disponibilidadDiaReservaWeb, solicitarReservaWeb } from '../../../api/cliente'
 import { hoyLocal, reservaWebSchema } from '../../../schemas/cliente'
 import { useAhora } from '../../../hooks/useAhora'
-import { ExitoModal } from '../../../components/Exito/ExitoModal'
+import { ExitoModal } from '../../../components/Modales/ExitoModal'
 
 import type { DisponibilidadDiaReservaWeb, Reserva, SlotDisponibilidad } from '../../../types/Reserva'
 import s from './Reservas.module.css'

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ItemLista, Tipo } from '../../hooks/useDatos'
 import type { Categoria, Ingrediente, PlatoListar, Promocion } from '../../types/Menu'
@@ -69,6 +70,11 @@ const SIN_RESULTADOS: Record<Tipo, string> = {
   mesa: 'No se encontraron mesas',
 }
 
+// TEMPORAL (diagnóstico): milisegundos mínimos que se mantiene visible el
+// GastroLoader antes de poder mostrar contenido o el mensaje de vacío.
+// Borrar junto con el estado `esperaTerminada` cuando termine la prueba.
+const ESPERA_LOADER_MS = 0
+
 // La lista llega ya filtrada por chips (hub): si el filtro dejó todo
 // afuera, no es "no hay nada cargado".
 const SIN_FILTRO: Record<Tipo, string> = {
@@ -124,7 +130,16 @@ type ListaProps = {
 export function Lista({ tipo, items, loading, error, busqueda, total, onItemCambiado }: ListaProps) {
   const { Card, cargando, vacio } = CONFIG[tipo]
 
-  if (loading) {
+  // TEMPORAL (diagnóstico): fuerza un tiempo mínimo de loader en cada montaje
+  // para comprobar que el GastroLoader aparece en todas las listas. El set va
+  // dentro del callback del timeout (regla react-hooks/set-state-in-effect).
+  const [esperaTerminada, setEsperaTerminada] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setEsperaTerminada(true), ESPERA_LOADER_MS)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (loading || !esperaTerminada) {
     return (
       <div className='d-flex justify-content-center py-5'>
         <GastroLoader messages={[cargando]} />

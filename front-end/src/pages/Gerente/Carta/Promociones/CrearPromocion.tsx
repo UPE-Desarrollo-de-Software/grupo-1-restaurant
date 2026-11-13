@@ -4,7 +4,7 @@ import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Promociones.module.css'
 import { promocionSchema } from '../../../../schemas/carta'
 import { createPromocion } from '../../../../api/promociones'
-import { ExitoModal } from '../../../../components/Exito/ExitoModal'
+import { ExitoModal } from '../../../../components/Modales/ExitoModal'
 import type { TipoPromocion } from '../../../../types/Menu'
 
 const TIPOS: { value: TipoPromocion; label: string }[] = [

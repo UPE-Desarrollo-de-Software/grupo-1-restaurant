@@ -1,18 +1,25 @@
-/* ============ MODAL ÉXITO ============ */
+/* ============ MODALES COMPARTIDOS (éxito / error) ============ */
 
-.exitoIcono {
+.icono {
     text-align: center;
     font-size: 2.75rem;
+}
+
+.iconoExito {
     color: var(--color-secondary);
 }
 
-.exitoTexto {
+.iconoError {
+    color: var(--color-error);
+}
+
+.texto {
     text-align: center;
     margin: var(--space-sm) 0;
     color: var(--color-on-surface);
 }
 
-.exitoDatos {
+.datos {
     list-style: none;
     margin: 0;
     padding: var(--space-sm);
@@ -23,14 +30,14 @@
     gap: var(--space-2xs);
 }
 
-.exitoDatos li {
+.datos li {
     display: flex;
     justify-content: space-between;
     gap: var(--space-sm);
     color: var(--color-on-surface-variant);
 }
 
-.exitoDatos strong {
+.datos strong {
     color: var(--color-on-surface);
     text-align: right;
 }

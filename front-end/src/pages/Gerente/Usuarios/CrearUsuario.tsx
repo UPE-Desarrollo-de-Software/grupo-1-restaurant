@@ -5,7 +5,7 @@ import s from './Usuarios.module.css'
 import { registerSchema } from '../../../schemas/usuarios'
 import { getRoles } from '../../../api/auth'
 import { createUsuario } from '../../../api/usuarios'
-import { ExitoModal } from '../../../components/Exito/ExitoModal'
+import { ExitoModal } from '../../../components/Modales/ExitoModal'
 import type { Rol, Usuario } from '../../../types/Auth'
 
 export function CrearUsuarioPage() {

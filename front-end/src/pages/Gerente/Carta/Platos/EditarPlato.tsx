@@ -11,12 +11,30 @@ import { platoSchema } from '../../../../schemas/carta'
 import { deletePlato, getPlato, quitarImagenPlato, subirImagenPlato, updatePlato } from '../../../../api/platos'
 import { validarImagenPlato } from '../../../../utils/imagenPlato'
 import { ZonaPeligro } from '../../../../components/ZonaPeligro/ZonaPeligro'
+import { ExitoModal } from '../../../../components/Modales/ExitoModal'
+import { ErrorModal } from '../../../../components/Modales/ErrorModal'
+import { formatearPrecio } from '../../../../utils/historial'
 import {
   ETIQUETAS_ESTADO_INGREDIENTE,
   estadoDesdePivot,
   flagsDesdeEstado,
   type EstadoIngredientePlato,
 } from '../../../../utils/ingredientePlato'
+
+// Resultado de una acción (guardar / eliminar) que se muestra en un modal:
+// éxito → "Listo" vuelve a la lista; error → "Aceptar" deja al usuario en
+// esta misma pantalla con lo que tenía cargado.
+type ResultadoModal =
+  | {
+      tipo: 'exito'
+      titulo: string
+      mensaje: string
+      datos?: { etiqueta: string; valor: string }[]
+      // true = el registro ya no existe (borrado): la X también vuelve a la
+      // lista en vez de dejar abierto un formulario inservible.
+      cerrarVuelveALaLista?: boolean
+    }
+  | { tipo: 'error'; titulo: string; mensaje: string }
 
 export function EditarPlatoPage() {
   const { id } = useParams()
@@ -54,8 +72,10 @@ export function EditarPlatoPage() {
   const [cargando, setCargando] = useState(true)
   const [enviando, setEnviando] = useState(false)
   const [eliminando, setEliminando] = useState(false)
-  const [errorApi, setErrorApi] = useState<string | null>(null)
-  const [exito, setExito] = useState<string | null>(null)
+  // Error de CARGA de la página (getPlato): se muestra inline, no en modal.
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
+  // Resultado de una ACCIÓN (guardar / eliminar): siempre en modal.
+  const [resultado, setResultado] = useState<ResultadoModal | null>(null)
   const [tocado, setTocado] = useState(false)
 
   useEffect(() => {
@@ -79,7 +99,7 @@ export function EditarPlatoPage() {
       })
       .catch(err => {
         if (!controller.signal.aborted) {
-          setErrorApi(err instanceof Error ? err.message : 'Error desconocido al cargar el plato')
+          setErrorCarga(err instanceof Error ? err.message : 'Error desconocido al cargar el plato')
         }
       })
       .finally(() => {
@@ -147,8 +167,7 @@ export function EditarPlatoPage() {
   async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setTocado(true)
-    setExito(null)
-    setErrorApi(null)
+    setResultado(null)
 
     if (!resultados.success) return
 
@@ -161,11 +180,12 @@ export function EditarPlatoPage() {
     setEnviando(true)
     try {
       const rta = await updatePlato(Number(id), resultados.data)
-      setExito(rta.message)
       setTocado(false)
 
       // Imagen: va después de guardar los datos (endpoints propios). Si
-      // falla, los datos YA quedaron guardados: se avisa sin revertir.
+      // falla, los datos YA quedaron guardados: se avisa sin revertir y
+      // no se muestra el modal de éxito (el usuario puede reintentar).
+      let falloImagen: string | null = null
       if (archivo) {
         try {
           const subida = await subirImagenPlato(Number(id), archivo)
@@ -173,7 +193,7 @@ export function EditarPlatoPage() {
           setArchivo(null)
           setRecargaInput(n => n + 1)
         } catch (err) {
-          setErrorApi(`Los datos se guardaron, pero la imagen no se pudo actualizar: ${err instanceof Error ? err.message : 'error desconocido'}`)
+          falloImagen = `Los datos se guardaron, pero la imagen no se pudo actualizar: ${err instanceof Error ? err.message : 'error desconocido'}`
         }
       } else if (quitarImagen && imagenActual) {
         try {
@@ -181,11 +201,30 @@ export function EditarPlatoPage() {
           setImagenActual(sinImagen.plato.imagen_url)
           setQuitarImagen(false)
         } catch (err) {
-          setErrorApi(`Los datos se guardaron, pero la imagen no se pudo quitar: ${err instanceof Error ? err.message : 'error desconocido'}`)
+          falloImagen = `Los datos se guardaron, pero la imagen no se pudo quitar: ${err instanceof Error ? err.message : 'error desconocido'}`
         }
       }
+
+      if (falloImagen) {
+        setResultado({ tipo: 'error', titulo: 'Plato actualizado, pero faltó la imagen', mensaje: falloImagen })
+        return
+      }
+
+      setResultado({
+        tipo: 'exito',
+        titulo: 'Plato actualizado',
+        mensaje: '¡Listo! El plato se actualizó correctamente.',
+        datos: [
+          { etiqueta: 'Nombre', valor: rta.plato.nombre },
+          { etiqueta: 'Precio', valor: formatearPrecio(rta.plato.precio) },
+        ],
+      })
     } catch (err) {
-      setErrorApi(err instanceof Error ? err.message : 'Error desconocido al actualizar el plato')
+      setResultado({
+        tipo: 'error',
+        titulo: 'No se pudo actualizar el plato',
+        mensaje: err instanceof Error ? err.message : 'Error desconocido al actualizar el plato',
+      })
     } finally {
       setEnviando(false)
     }
@@ -193,12 +232,22 @@ export function EditarPlatoPage() {
 
   async function handlerEliminar() {
     setEliminando(true)
-    setErrorApi(null)
+    setResultado(null)
     try {
       await deletePlato(Number(id))
-      navigate('/gerente/carta/platos')
+      setResultado({
+        tipo: 'exito',
+        titulo: 'Plato eliminado',
+        mensaje: 'El plato se eliminó correctamente y ya no figura en la carta.',
+        cerrarVuelveALaLista: true,
+      })
     } catch (err) {
-      setErrorApi(err instanceof Error ? err.message : 'Error desconocido al eliminar el plato')
+      setResultado({
+        tipo: 'error',
+        titulo: 'No se pudo eliminar el plato',
+        mensaje: err instanceof Error ? err.message : 'Error desconocido al eliminar el plato',
+      })
+    } finally {
       setEliminando(false)
     }
   }
@@ -221,26 +270,11 @@ export function EditarPlatoPage() {
         <h1 className={`text-headline-md ${s.title}`}>Editar plato</h1>
         <p className={`text-body-sm ${s.subtitle}`}>Modificá los datos del plato de la carta.</p>
 
-        {exito && (
-          <Alert variant='success' className='text-body-md d-flex flex-wrap align-items-center justify-content-between gap-2'>
-            <span>{exito}</span>
-            <Button
-              className='text-label-md'
-              variant='outline-success'
-              size='sm'
-              type='button'
-              onClick={() => navigate('/gerente/carta/platos')}
-            >
-              Volver a la lista
-            </Button>
-          </Alert>
-        )}
-
         {(errorCategorias || errorIngredientes || errorPromociones) &&
           <Alert variant='danger' className='text-body-md'>
             No se pudieron cargar las categorías, los ingredientes o las promociones. Verificá que el servidor esté activo
           </Alert>}
-        {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
+        {errorCarga && <Alert variant='danger' className='text-body-md'>{errorCarga}</Alert>}
 
           <Form onSubmit={handlerSubmit} noValidate>
             <div className={s.row}>
@@ -444,6 +478,32 @@ export function EditarPlatoPage() {
           onEliminar={handlerEliminar}
         />
       </div>
+
+      {resultado?.tipo === 'exito' && (
+        <ExitoModal
+          show
+          titulo={resultado.titulo}
+          mensaje={resultado.mensaje}
+          datos={resultado.datos}
+          // "Listo" vuelve a la lista de la sección. La X cierra y deja al
+          // usuario en esta pantalla; si el plato se eliminó, también vuelve
+          // a la lista (el formulario ya no sirve).
+          onListo={() => navigate('/gerente/carta/platos')}
+          onCerrar={resultado.cerrarVuelveALaLista
+            ? () => navigate('/gerente/carta/platos')
+            : () => setResultado(null)}
+        />
+      )}
+
+      {resultado?.tipo === 'error' && (
+        <ErrorModal
+          show
+          titulo={resultado.titulo}
+          mensaje={resultado.mensaje}
+          // "Aceptar" sólo cierra: se sigue en la misma pantalla.
+          onAceptar={() => setResultado(null)}
+        />
+      )}
     </div>
   )
 }

@@ -6,7 +6,9 @@ interface ZonaPeligroProps {
   titulo?: string
   descripcion: string
   textoBoton: string
-  onEliminar: () => void
+  // Puede ser async: la página maneja sus errores y muestra el resultado
+  // en su propio modal.
+  onEliminar: () => void | Promise<void>
   eliminando?: boolean
 }
 
@@ -20,6 +22,13 @@ export function ZonaPeligro({
   // Borrado en 2 pasos: el botón abre el modal; la acción recién se
   // ejecuta al confirmar ahí dentro. Aplica en todos los ABM.
   const [confirmando, setConfirmando] = useState(false)
+
+  // La confirmación se cierra al confirmar: la página muestra el resultado
+  // (éxito o error) en su propio modal, así no quedan dos modales apilados.
+  function confirmar() {
+    setConfirmando(false)
+    void onEliminar()
+  }
 
   return (
     <section className={s.zona} aria-labelledby='zona-peligro-titulo'>
@@ -76,7 +85,7 @@ export function ZonaPeligro({
             variant='danger'
             type='button'
             disabled={eliminando}
-            onClick={onEliminar}
+            onClick={confirmar}
           >
             {eliminando
               ? <><Spinner size='sm' animation='border' className='me-2' />Eliminando...</>
