@@ -55,17 +55,6 @@ export function ComandasCocinaPage() {
                         Pedidos que están en cocina. Avanzá cada comanda hasta marcarla lista.
                     </p>
                 </div>
-                <Button
-                    size='sm'
-                    variant='outline-primary'
-                    className='text-label-md'
-                    type='button'
-                    disabled={cargando || ocupado}
-                    onClick={recargar}
-                >
-                    <i className='bi bi-arrow-clockwise me-1' aria-hidden='true' />
-                    Actualizar cola
-                </Button>
             </header>
 
             <div className={s.paneles}>

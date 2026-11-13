@@ -87,6 +87,24 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
 - BottomNavbar (`useBottomNav`, `src/navigation/useBottomNav.ts`): sin sesión
   staff → `NAV_PUBLICO` (Carta, Mi pedido, Reservas, Mesa — todas con ruta); con
   sesión → `BOTTOM_POR_ROL[rol]` con fallback `NAV_PUBLICO`.
+- **Side Navbar (escritorio, sólo Cocina por ahora)**: `MainLayout` sigue siendo
+  el shell de público/Gerente/Mozo (Navbar + SubNavbar + `<main>` + BottomNavbar).
+  Cocina tiene su propio grupo de rutas con `CocinaLayout`
+  (`src/layouts/CocinaLayout.tsx`) → `LayoutLateral`
+  (`src/layouts/LayoutLateral.tsx` + `.module.css`): en escritorio (`min-width:
+  992px`, CSS puro, sin JS) muestra `SideNavbar`
+  (`src/components/SideNavbar/`, fijo a la izquierda, `15rem`, opciones por
+  prop) y oculta la barra superior y el BottomNavbar (`<main>` compensa con
+  `padding-left`); en móvil conserva la navegación actual. Las opciones salen de
+  `useSideNav()` (`src/navigation/useSideNav.ts`) → `SIDE_NAV_POR_ROL`
+  (`src/navigation/side.ts`), que reusa `BOTTOM_POR_ROL[rol]`. Para sumar un
+  módulo: agregar la entrada en `side.ts` y usar `LayoutLateral` en su layout.
+  El bloque de usuario inferior (`components/Usuario/UsuarioNav.tsx`) abre el
+  mismo `ModalPerfil` que el avatar del Navbar (lógica de logout única en
+  `components/Usuario/ModalPerfil.tsx`; sus estilos viven en
+  `Usuario.module.css`). `BotonNotificaciones` sigue sólo en el Navbar (es el
+  único punto de suscripción a Reverb): si Mozo pasa a Side Navbar hay que
+  **moverlo**, no duplicarlo.
 - **"Llamar al mozo" existe**: botón en `PedidoPage` → `llamarMozo()`
   (`POST /cliente/llamar`, Bearer `codigo_acceso`, sin body). Rate limit del
   back de 1/min por mesa → 429 con `message` en español (se muestra en un Alert

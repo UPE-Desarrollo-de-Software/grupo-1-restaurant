@@ -1,0 +1,43 @@
+/* ============================================================
+   LAYOUT LATERAL (shell con Side Navbar)
+   - Escritorio (>= 992px, lg de Bootstrap): Side Navbar fijo a la
+     izquierda y el contenido ocupa el resto. Sin barra superior ni
+     bottom navbar.
+   - Móvil (< 992px): la navegación de siempre (Navbar + SubNavbar +
+     BottomNavbar).
+   El corte se hace por CSS (sin JS) para no depender de listeners de
+   resize ni de un estado de React.
+   ============================================================ */
+
+.shell {
+  /* Ancho del Side Navbar: lo lee SideNavbar.module.css. */
+  --side-nav-width: 15rem;
+  min-height: 100vh;
+}
+
+/* Escritorio: sólo el sidebar. */
+.lateral {
+  display: none;
+}
+
+/* Móvil: barra superior + bottom navbar, igual que MainLayout. */
+.contenido {
+  padding-bottom: calc(var(--bottom-nav-height) + var(--space-md));
+}
+
+@media (min-width: 992px) {
+  .lateral {
+    display: block;
+  }
+
+  .barraSuperior,
+  .bottomNav {
+    display: none;
+  }
+
+  .contenido {
+    padding-left: var(--side-nav-width);
+    /* Sin bottom navbar no hace falta reservar su alto. */
+    padding-bottom: 0;
+  }
+}

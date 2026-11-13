@@ -47,7 +47,6 @@ export function HistorialCocinaPage() {
         pagina,
         error,
         cargando,
-        recargar,
         reintentar,
     } = useHistorialComandas({
         desde: rango.desde,
@@ -138,15 +137,6 @@ export function HistorialCocinaPage() {
         void buscar(idBuscado)
     }
 
-    async function actualizar() {
-        setActualizando(true)
-        try {
-            await recargar()
-        } finally {
-            setActualizando(false)
-        }
-    }
-
     async function reintentarLista() {
         setActualizando(true)
         try {
@@ -170,19 +160,6 @@ export function HistorialCocinaPage() {
                         Comandas finalizadas por día o mes. También podés buscar una comanda por número.
                     </p>
                 </div>
-                <Button
-                    size='sm'
-                    variant='outline-primary'
-                    className='text-label-md'
-                    type='button'
-                    disabled={ocupado || enBusqueda}
-                    onClick={() => { void actualizar() }}
-                >
-                    {actualizando
-                        ? <Spinner size='sm' animation='border' className='me-1' />
-                        : <i className='bi bi-arrow-clockwise me-1' aria-hidden='true' />}
-                    Actualizar
-                </Button>
             </header>
 
             <section className={s.filtros} aria-label='Filtros del historial'>
