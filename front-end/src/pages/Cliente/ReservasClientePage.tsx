@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
+import { Link } from 'react-router-dom'
+import { QRCodeCanvas } from 'qrcode.react'
 import { disponibilidadDiaReservaWeb, solicitarReservaWeb } from '../../api/cliente'
 import { hoyLocal, reservaWebSchema } from '../../schemas/cliente'
 import { useAhora } from '../../hooks/useAhora'
-import { jsPDF } from 'jspdf'
-// import { QRCodeCanvas } from 'qrcode.react'
-import type { DisponibilidadDiaReservaWeb, Reserva, SlotDisponibilidad } from '../../types/Reserva'
+import { PreordenCliente } from '../../components/Cliente/PreordenCliente'
+import { descargarComprobanteReserva } from '../../utils/comprobanteReserva'
+import type { DisponibilidadDiaReservaWeb, LineaPreorden, Reserva, SlotDisponibilidad } from '../../types/Reserva'
 import s from './ReservasClientePage.module.css'
 
 // Anticipación mínima que exige el backend (ReservaService: 2 horas).
@@ -57,6 +59,20 @@ export function ReservasClientePage() {
     const [reservaCreada, setReservaCreada] = useState<Reserva | null>(null)
     const [tocado, setTocado] = useState(false)
     const [copiado, setCopiado] = useState(false)
+
+    // Carrito de pre-orden (opcional): se manda junto con el alta y
+    // queda guardado contra la reserva; la edición posterior es por PIN
+    // en /preorden. El PIN real de la reserva es `codigo` (el id es solo
+    // fallback de respuestas viejas).
+    const [lineasPreorden, setLineasPreorden] = useState<LineaPreorden[]>([])
+    const pinReserva = reservaCreada
+        ? (reservaCreada.codigo ?? String(reservaCreada.id))
+        : ''
+    const cantidadPreorden = lineasPreorden.reduce((suma, linea) => suma + linea.cantidad, 0)
+
+    // QR en alta resolución del enlace de pre-orden: alimenta al
+    // comprobante PDF (se renderiza fuera de pantalla, como en QrMesas).
+    const qrRef = useRef<HTMLCanvasElement>(null)
 
     // const datosQR = reservaCreada
     // ? JSON.stringify({
@@ -152,53 +168,32 @@ export function ReservasClientePage() {
         }
     }
 
-    // function handlerDescargar() {
-    // const canvas = document.getElementById(
-    //     'qr-reserva'
-    // ) as HTMLCanvasElement | null
-
-    // const imagen = canvas?.toDataURL('image/png')
-
-    // if (!imagen) return
-
-    // const enlace = document.createElement('a')
-    // enlace.href = imagen
-    // enlace.download = `reserva-${reservaCreada?.id}.png`
-    // enlace.click()
-    // }
     async function handlerCopiar() {
         if (!reservaCreada) return
         try {
-            await navigator.clipboard.writeText(pinReserva(reservaCreada))
+            await navigator.clipboard.writeText(reservaCreada.id.toString())
             setCopiado(true)
         } catch {
             setCopiado(false)
         }
     }
 
-    function descargarComprobante() {
+    // Comprobante PDF con la estética de la app (ver utils/comprobanteReserva):
+    // banda terracota con logo, PIN protagonista, QR a /preorden y la
+    // pre-orden resumida en caja sage.
+    async function descargarComprobante() {
         if (!reservaCreada) return
 
-        const pin = pinReserva(reservaCreada)
-        const doc = new jsPDF()
-
-        doc.setFontSize(20)
-        doc.text('Reserva confirmada', 20, 25)
-
-        doc.setFontSize(12)
-        doc.text(`Código de reserva: ${pin}`, 20, 45)
-        doc.text(`Fecha: ${reservaCreada.fecha}`, 20, 55)
-        doc.text(`Hora: ${reservaCreada.hora}`, 20, 65)
-        doc.text(`Personas: ${reservaCreada.cantPersonas}`, 20, 75)
-
-        doc.setFontSize(10)
-        doc.text(
-            'Presentá este comprobante al mozo al llegar.',
-            20,
-            95
-        )
-
-        doc.save(`comprobante-reserva-${pin}.pdf`)
+        await descargarComprobanteReserva({
+            pin: pinReserva,
+            fecha: reservaCreada.fecha,
+            hora: reservaCreada.hora,
+            cantPersonas: reservaCreada.cantPersonas,
+            contacto: reservaCreada.contacto_solicitante,
+            cantidadPreorden,
+            qrDataUrl: qrRef.current?.toDataURL('image/png') ?? null,
+            origen: window.location.origin,
+        })
     }
 
     async function manejarSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -214,6 +209,9 @@ export function ReservasClientePage() {
                 fecha: resultados.data.fecha,
                 hora: resultados.data.hora,
                 cantPersonas: resultados.data.cantPersonas,
+                // El back hace merge por plato_id al alta; sin líneas no
+                // se manda la clave (el JSON la omitiría igual).
+                ...(lineasPreorden.length > 0 ? { preorden: lineasPreorden } : {}),
             })
             setReservaCreada(creada)
         } catch (err) {
@@ -234,6 +232,8 @@ export function ReservasClientePage() {
         setHorarios({})
         setReintento(0)
         setTocado(false)
+        setLineasPreorden([])
+        setCopiado(false)
     }
 
     return (
@@ -243,6 +243,10 @@ export function ReservasClientePage() {
                     <i className='bi bi-calendar-check' />
                 </span>
                 <h1 className='text-headline-md'>Reservá tu mesa</h1>
+                <p className={`text-body-sm ${s.intro}`}>
+                    Armá tu pedido mientras reservás: al llegar a la mesa se envía solo.{' '}
+                    <Link to='/preorden'>¿Ya tenés reserva? Modificala con tu PIN</Link>
+                </p>
             </header>
 
             <section className={s.tarjeta}>
@@ -394,6 +398,12 @@ export function ReservasClientePage() {
                         )}
                     </Form.Group>
 
+                    <PreordenCliente
+                        lineas={lineasPreorden}
+                        onChange={setLineasPreorden}
+                        disabled={enviando}
+                    />
+
                     <Button
                         type='submit'
                         variant='primary'
@@ -428,7 +438,7 @@ export function ReservasClientePage() {
                             <div className={s.pinBox}>
                                 <div>
                                     <p className={`text-label-sm ${s.pinEtiqueta}`}>Código reserva (PIN)</p>
-                                    <p className={`text-headline-md ${s.pinValor}`}>{pinReserva(reservaCreada)}</p>
+                                    <p className={`text-headline-md ${s.pinValor}`}>{reservaCreada.id}</p>
                                 </div>
                                 <Button
                                     size='sm'
@@ -458,19 +468,23 @@ export function ReservasClientePage() {
                                     <strong>{reservaCreada.cantPersonas}</strong>
                                 </li>
                             </ul>
-                            {/* <div className={s.qrContainer}>
-                                <QRCodeCanvas
-                                    id='qr-reserva'
-                                    value={datosQR}
-                                    size={200}
-                                    level='M'
-                                    includeMargin
-                                />
-                            </div> */}
+                            {lineasPreorden.length > 0 && (
+                                <div className={s.preordenBox}>
+                                    <p className={`text-label-sm ${s.preordenTitulo}`}>Tu pre-orden</p>
+                                    <p className={`text-body-sm ${s.preordenTexto}`}>
+                                        {cantidadPreorden}{' '}
+                                        {cantidadPreorden === 1 ? 'plato elegido' : 'platos elegidos'}
+                                        : llegando a la mesa se envían solos a cocina.
+                                    </p>
+                                    <p className={`text-body-sm ${s.preordenTexto} mb-0`}>
+                                        ¿Querés cambiar algo? Modificala con tu PIN desde{' '}
+                                        <Link to='/preorden'>Pre-orden</Link>.
+                                    </p>
+                                </div>
+                            )}
                             <p className={`text-body-sm ${s.exitoNota}`}>
                                 Guardá el código de tu reserva y mostráselo al local.
                             </p>
-                            
                         </>
                     )}
                 </Modal.Body>
@@ -494,6 +508,20 @@ export function ReservasClientePage() {
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* QR fuera de pantalla: alimenta al comprobante PDF. */}
+            <div
+                className='no-print'
+                style={{ position: 'fixed', left: -99999, top: 0 }}
+                aria-hidden='true'
+            >
+                <QRCodeCanvas
+                    ref={qrRef}
+                    value={`${window.location.origin}/preorden`}
+                    size={512}
+                    level='M'
+                />
+            </div>
         </div>
     )
 }

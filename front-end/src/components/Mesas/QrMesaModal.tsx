@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Button, Modal } from 'react-bootstrap'
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react'
 import logo from '../../assets/logo/gastroapp-logo-256x256.png'
+import { cargarImagen, descargarImagen, dibujarAficheQr } from '../../utils/descargas'
 import type { MesaConCodigo } from '../../types/Mesa'
 import s from './QrMesaModal.module.css'
 
@@ -28,14 +29,22 @@ export function QrMesaModal({ mesa, onCerrar, onListo, onCrearMas }: QrMesaModal
     ? `${window.location.origin}/mesa?codigo=${mesa.codigo_acceso}`
     : ''
 
-  // function handlerDescargar() {
-  //   const lienzo = canvasRef.current?.toDataURL('image/png')
-  //   if (!lienzo) return
-  //   const enlace = document.createElement('a')
-  //   enlace.href = lienzo
-  //   enlace.download = `qr-mesa-${mesa?.id ?? 'mesa'}.png`
-  //   enlace.click()
-  // }
+  // El PNG baja como afiche de la app (logo, QR enmarcado y el PIN en
+  // bloque punteado) en vez del QR pelado — ver utils/descargas.ts.
+  async function handlerDescargar() {
+    const lienzo = canvasRef.current
+    if (!lienzo || !mesa) return
+
+    const afiche = await dibujarAficheQr({
+      logo: await cargarImagen(logo),
+      qr: lienzo,
+      titulo: `Mesa #${String(mesa.id).padStart(2, '0')}`,
+      subtitulo: 'Escaneá para entrar a tu mesa',
+      codigo: { etiqueta: 'Código de tu mesa', valor: mesa.codigo_acceso },
+      pie: 'Válido hasta cerrar la visita. También podés tipear el código en la app.',
+    })
+    descargarImagen(afiche, `qr-mesa-${mesa.id}.png`)
+  }
 
   return (
     <Modal show={mesa !== null} onHide={cerrar} centered aria-labelledby='qr-mesa-titulo'>
@@ -70,22 +79,21 @@ export function QrMesaModal({ mesa, onCerrar, onListo, onCrearMas }: QrMesaModal
       </Modal.Body>
 
       <Modal.Footer className='no-print'>
-        {/* <Button variant='outline-primary' className='text-label-md' type='button' onClick={() => window.print()}>
-          <i className='bi bi-printer me-1' aria-hidden='true' />
-          Imprimir
-        </Button>
-        <Button variant='outline-primary' className='text-label-md' type='button' onClick={handlerDescargar}>
+        <Button
+          variant='outline-primary'
+          className='text-label-md'
+          type='button'
+          onClick={handlerDescargar}
+        >
           <i className='bi bi-download me-1' aria-hidden='true' />
           Descargar PNG
-        </Button> */}
-        {onCrearMas && (
-          <Button variant='outline-primary' className='text-label-md' type='button' onClick={onCrearMas}>
-            <i className='bi bi-plus-circle me-1' aria-hidden='true' />
-            Crear más
-          </Button>
-        )}
-        <Button variant='primary' className='text-label-md' type='button' onClick={cerrar}>
-          {onCrearMas ? 'Listo' : 'Cerrar'}
+        </Button>
+        <Button variant='outline-primary' className='text-label-md' type='button' onClick={onCrearMas}>
+          <i className='bi bi-plus-circle me-1' aria-hidden='true' />
+          Crear más
+        </Button>
+        <Button variant='primary' className='text-label-md' type='button' onClick={onListo}>
+          Listo
         </Button>
       </Modal.Footer>
 

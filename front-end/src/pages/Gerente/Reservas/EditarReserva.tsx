@@ -87,7 +87,9 @@ async function handlerHabilitarMesa() {
 
         navigate(ruta, {
             state: {
-                // reservaId: rta.reserva.id,
+                // El alta de mesa lo retoma para vincular la mesa con la
+                // reserva (hereda el PIN y convierte la pre-orden).
+                reservaId: rta.reserva.id,
                 capacidad: rta.reserva.cantPersonas
             }
         });

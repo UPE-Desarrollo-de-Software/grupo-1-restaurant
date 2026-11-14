@@ -5,6 +5,7 @@ import { MesaPage } from './pages/Cliente/MesaPage'
 import { DetallePlatoPage } from './pages/Cliente/DetallePlatoPage'
 import { PedidoPage } from './pages/Cliente/PedidoPage'
 import { ReservasClientePage } from './pages/Cliente/ReservasClientePage'
+import { PreordenClientePage } from './pages/Cliente/PreordenClientePage'
 import { MainLayout } from './layouts/MainLayout'
 import { AuthLayout } from './layouts/AuthLayout'
 import { LoginPage } from './pages/Login/Login'
@@ -58,6 +59,7 @@ function App() {
               <Route path='/plato/:id' element={<DetallePlatoPage/>}/>
               <Route path='/pedido' element={<PedidoPage/>}/>
               <Route path='/reservas' element={<ReservasClientePage/>}/>
+              <Route path='/preorden' element={<PreordenClientePage/>}/>
               <Route path='/mesa' element={<MesaPage/>}/>
 
               <Route element={<RequireAuth rolesPermitidos={['Gerente']}><Outlet/></RequireAuth>}>

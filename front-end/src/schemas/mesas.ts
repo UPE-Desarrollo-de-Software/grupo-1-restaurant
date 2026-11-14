@@ -21,4 +21,9 @@ export const mesaSchema = z.object({
         (valor) => (valor === '' || valor === null || valor === undefined ? null : valor),
         z.coerce.number().int().positive().nullable()
     ),
+    // Opcional: solo lo envía el alta "Habilitar su Mesa" (EditarReserva
+    // → CrearMesa). La mesa hereda el PIN de la reserva y, al estamparla,
+    // el backend convierte la pre-orden en pedido (MesaService::crearMesa).
+    // PUT /mesas no lo manda: la edición no lo incluye y queda ausente.
+    reserva_id: z.coerce.number().int().positive().optional(),
 })

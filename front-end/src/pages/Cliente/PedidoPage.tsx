@@ -125,10 +125,13 @@ export function PedidoPage() {
         alConectar: refrescarPedidos,
     })
 
-    // Pedidos enviados por ESTE comensal (el resumen trae todos los de
-    // la mesa, incluidos los de otros comensales en sesiones de grupo).
+    // Pedidos de ESTE comensal: los que creó desde esta pantalla
+    // (pedidoIds) y los nacidos de la pre-orden de la reserva, que el
+    // back marca con `es_preorden` y este dispositivo adopta aunque no
+    // los haya enviado desde acá. El resumen trae todos los de la mesa,
+    // incluidos los de otros comensales en sesiones de grupo.
     useEffect(() => {
-        if (!mesaIdentificada || pedidoIds.length === 0) return
+        if (!mesaIdentificada) return
         let cancelado = false
         async function cargar() {
             try {
@@ -168,12 +171,17 @@ export function PedidoPage() {
         }
     }, [vista, mesa, nonceCuenta])
 
+    // Hay sección "Pedidos enviados" si este comensal creó pedidos, si
+    // el resumen trae uno nacido de la pre-orden (adoptado como suyo) o
+    // si todavía se está cargando (para poder mostrar el spinner).
     const hayPedidosEnviados = pedidoIds.length > 0
+        || (mesaIdentificada && (resumen === null
+            || resumen.pedidos.some(pedido => pedido.es_preorden)))
     const cargandoResumen = hayPedidosEnviados && resumen === null && errorResumen === null
     // El back ordena por id ascendente; acá el último pedido enviado queda arriba.
     const misPedidos = resumen
         ? resumen.pedidos
-            .filter((pedido: PedidoResumen) => pedidoIds.includes(pedido.id))
+            .filter((pedido: PedidoResumen) => pedidoIds.includes(pedido.id) || pedido.es_preorden)
             .slice()
             .sort((a, b) => b.id - a.id)
         : []
@@ -544,7 +552,7 @@ export function PedidoPage() {
                                         key={parte.pedido_id}
                                         parte={parte}
                                         indice={indice}
-                                        esMia={parte.pedido_ids.some(id => pedidoIds.includes(id))}
+                                        esMia={parte.es_preorden || parte.pedido_ids.some(id => pedidoIds.includes(id))}
                                     />
                                 ))
                             )}
