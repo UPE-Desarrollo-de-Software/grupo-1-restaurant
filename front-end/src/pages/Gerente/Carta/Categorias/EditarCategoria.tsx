@@ -5,6 +5,7 @@ import s from './Platos.module.css'
 import { categoriaSchema } from '../../../../schemas/carta'
 import { deleteCategoria, getCategoria, updateCategoria } from '../../../../api/categorias'
 import { ZonaPeligro } from '../../../../components/ZonaPeligro/ZonaPeligro'
+import GastroLoader from '../../../../components/GastroLoader/GastroLoader'
 
 export function EditarCategoriaPage() {
     const { id } = useParams()
@@ -88,7 +89,7 @@ export function EditarCategoriaPage() {
             <div className={s.page}>
                 <Card className={s.card}>
                     <div className='d-flex justify-content-center py-4'>
-                        <Spinner animation='border' />
+                        <GastroLoader messages={['Cargando categoría…']} size={96} />
                     </div>
                 </Card>
             </div>

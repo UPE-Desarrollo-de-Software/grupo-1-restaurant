@@ -11,6 +11,7 @@ import { platoSchema } from '../../../../schemas/carta'
 import { deletePlato, getPlato, quitarImagenPlato, subirImagenPlato, updatePlato } from '../../../../api/platos'
 import { validarImagenPlato } from '../../../../utils/imagenPlato'
 import { ZonaPeligro } from '../../../../components/ZonaPeligro/ZonaPeligro'
+import GastroLoader from '../../../../components/GastroLoader/GastroLoader'
 import { ExitoModal } from '../../../../components/Modales/ExitoModal'
 import { ErrorModal } from '../../../../components/Modales/ErrorModal'
 import { formatearPrecio } from '../../../../utils/historial'
@@ -257,7 +258,7 @@ export function EditarPlatoPage() {
       <div className={s.page}>
         <Card className={s.card}>
           <div className='d-flex justify-content-center py-4'>
-            <Spinner animation='border' />
+            <GastroLoader messages={['Cargando plato…']} size={96} />
           </div>
         </Card>
       </div>

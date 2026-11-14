@@ -47,7 +47,13 @@ export function useDatos(tipo: Tipo) {
         if (err instanceof DOMException && err.name === 'AbortError') return
         setError(err instanceof Error ? err.message : 'Error desconocido al cargar la lista')
       })
-      .finally(() => setLoading(false))
+      // Si la request fue abortada (desmontaje o doble montaje de StrictMode)
+      // no se apaga el loader: la lista todavía está vacía y se vería el
+      // mensaje de "no hay nada" antes de tiempo.
+      .finally(() => {
+        if (signal?.aborted) return
+        setLoading(false)
+      })
   }, [tipo])
 
   useEffect(() => {

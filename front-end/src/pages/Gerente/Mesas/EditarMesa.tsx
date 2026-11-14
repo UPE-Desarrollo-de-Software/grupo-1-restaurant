@@ -8,6 +8,7 @@ import { getConfiguracion } from '../../../api/configuracion'
 import { getUsuarios } from '../../../api/usuarios'
 import { CerrarMesaModal } from '../../../components/Mesas/CerrarMesaModal'
 import { QrMesaModal } from '../../../components/Mesas/QrMesaModal'
+import GastroLoader from '../../../components/GastroLoader/GastroLoader'
 import type { Usuario } from '../../../types/Auth'
 
 export function EditarMesaPage() {
@@ -133,7 +134,7 @@ export function EditarMesaPage() {
             <div className={s.page}>
                 <Card className={s.card}>
                     <div className='d-flex justify-content-center py-4'>
-                        <Spinner animation='border' />
+                        <GastroLoader messages={['Cargando mesa…']} size={96} />
                     </div>
                 </Card>
             </div>

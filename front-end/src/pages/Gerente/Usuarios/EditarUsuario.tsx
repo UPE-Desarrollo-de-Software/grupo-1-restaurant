@@ -6,6 +6,7 @@ import { usuarioEditSchema } from '../../../schemas/usuarios'
 import { getRoles } from '../../../api/auth'
 import { deleteUsuario, getUsuario, reactivarUsuario, updateUsuario } from '../../../api/usuarios'
 import { ZonaPeligro } from '../../../components/ZonaPeligro/ZonaPeligro'
+import GastroLoader from '../../../components/GastroLoader/GastroLoader'
 import type { Rol } from '../../../types/Auth'
 
 export function EditarUsuarioPage() {
@@ -131,7 +132,7 @@ export function EditarUsuarioPage() {
             <div className={s.page}>
                 <Card className={s.card}>
                     <div className='d-flex justify-content-center py-4'>
-                        <Spinner animation='border' />
+                        <GastroLoader messages={['Cargando usuario…']} size={96} />
                     </div>
                 </Card>
             </div>

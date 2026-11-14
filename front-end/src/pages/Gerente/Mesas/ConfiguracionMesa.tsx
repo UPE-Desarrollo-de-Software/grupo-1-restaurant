@@ -5,6 +5,7 @@ import s from './Mesas.module.css'
 import { configMesaFilaSchema } from '../../../schemas/configuracion'
 import { getConfiguracion, updateConfiguracion } from '../../../api/configuracion'
 import type { ConfigMesaFilaInput } from '../../../schemas/configuracion'
+import GastroLoader from '../../../components/GastroLoader/GastroLoader'
 
 interface FilaForm {
     capacidad: string
@@ -117,7 +118,7 @@ export function ConfiguracionMesaPage() {
             <div className={s.page}>
                 <Card className={s.card}>
                     <div className='d-flex justify-content-center py-4'>
-                        <Spinner animation='border' />
+                        <GastroLoader messages={['Cargando configuración…']} size={96} />
                     </div>
                 </Card>
             </div>
