@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
+import { QRCodeCanvas } from 'qrcode.react'
 import { disponibilidadDiaReservaWeb, solicitarReservaWeb } from '../../api/cliente'
 import { hoyLocal, reservaWebSchema } from '../../schemas/cliente'
 import { useAhora } from '../../hooks/useAhora'
-import { jsPDF } from 'jspdf'
-// import { QRCodeCanvas } from 'qrcode.react'
 import { PreordenCliente } from '../../components/Cliente/PreordenCliente'
+import { descargarComprobanteReserva } from '../../utils/comprobanteReserva'
 import type { DisponibilidadDiaReservaWeb, LineaPreorden, Reserva, SlotDisponibilidad } from '../../types/Reserva'
 import s from './ReservasClientePage.module.css'
 
@@ -62,6 +62,10 @@ export function ReservasClientePage() {
         ? (reservaCreada.codigo ?? String(reservaCreada.id))
         : ''
     const cantidadPreorden = lineasPreorden.reduce((suma, linea) => suma + linea.cantidad, 0)
+
+    // QR en alta resolución del enlace de pre-orden: alimenta al
+    // comprobante PDF (se renderiza fuera de pantalla, como en QrMesas).
+    const qrRef = useRef<HTMLCanvasElement>(null)
 
     // const datosQR = reservaCreada
     // ? JSON.stringify({
@@ -167,28 +171,22 @@ export function ReservasClientePage() {
         }
     }
 
-    function descargarComprobante() {
+    // Comprobante PDF con la estética de la app (ver utils/comprobanteReserva):
+    // banda terracota con logo, PIN protagonista, QR a /preorden y la
+    // pre-orden resumida en caja sage.
+    async function descargarComprobante() {
         if (!reservaCreada) return
 
-        const doc = new jsPDF()
-
-        doc.setFontSize(20)
-        doc.text('Reserva confirmada', 20, 25)
-
-        doc.setFontSize(12)
-        doc.text(`Código de reserva: ${reservaCreada.id}`, 20, 45)
-        doc.text(`Fecha: ${reservaCreada.fecha}`, 20, 55)
-        doc.text(`Hora: ${reservaCreada.hora}`, 20, 65)
-        doc.text(`Personas: ${reservaCreada.cantPersonas}`, 20, 75)
-
-        doc.setFontSize(10)
-        doc.text(
-            'Presentá este comprobante al mozo al llegar.',
-            20,
-            95
-        )
-
-        doc.save(`comprobante-reserva-${reservaCreada.id}.pdf`)
+        await descargarComprobanteReserva({
+            pin: pinReserva,
+            fecha: reservaCreada.fecha,
+            hora: reservaCreada.hora,
+            cantPersonas: reservaCreada.cantPersonas,
+            contacto: reservaCreada.contacto_solicitante,
+            cantidadPreorden,
+            qrDataUrl: qrRef.current?.toDataURL('image/png') ?? null,
+            origen: window.location.origin,
+        })
     }
 
     async function manejarSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -503,6 +501,20 @@ export function ReservasClientePage() {
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* QR fuera de pantalla: alimenta al comprobante PDF. */}
+            <div
+                className='no-print'
+                style={{ position: 'fixed', left: -99999, top: 0 }}
+                aria-hidden='true'
+            >
+                <QRCodeCanvas
+                    ref={qrRef}
+                    value={`${window.location.origin}/preorden`}
+                    size={512}
+                    level='M'
+                />
+            </div>
         </div>
     )
 }
