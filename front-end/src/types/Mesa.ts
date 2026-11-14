@@ -46,6 +46,10 @@ export interface LineaCuenta {
 export interface ParteCuenta {
     pedido_id: number
     pedido_ids: number[]
+    // true si la parte nació de la pre-orden de la reserva: el
+    // comensal la adopta como "Tu parte" aunque no la haya pedido
+    // desde este dispositivo.
+    es_preorden: boolean
     subtotal: number
     lineas: LineaCuenta[]
 }
@@ -88,6 +92,10 @@ export interface PedidoResumen {
     id: number
     pedido_padre_id: number | null
     estado: string
+    // true si el pedido nació de la pre-orden de la reserva
+    // (detalle_preorden convertido): el comensal lo adopta como propio
+    // aunque el navegador no tenga sus pedidoIds.
+    es_preorden: boolean
     total: number
     fecha: string
     lineas: LineaPedidoResumen[]
