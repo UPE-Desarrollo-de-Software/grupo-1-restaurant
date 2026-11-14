@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "../config/env"
 import type { ClienteMesa } from "../types/Cliente"
 import type { CuentaMesa, ResumenMesa } from "../types/Mesa"
-import type { DisponibilidadDiaReservaWeb, Reserva, ReservaResponse, ReservaWebAlta } from "../types/Reserva"
+import type { DisponibilidadDiaReservaWeb, LineaPreorden, Reserva, ReservaResponse, ReservaWebAlta } from "../types/Reserva"
 import type { AltaPedidosMesa } from "./pedidos"
 
 // Auto-pedido del comensal: NO usa Sanctum. La credencial es el
@@ -199,4 +199,74 @@ export async function solicitarReservaWeb(datos: ReservaWebAlta): Promise<Reserv
         fecha: (creada.fecha ?? '').slice(0, 10),
         hora: (creada.hora ?? '').slice(0, 5),
     }
+}
+
+// ==== PRE-ORDEN DE LA RESERVA (PÚBLICO con throttle, clave = PIN) ====
+// Mismo criterio que /acceso: PIN mal formado → 422, PIN que no
+// corresponde a ninguna reserva → 401. La reserva deja de aceptar
+// cambios cuando ya no está pendiente (422 con {message}).
+
+function mensajePreorden(status: number, data: { message?: string } | null, porDefecto: string): string {
+    if (status === 401) return 'El PIN de reserva no es válido o expiró. Revísalo en tu comprobante.'
+    return data?.message ?? porDefecto
+}
+
+// GET /cliente/reservas/{codigo}/preordenes — las líneas guardadas
+// (`[{plato_id, cantidad}]`; vacío = sin pre-orden).
+export async function getPreordenCliente(codigo: string, signal?: AbortSignal): Promise<LineaPreorden[]> {
+    const response = await fetch(`${API_BASE_URL}/cliente/reservas/${codigo}/preordenes`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal,
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(
+            mensajePreorden(response.status, data, `Error ${response.status} al consultar la pre-orden`),
+            response.status,
+        )
+    }
+    return Array.isArray(data) ? (data as LineaPreorden[]) : []
+}
+
+// PUT /cliente/reservas/{codigo}/preordenes — reemplaza las cantidades
+// de las líneas que manda (merge por plato_id del lado del back: NO
+// borra las ausentes; para reemplazar el carrito entero va
+// DELETE + PUT, ver la página de pre-orden). Respuesta:
+// { mensaje, preorden }.
+export async function guardarPreordenCliente(codigo: string, lineas: LineaPreorden[]): Promise<LineaPreorden[]> {
+    const response = await fetch(`${API_BASE_URL}/cliente/reservas/${codigo}/preordenes`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({ preorden: lineas }),
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(
+            mensajePreorden(response.status, data, `Error ${response.status} al guardar la pre-orden`),
+            response.status,
+        )
+    }
+    const preorden = (data as { preorden?: LineaPreorden[] } | null)?.preorden
+    return Array.isArray(preorden) ? preorden : []
+}
+
+// DELETE /cliente/reservas/{codigo}/preordenes — vacía la pre-orden
+// (única forma de borrar líneas: el PUT solo suma/actualiza).
+export async function eliminarPreordenCliente(codigo: string): Promise<{ mensaje: string }> {
+    const response = await fetch(`${API_BASE_URL}/cliente/reservas/${codigo}/preordenes`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' },
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(
+            mensajePreorden(response.status, data, `Error ${response.status} al vaciar la pre-orden`),
+            response.status,
+        )
+    }
+    return { mensaje: String((data as { mensaje?: string } | null)?.mensaje ?? 'Pre-orden vaciada.') }
 }

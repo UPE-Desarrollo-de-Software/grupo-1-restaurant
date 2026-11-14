@@ -1,0 +1,111 @@
+.pagina {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-md) var(--space-2xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.encabezado {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background: var(--color-primary-container);
+    color: var(--color-on-primary-container);
+    font-size: 1.5rem;
+}
+
+.intro {
+    max-width: 34rem;
+    margin: 0;
+    color: var(--color-on-surface-variant);
+}
+
+.tarjeta {
+    background: var(--color-surface-container-lowest);
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-md);
+    padding: var(--space-xl) var(--space-lg);
+    box-shadow: var(--shadow-level-1);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.tituloFormulario {
+    margin: 0;
+}
+
+.pinInput {
+    text-align: center;
+    letter-spacing: 0.5rem;
+    font-variant-numeric: tabular-nums;
+    min-height: 3.25rem;
+    font-size: 1.5rem;
+}
+
+.alerta {
+    margin-bottom: 0;
+}
+
+.boton {
+    margin-top: var(--space-2xs);
+}
+
+.ayuda {
+    border-top: 1px dashed var(--color-outline-variant);
+    padding-top: var(--space-sm);
+}
+
+.ayuda p {
+    margin-bottom: var(--space-xs);
+    color: var(--color-on-surface-variant);
+}
+
+.ayudaTitulo {
+    font-weight: 600;
+    color: var(--color-on-surface);
+}
+
+.nota {
+    margin: 0;
+    color: var(--color-on-surface-variant);
+    text-align: center;
+}
+
+/* ============ PIN cargado (vista de edición) ============ */
+
+.pinBox {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    background-color: var(--color-surface-container);
+    border: 1px dashed var(--color-outline-variant);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm);
+}
+
+.pinEtiqueta {
+    color: var(--color-on-surface-variant);
+    margin: 0;
+}
+
+.pinValor {
+    color: var(--color-on-surface);
+    letter-spacing: 0.3em;
+    margin: 0;
+}
