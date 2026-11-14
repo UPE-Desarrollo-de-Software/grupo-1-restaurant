@@ -171,7 +171,7 @@ export function ReservasClientePage() {
     async function handlerCopiar() {
         if (!reservaCreada) return
         try {
-            await navigator.clipboard.writeText(reservaCreada.id.toString())
+            await navigator.clipboard.writeText(pinReserva)
             setCopiado(true)
         } catch {
             setCopiado(false)
@@ -438,7 +438,7 @@ export function ReservasClientePage() {
                             <div className={s.pinBox}>
                                 <div>
                                     <p className={`text-label-sm ${s.pinEtiqueta}`}>Código reserva (PIN)</p>
-                                    <p className={`text-headline-md ${s.pinValor}`}>{reservaCreada.id}</p>
+                                    <p className={`text-headline-md ${s.pinValor}`}>{pinReserva}</p>
                                 </div>
                                 <Button
                                     size='sm'
