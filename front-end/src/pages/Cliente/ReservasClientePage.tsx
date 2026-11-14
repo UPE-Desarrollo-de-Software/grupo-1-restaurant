@@ -19,13 +19,6 @@ function formatearFechaLarga(fecha: string): string {
     return fechaDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-// PIN que el cliente presenta al llegar: el `codigo` de 4 dígitos que
-// genera el backend (string, conserva los ceros a la izquierda). El id
-// queda sólo como fallback por si una respuesta vieja no lo trae.
-function pinReserva(reserva: Reserva): string {
-    return reserva.codigo ?? String(reserva.id)
-}
-
 function horaAMinutos(hora: string): number {
     const [horas, minutos] = hora.split(':').map(Number)
     return horas * 60 + minutos
