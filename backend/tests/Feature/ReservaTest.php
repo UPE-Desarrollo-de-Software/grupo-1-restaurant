@@ -549,6 +549,10 @@ test('la disponibilidad publica muestra las capacidades libres y no expone crede
 });
 
 test('la grilla publica devuelve los turnos fijos del dia con su aforo', function () {
+    // Aísla el test del archivo de runtime local (el gerente puede haber
+    // dejado otra ventana guardada en el servidor de desarrollo).
+    config(['disponibilidad_reservas.archivo' => storage_path('framework/testing/disponibilidad_reservas_reserva_test.json')]);
+
     salonReserva([
         ['cantidad' => 2, 'capacidad' => 4],
         ['cantidad' => 1, 'capacidad' => 2],
@@ -560,14 +564,19 @@ test('la grilla publica devuelve los turnos fijos del dia con su aforo', functio
 
     $slots = $response->json('slots');
 
+    // Ventana por defecto del backend: 09:00 a 23:00 cada 30 min (29 turnos).
     expect($response->json('fecha'))->toBe($fecha)
-        ->and($slots)->toHaveCount(23)
-        ->and($slots[0]['hora'])->toBe('12:00')
-        ->and($slots[0]['inicio'])->toBe('12:00')
-        ->and($slots[0]['fin'])->toBe('12:30')
+        ->and($slots)->toHaveCount(29)
+        ->and($response->json('horarios.inicio'))->toBe('09:00')
+        ->and($response->json('horarios.fin'))->toBe('23:00')
+        ->and($response->json('horarios.intervalo_minutos'))->toBe(30)
+        ->and($response->json('horarios.anticipacion_horas'))->toBe(2)
+        ->and($slots[0]['hora'])->toBe('09:00')
+        ->and($slots[0]['inicio'])->toBe('09:00')
+        ->and($slots[0]['fin'])->toBe('09:30')
         ->and($slots[0]['aforo_disponible'])->toBe(10)
-        ->and($slots[22]['hora'])->toBe('23:00')
-        ->and($slots[22]['fin'])->toBe('23:30');
+        ->and($slots[28]['hora'])->toBe('23:00')
+        ->and($slots[28]['fin'])->toBe('23:30');
 
     expect(collect($slots[0]['disponible'])->firstWhere('capacidad', 4)['cantidad'])->toBe(2)
         ->and(collect($slots[0]['disponible'])->firstWhere('capacidad', 2)['cantidad'])->toBe(1);

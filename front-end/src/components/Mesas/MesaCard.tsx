@@ -1,6 +1,7 @@
 import { Card } from 'react-bootstrap'
 import { Link, useLocation } from 'react-router-dom'
 import type { Mesa } from '../../types/Mesa'
+import t from '../Tarjeta/Tarjeta.module.css'
 import s from './MesaCard.module.css'
 
 // Solo lectura + acción principal (patrón de los hubs del proyecto): el
@@ -19,14 +20,14 @@ import s from './MesaCard.module.css'
 export function MesaCard({ mesa }: { mesa: Mesa }) {
   const enMozo = useLocation().pathname.startsWith('/mozo')
   return (
-    <Card className={s.card}>
-      <Card.Body className={s.body}>
-        <div className={s.fila}>
-          <span className={`text-label-sm ${s.indice}`}>#{String(mesa.id).padStart(2, '0')}</span>
+    <Card className={t.card}>
+      <Card.Body className={t.body}>
+        <div className={t.fila}>
+          <span className={`text-label-sm ${t.indice}`}>#{String(mesa.id).padStart(2, '0')}</span>
 
-          <div className={s.info}>
+          <div className={t.info}>
             {/* {mesa.grupo_codigo != null && (
-              <div className={s.badges}>
+              <div className={t.badges}>
                 <span className={`text-label-sm ${s.badgeGrupo}`}>Grupo {mesa.grupo_codigo}</span>
               </div>
             )} */}
@@ -42,12 +43,12 @@ export function MesaCard({ mesa }: { mesa: Mesa }) {
           </div>
         </div>
 
-        <div className={s.footer}>
+        <div className={`${t.footer} ${t.footerDerecha}`}>
           <Link
-            className={`btn btn-outline-primary btn-sm text-label-md ${s.botonEditar}`}
+            className={`btn btn-outline-primary btn-sm text-label-md ${t.botonAccion}`}
             to={enMozo ? `/mozo/mesas/${mesa.id}` : `/gerente/mesas/gestion/${mesa.id}/editar`}
           >
-            <i className={`bi ${enMozo ? 'bi-arrow-right' : 'bi-pencil'} ${s.iconoEditar}`} aria-hidden="true" />
+            <i className={`bi ${enMozo ? 'bi-arrow-right' : 'bi-pencil'} ${t.iconoAccion}`} aria-hidden="true" />
             {enMozo ? 'Atender' : 'Editar'}
           </Link>
         </div>

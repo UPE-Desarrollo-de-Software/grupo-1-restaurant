@@ -65,16 +65,23 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   `confirmarPendiente` permite reintentar sin duplicar líneas.
 - Reservas web del cliente (públicas con throttle): **no hay elección de mesa**
   — solo `contacto_solicitante`, fecha, hora y `cantPersonas`; el backend asigna
-  la combinación de capacidades del CONFIG_MESA (422 = anticipación mínima de
-  2 h, aforo insuficiente o conflicto de fecha+hora). **El horario se elige de
-  una grilla fija de turnos** (`12:00–23:00` cada 30 min, 23 slots) que devuelve
-  `GET /cliente/reservas/disponibilidad-dia?fecha=` — una sola request por fecha;
-  los slots viven como constante en `ReservaService` (no en el front) y cada uno
-  trae `hora`, `inicio`, `fin`, `disponible` y `aforo_disponible`. La página
-  (`ReservasClientePage`) cachea la grilla por fecha, filtra por personas
-  (`aforo_disponible >= cantPersonas`) y deshabilita los turnos de hoy con menos
-  de 2 h de anticipación (front) y los que no tienen aforo (422 real lo sigue
-  validando el back al crear). El alta no cambia. **La respuesta trae
+  la combinación de capacidades del CONFIG_MESA (422 = anticipación mínima,
+  aforo insuficiente o conflicto de fecha+hora). **El horario se elige de la
+  grilla de turnos que define el backend** (`GET /cliente/reservas/disponibilidad-dia?fecha=`,
+  una sola request por fecha): los turnos y la anticipación salen de la
+  configuración centralizada del back (`DisponibilidadReservaService`), no hay
+  horarios ni anticipación hardcodeados en el front. La respuesta trae
+  `horarios: { inicio, fin, intervalo_minutos, anticipacion_horas }` y cada slot
+  `hora`, `inicio`, `fin`, `disponible` y `aforo_disponible`. **La lógica de la
+  grilla está compartida** por los tres flujos de alta (cliente `ReservasClientePage`,
+  gerente y mozo `CrearReserva`): `hooks/useHorariosReserva.ts` (cachea por fecha),
+  `utils/horariosReserva.ts` (`momentoSlot`, `fueraDeAnticipacion`,
+  `motivoDeshabilitado`, `generarTurnos`) y los componentes
+  `components/Reservas/GrillaHorarios.tsx` + `DetalleSlotHorario.tsx`. Se
+  deshabilitan los turnos que no cumplen la anticipación (comparando el instante
+  completo, igual que el back), los que no tienen aforo para la cantidad de
+  personas y, si falta la cantidad, todos con el motivo correspondiente en el
+  `title`. El alta no cambia. **La respuesta trae
   `reserva.codigo`** (PIN de 4 dígitos, string con ceros a la izquierda, único
   entre pendientes; lo genera el back): es lo que se muestra/copia/descarga en el
   modal de éxito y en el PDF — el `reserva.id` ya NO se muestra (`pinReserva()`
@@ -84,6 +91,17 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   lo muestra en lugar del `#id`. El endpoint `GET /reservas?codigo=` del back
   queda sin usar (el hub ya baja todas las reservas). El alta incluye un único
   `contacto_solicitante` (la capa API arma "Nombre (Tel: ...)").
+- **Horarios de reserva configurables (Gerente)**: la sección "Horarios de reserva"
+  de `/gerente/mesas/configuracion` (`ConfiguracionMesa`) edita la ventana con
+  `GET/PUT /configuracion/disponibilidad` (`api/configuracion.ts` →
+  `getDisponibilidadReservas`/`updateDisponibilidadReservas`, tipos en
+  `types/Configuracion.ts`, validación `disponibilidadReservaSchema` en
+  `schemas/configuracion.ts`). El formulario tiene apertura/cierre (`type='time'`),
+  intervalo (`15|30|45|60`) y una vista previa local de los turnos
+  (`generarTurnos`); la anticipación se muestra en **sólo lectura** porque la fija
+  el backend. **Esa configuración no se guarda en la base de datos**: el back la
+  persiste en un archivo de runtime (sobrevive al reinicio del contenedor, se
+  pierde al redesplegar y vuelve a los defaults). La UI lo advierte en un `Alert`.
 - BottomNavbar (`useBottomNav`, `src/navigation/useBottomNav.ts`): sin sesión
   staff → `NAV_PUBLICO` (Carta, Mi pedido, Reservas, Mesa — todas con ruta); con
   sesión → `BOTTOM_POR_ROL[rol]` con fallback `NAV_PUBLICO`.
@@ -295,6 +313,7 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
 - **Imagen del plato (`POST/DELETE /platos/{id}/imagen`)**: el alta y la edición (`POST/PUT /platos`) **no** aceptan `imagen` (el backend dejó de validarla); la foto se sube aparte como multipart con el campo `imagen` (JPG/PNG/WEBP ≤ 2 MB, `subirImagenPlato`/`quitarImagenPlato` en `api/platos.ts`). El backend guarda el path en `platos.imagen` y expone `imagen_url` (accessor: URL de S3, o la URL externa heredada). `CrearPlato` crea el plato y después sube el archivo (si la subida falla el plato ya existe y se avisa, sin duplicarlo); `EditarPlato` permite reemplazar (nuevo archivo) o quitar la imagen (`quitarImagen`) y muestra la vigente. Validación espejo en `utils/imagenPlato.ts` y preview del archivo con `useVistaPreviaImagen` (revoca el object URL).
 - Validación con Zod **v4** en `src/schemas/` (ver `schemas/menu.ts` → `platoSchema`, `schemas/auth.ts`, `schemas/cliente.ts`); los tipos de input se derivan con `z.infer<>`. Zod v4: mensajes con `{ error: '...' }`, fecha con `z.iso.date()`. `precio` usa `.positive()` (precio $0 no permitido — decisión, mantener).
 - Estilos: Bootstrap + CSS Modules por componente (`*.module.css`, importados como `s`). Los design tokens viven en `src/styles/tokens.css`, importados DESPUÉS de `bootstrap.min.css` en `src/main.tsx` — preservar ese orden. Clases utilitarias como `text-headline-lg`, `text-body-md`, `text-price-display`, `elevation-1` son tokens propios, no de Bootstrap; preferirlas sobre colores/fuentes hardcodeadas.
+- **Cards de listado: base compartida** en `src/components/Tarjeta/Tarjeta.module.css` (importada como `t`). Define la estructura común (`.card`, `.body`, `.fila`, `.indice`, `.info`, `.badges`, `.footer`, `.botonAccion`, `.iconoAccion`) y el footer con borde superior. Cada card local (`UsuarioCard`, `CategoriaCard`, `IngredienteCard`, `PromocionCard`, `MesaCard`, `ReservaCard`, `Platos/PlatoCard`) importa la base con `t` y su `.module.css` conserva **sólo** las particularidades (colores de badges, precio, imagen, switch…). Regla del footer: card con **una sola acción** → `t.footerDerecha` (botón a la derecha); `PlatoCard` es la excepción con Editar + switch → `t.footerEspaciada`. Para cambiar la estructura de todas las cards, editar `Tarjeta.module.css`, no las copias.
 - Fetch de datos: hooks en `src/hooks` (`usePlatos`, `useCategorias`, `useIngredientes`) consultan `API_BASE_URL` con `AbortController`; seguir este patrón en fetches nuevos (abortar al desmontar, mensaje de error en español si el status no es 2xx). Dentro de componentes, el set de estado va en los callbacks async (`.then`/`.catch` o `try/catch` de una IIFE) — ver `usePlatos` o `CrearReserva`.
 - **Carta del cliente (`/carta`)**: `pages/Cliente/Carta.tsx` hace los fetches (`usePlatos` + `useCategorias`), filtra con `aplicarFiltroPlatos(platos, filtroCategoria, 'todos')` y por texto (nombre/descripción) usando `normalizarTexto` (`src/utils/busqueda.ts`, compartido con la `Lista` del panel). `MenuList` sólo recibe `platos/loading/error/busqueda` y pinta las `PlatoCard`. `FiltroCategorias` tiene `mostrarEstado` (default `true`); el cliente pasa `false` porque `GET /platos` sólo devuelve platos disponibles.
 - **`set-state-in-effect` (ESLint, react-hooks v7)**: está prohibido hacer `setX` síncrono en el body de un `useEffect`. El estado de carga se deriva (ej. `cargando = resumen === null && !error`) o se setea dentro del callback async. El reset limpio de modales se logra por remount: render condicional + `key` (ver `PersonalizarPlatoModal`).

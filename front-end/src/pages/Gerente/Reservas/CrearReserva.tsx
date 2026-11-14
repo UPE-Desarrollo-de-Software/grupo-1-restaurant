@@ -1,18 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Alert, Button, Form, Spinner } from 'react-bootstrap'
-import { disponibilidadDiaReservaWeb, solicitarReservaWeb } from '../../../api/cliente'
+import { solicitarReservaWeb } from '../../../api/cliente'
 import { hoyLocal, reservaWebSchema } from '../../../schemas/cliente'
 import { useAhora } from '../../../hooks/useAhora'
+import { useHorariosReserva } from '../../../hooks/useHorariosReserva'
 import { ExitoModal } from '../../../components/Modales/ExitoModal'
+import { GrillaHorarios } from '../../../components/Reservas/GrillaHorarios'
+import { DetalleSlotHorario } from '../../../components/Reservas/DetalleSlotHorario'
+import { ANTICIPACION_HORAS_POR_DEFECTO } from '../../../utils/horariosReserva'
 
-import type { DisponibilidadDiaReservaWeb, Reserva, SlotDisponibilidad } from '../../../types/Reserva'
+import type { Reserva } from '../../../types/Reserva'
 import s from './Reservas.module.css'
 // import { getConfiguracion } from '../../../api/configuracion'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { baseReservas } from '../../../navigation/rutas'
-
-// Anticipación mínima que exige el backend (ReservaService: 2 horas).
-const ANTICIPACION_MIN = 2 * 60
 
 function formatearFechaLarga(fecha: string): string {
     const fechaDate = new Date(`${fecha}T00:00:00`)
@@ -27,17 +28,11 @@ function pinReserva(reserva: Reserva): string {
     return reserva.codigo ?? String(reserva.id)
 }
 
-function horaAMinutos(hora: string): number {
-    const [horas, minutos] = hora.split(':').map(Number)
-    return horas * 60 + minutos
-}
-
-// Reservas del cliente (público, sin login): POST /cliente/reservas.
-// NO se elige mesa: es por personas + fecha + horario y el backend
-// asigna una combinación de capacidades del CONFIG_MESA. El horario se
-// elige de la grilla fija de turnos (12:00–23:00 cada 30 min) que
-// devuelve GET /cliente/reservas/disponibilidad-dia, filtrada por la
-// cantidad de personas y por la anticipación de 2 horas.
+// Alta de reserva para el staff (Gerente y Mozo): reusa el alta pública
+// POST /cliente/reservas. NO se elige mesa: es por personas + fecha +
+// horario y el backend asigna una combinación de capacidades del
+// CONFIG_MESA. Los turnos y la anticipación salen de
+// GET /cliente/reservas/disponibilidad-dia (configuración del backend).
 export function CrearReservaPage() {
     const navigate = useNavigate()
     // Se sirve bajo /gerente/reservas (Gerente) y /mozo/reservas (Mozo).
@@ -49,12 +44,17 @@ export function CrearReservaPage() {
 
     // const [codigo, setCodigo] = useState<string | null>(null)
 
-    // Grilla del día cacheada por fecha: se muestra al instante si se
-    // vuelve a una fecha ya consultada mientras se refresca.
-    const [horarios, setHorarios] = useState<
-        Record<string, { datos: DisponibilidadDiaReservaWeb | null; error: string | null }>
-    >({})
-    const [reintento, setReintento] = useState(0)
+    // Grilla de turnos del día (ventana + anticipación + aforo libre). La
+    // comparten los tres flujos de alta: el hook cachea por fecha y el
+    // backend define los horarios.
+    const {
+        datos: diaHorarios,
+        cargando: cargandoHorarios,
+        error: errorHorarios,
+        slots,
+        reintentar,
+        limpiar,
+    } = useHorariosReserva(fecha)
 
     const ahora = useAhora()
     // const [aforoInfo, setAforoInfo] = useState<string | null>(null)
@@ -92,56 +92,18 @@ export function CrearReservaPage() {
     const personasValidas = Number.isInteger(Number(cantPersonas)) && Number(cantPersonas) >= 1
     const personas = personasValidas ? Number(cantPersonas) : 0
 
-    const diaActual = fecha ? horarios[fecha] : undefined
-    const cargandoHorarios = !!fecha && diaActual === undefined
-    const errorHorarios = diaActual?.error ?? null
-    const slots = diaActual?.datos?.slots ?? []
-
-    const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes()
-    const limiteAnticipacion = minutosAhora + ANTICIPACION_MIN
-    const esHoy = fecha === hoyLocal()
-
-    function fueraDeAnticipacion(slot: SlotDisponibilidad): boolean {
-        return esHoy && horaAMinutos(slot.hora) < limiteAnticipacion
-    }
-
-    function motivoDeshabilitado(slot: SlotDisponibilidad): string | null {
-        if (fueraDeAnticipacion(slot)) {
-            return 'Faltan 2 horas de anticipación'
-        }
-        if (!personasValidas) {
-            return 'Indicá cuántas personas son'
-        }
-        if (slot.aforo_disponible < personas) {
-            return 'Sin lugar para esa cantidad de personas'
-        }
-        return null
+    // Contexto de la grilla: la anticipación la manda el backend
+    // (`horarios.anticipacion_horas`); el valor de respaldo sólo cubre un
+    // backend previo a la configuración centralizada.
+    const contextoSlot = {
+        fecha,
+        horaActual: ahora,
+        anticipacionHoras: diaHorarios?.horarios?.anticipacion_horas ?? ANTICIPACION_HORAS_POR_DEFECTO,
+        personasValidas,
+        personas,
     }
 
     const slotSeleccionado = slots.find(slot => slot.hora === hora) ?? null
-
-    useEffect(() => {
-        if (!fecha) return
-        const controller = new AbortController()
-        disponibilidadDiaReservaWeb(fecha, controller.signal)
-            .then(datos => {
-                setHorarios(prev => ({ ...prev, [fecha]: { datos, error: null } }))
-            })
-            .catch(err => {
-                if (!controller.signal.aborted) {
-                    setHorarios(prev => ({
-                        ...prev,
-                        [fecha]: {
-                            datos: null,
-                            error: err instanceof Error
-                                ? err.message
-                                : 'No se pudieron cargar los horarios',
-                        },
-                    }))
-                }
-            })
-        return () => controller.abort()
-    }, [fecha, reintento])
 
     function cambiarFecha(valor: string) {
         setFecha(valor)
@@ -202,8 +164,7 @@ export function CrearReservaPage() {
         setFecha('')
         setHora('')
         setCantPersonas('')
-        setHorarios({})
-        setReintento(0)
+        limpiar()
         setTocado(false)
     }
 
@@ -260,7 +221,12 @@ export function CrearReservaPage() {
 
                     <Form.Group className={s.campo} controlId='reserva-cliente-horarios'>
                         {fecha && (
-                            <Form.Label className='text-label-md'>Horarios disponibles</Form.Label>
+                            <Form.Label className='text-label-md'>
+                                Horarios disponibles
+                                {diaHorarios?.horarios
+                                    ? ` (${diaHorarios.horarios.inicio} a ${diaHorarios.horarios.fin})`
+                                    : ''}
+                            </Form.Label>
                         )}
                         
                         {!fecha && (
@@ -284,7 +250,7 @@ export function CrearReservaPage() {
                                     variant='outline-secondary'
                                     size='sm'
                                     className='text-label-sm'
-                                    onClick={() => setReintento(valor => valor + 1)}
+                                    onClick={reintentar}
                                 >
                                     Reintentar
                                 </Button>
@@ -298,25 +264,12 @@ export function CrearReservaPage() {
                         )}
 
                         {slots.length > 0 && (
-                            <div className={s.grilla} role='group' aria-label='Horarios disponibles'>
-                                {slots.map(slot => {
-                                    const motivo = motivoDeshabilitado(slot)
-                                    const seleccionado = slot.hora === hora && motivo === null
-                                    return (
-                                        <button
-                                            key={slot.hora}
-                                            type='button'
-                                            className={s.slot}
-                                            aria-pressed={seleccionado}
-                                            disabled={motivo !== null}
-                                            title={motivo ?? undefined}
-                                            onClick={() => setHora(slot.hora)}
-                                        >
-                                            {slot.hora}
-                                        </button>
-                                    )
-                                })}
-                            </div>
+                            <GrillaHorarios
+                                slots={slots}
+                                seleccionada={hora}
+                                contexto={contextoSlot}
+                                onSeleccionar={setHora}
+                            />
                         )}
 
                         {tocado && errores.hora && slots.length > 0 && (
@@ -325,28 +278,7 @@ export function CrearReservaPage() {
                             </Form.Text>
                         )}
 
-                        {slotSeleccionado && (
-                            <div className={`text-body-sm ${s.detalleSlot}`}>
-                                <span className='d-block'>
-                                    Aforo libre para las {slotSeleccionado.hora}:{' '}
-                                    <strong>{slotSeleccionado.aforo_disponible} personas</strong>
-                                </span>
-                                {slotSeleccionado.disponible.length > 0 ? (
-                                    <ul className='mb-0 ps-3'>
-                                        {slotSeleccionado.disponible.map(fila => (
-                                            <li key={fila.capacidad}>
-                                                Combinaciones de {fila.capacidad} lugares × {fila.cantidad}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <span className='d-block'>
-                                        No quedan combinaciones libres para ese horario; probá
-                                        con otro.
-                                    </span>
-                                )}
-                            </div>
-                        )}
+                        <DetalleSlotHorario slot={slotSeleccionado} />
                     </Form.Group>
 
                     <div className={s.actions}>

@@ -1,5 +1,6 @@
 import { Card } from 'react-bootstrap'
 import type { Ingrediente } from '../../types/Menu'
+import t from '../Tarjeta/Tarjeta.module.css'
 import s from './IngredienteCard.module.css'
 import { Link } from 'react-router-dom'
 
@@ -16,13 +17,13 @@ interface IngredienteCardProps {
 
 export function IngredienteCard({ ingrediente }: IngredienteCardProps) {
   return (
-    <Card className={s.card}>
-      <Card.Body className={s.body}>
-        <div className={s.fila}>
-          <span className={`text-label-sm ${s.indice}`}>#{String(ingrediente.id).padStart(2, '0')}</span>
+    <Card className={t.card}>
+      <Card.Body className={t.body}>
+        <div className={t.fila}>
+          <span className={`text-label-sm ${t.indice}`}>#{String(ingrediente.id).padStart(2, '0')}</span>
 
-          <div className={s.info}>
-            <div className={s.badges}>
+          <div className={t.info}>
+            <div className={t.badges}>
               {/* <span className={`text-label-sm ${ingrediente.opcional ? s.badgeOpcional : s.badgeObligatorio}`}>
                 {ingrediente.opcional ? 'Opcional' : 'Obligatorio'}
               </span> */}
@@ -36,9 +37,9 @@ export function IngredienteCard({ ingrediente }: IngredienteCardProps) {
           </div>
         </div>
 
-        <div className={s.footer}>
-          <Link className={`btn btn-outline-primary btn-sm text-label-md ${s.botonEditar}`} to={`/gerente/carta/ingredientes/${ingrediente.id}/editar`}>
-            <i className={`bi bi-pencil ${s.iconoEditar}`} aria-hidden="true" />
+        <div className={`${t.footer} ${t.footerDerecha}`}>
+          <Link className={`btn btn-outline-primary btn-sm text-label-md ${t.botonAccion}`} to={`/gerente/carta/ingredientes/${ingrediente.id}/editar`}>
+            <i className={`bi bi-pencil ${t.iconoAccion}`} aria-hidden="true" />
             Editar
           </Link>
         </div>

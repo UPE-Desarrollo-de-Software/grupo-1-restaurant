@@ -48,10 +48,10 @@ export interface LineaPreorden {
     cantidad: number
 }
 
-// GET /cliente/reservas/disponibilidad-dia?fecha= — grilla fija de
-// turnos (12:00–23:00 cada 30 min). Por cada horario, las capacidades
-// del CONFIG_MESA que quedan libres en su intervalo (las pendientes que
-// solapan hacen hold).
+// GET /cliente/reservas/disponibilidad-dia?fecha= — grilla de turnos que
+// define el backend (DisponibilidadReservaService: ventana + intervalo
+// configurables). Por cada horario, las capacidades del CONFIG_MESA que
+// quedan libres en su intervalo (las pendientes que solapan hacen hold).
 export interface SlotDisponibilidad {
     hora: string
     inicio: string
@@ -60,8 +60,21 @@ export interface SlotDisponibilidad {
     aforo_disponible: number
 }
 
+// Ventana vigente de turnos y anticipación mínima, tal como las manda el
+// backend. El front NO tiene horarios ni anticipación propios: todo sale
+// de acá (y de GET /configuracion/disponibilidad en el panel).
+export interface HorariosReservaWeb {
+    inicio: string
+    fin: string
+    intervalo_minutos: number
+    anticipacion_horas: number
+}
+
 export interface DisponibilidadDiaReservaWeb {
     fecha: string
+    // Opcional para tolerar un backend previo a la configuración
+    // centralizada; en ese caso se usa la anticipación por defecto.
+    horarios?: HorariosReservaWeb
     slots: SlotDisponibilidad[]
 }
 

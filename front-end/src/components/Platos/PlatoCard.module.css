@@ -1,17 +1,10 @@
-.card {
-  background-color: var(--color-surface-container-lowest);
-  border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-level-1);
-}
+/* Particularidades de la card de plato: imagen con el índice superpuesto
+   y footer con Editar + switch. La estructura común vive en
+   ../Tarjeta/Tarjeta.module.css. */
 
-.body {
-  padding: var(--space-sm) var(--space-md);
-}
-
+/* Se separa de la base: la fila se alinea arriba por la imagen. */
 .fila {
   display: flex;
-  flex-direction: row;
   align-items: flex-start;
   gap: var(--space-sm);
 }
@@ -21,15 +14,12 @@
   flex-shrink: 0;
 }
 
+/* Sólo posiciona el chip de la base (t.indice) encima de la imagen. */
 .indice {
   position: absolute;
   top: var(--space-2xs);
   left: var(--space-2xs);
   z-index: 1;
-  background-color: var(--color-inverse-surface);
-  color: var(--color-inverse-on-surface);
-  border-radius: var(--radius-sm);
-  padding: 0 var(--space-2xs);
 }
 
 .imagen {
@@ -39,20 +29,6 @@
   border-radius: var(--radius-default);
   background-color: var(--color-surface-container);
   display: block;
-}
-
-.info {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.badges {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-2xs);
 }
 
 .badgeCategoria {
@@ -124,34 +100,6 @@
 .precio {
   color: var(--color-primary);
   margin: 0;
-}
-
-.footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  margin-top: var(--space-sm);
-  padding-top: var(--space-sm);
-  border-top: 1px solid var(--color-surface-container);
-}
-
-.botonEditar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2xs);
-  color: var(--color-primary);
-  border-color: var(--color-outline-variant);
-}
-
-.botonEditar:hover {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-on-primary);
-}
-
-.iconoEditar {
-  font-size: 0.9rem;
 }
 
 .switchWrap {

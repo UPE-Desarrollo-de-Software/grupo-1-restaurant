@@ -129,8 +129,8 @@ class ReservaController extends Controller
 
     /**
      * GET /api/cliente/reservas/disponibilidad-dia?fecha= (público con
-     * throttle): grilla de turnos fijos (12:00–23:00 cada 30 min) con
-     * el aforo libre de cada uno.
+     * throttle): grilla de turnos configurada (DisponibilidadReservaService)
+     * con el aforo libre de cada uno.
      */
     public function disponibilidadDia(Request $request)
     {

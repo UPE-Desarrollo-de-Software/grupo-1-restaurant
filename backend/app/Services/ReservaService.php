@@ -31,7 +31,8 @@ use Illuminate\Support\Facades\DB;
  *    cualquier otra (aforo de MesaService, pedidos, destrucción);
  *  - solo las PENDIENTES bloquean inventario (cancelada, finalizada y
  *    no_asistio no cuentan);
- *  - lead time: al menos 2 horas de anticipación;
+ *  - lead time y ventana de turnos: salen de DisponibilidadReservaService
+ *    (configuración centralizada, no constantes de este archivo);
  *  - transiciones: pendiente → cancelada | finalizada | no_asistio;
  *    la inasistencia exige hora pasada; la llegada no (llegó antes,
  *    llegó).
@@ -43,8 +44,6 @@ use Illuminate\Support\Facades\DB;
  */
 class ReservaService
 {
-    private const LEAD_TIME_HORAS = 2;
-
     /**
      * Duración del hold: alias de la fuente única en el modelo
      * (Reserva::ESPERA_MIN), usada por todo el cálculo de intervalos
@@ -58,20 +57,11 @@ class ReservaService
      */
     private const INV_DEFECTO = [4 => 25];
 
-    /**
-     * Franja fija de turnos de reserva: 12:00 a 23:00 cada 30 min
-     * (23 horarios). Es la grilla pública del cliente.
-     */
-    private const SLOT_INICIO_MIN = 12 * 60;
-
-    private const SLOT_FIN_MIN = 23 * 60;
-
-    private const SLOT_PASO_MIN = 30;
-
     public function __construct(
         private ReservaRepository $reservas,
         private ConfigMesaRepository $configMesas,
-        private PreordenService $preorden
+        private PreordenService $preorden,
+        private DisponibilidadReservaService $disponibilidadReservas
     ) {}
 
     // ==================== CONSULTA ====================
@@ -130,12 +120,12 @@ class ReservaService
     }
 
     /**
-     * Disponibilidad PÚBLICA de todo el día: un slot por cada horario
-     * fijo de la franja (12:00–23:00 cada 30 min) con el aforo que
-     * queda libre en su intervalo. Las pendientes del día se leen UNA
-     * vez y se reutilizan para los 23 slots.
+     * Disponibilidad PÚBLICA de todo el día: un slot por cada horario de
+     * la grilla configurada (DisponibilidadReservaService) con el aforo
+     * que queda libre en su intervalo. Las pendientes del día se leen UNA
+     * vez y se reutilizan para todos los slots.
      *
-     * @return array{fecha: string, slots: list<array{hora: string, inicio: string, fin: string, disponible: list<array{capacidad: int, cantidad: int}>, aforo_disponible: int}>}
+     * @return array{fecha: string, horarios: array{inicio: string, fin: string, intervalo_minutos: int, anticipacion_horas: int}, slots: list<array{hora: string, inicio: string, fin: string, disponible: list<array{capacidad: int, cantidad: int}>, aforo_disponible: int}>}
      */
     public function disponibilidadDia(string $fecha): array
     {
@@ -147,7 +137,7 @@ class ReservaService
             $pendientes = $this->reservas->pendientesDeFecha($fecha);
 
             $slots = [];
-            foreach ($this->horariosDelDia() as $hora) {
+            foreach ($this->disponibilidadReservas->horarios() as $hora) {
                 [$inicio, $fin] = $this->intervalo($hora);
                 $disponible = $this->disponiblePorCapacidad($fecha, $inicio, $fin, $pendientes);
 
@@ -167,7 +157,11 @@ class ReservaService
                 ];
             }
 
-            return ['fecha' => $fecha, 'slots' => $slots];
+            return [
+                'fecha' => $fecha,
+                'horarios' => $this->disponibilidadReservas->resumen(),
+                'slots' => $slots,
+            ];
         });
     }
 
@@ -179,7 +173,7 @@ class ReservaService
      *
      * @param  array<string, mixed>  $datos  {contacto_solicitante, fecha, hora, cantPersonas}
      *
-     * @throws \Exception lead time o sin inventario para el horario
+     * @throws \Exception horario fuera de la ventana, lead time o sin inventario para el horario
      */
     public function crear(array $datos): Reserva
     {
@@ -187,6 +181,9 @@ class ReservaService
         $hora = Carbon::parse($datos['hora'])->format('H:i:s');
         $cantPersonas = (int) $datos['cantPersonas'];
 
+        // La ventana de turnos es la MISMA para el alta del staff y la
+        // web: sale de la configuración centralizada (no del front).
+        $this->disponibilidadReservas->exigirHorarioValido($hora);
         $this->validarLeadTime($fecha, $hora);
 
         return DB::transaction(function () use ($datos, $fecha, $hora, $cantPersonas) {
@@ -487,19 +484,20 @@ class ReservaService
     // ==================== VALIDACIONES ====================
 
     /**
-     * Lead time: desde ahora faltan menos de 2 horas para la reserva.
+     * Lead time: desde ahora faltan menos de las horas de anticipación
+     * configuradas (DisponibilidadReservaService, hoy 2).
      *
      * @throws \Exception
      */
     private function validarLeadTime(string $fecha, string $hora): void
     {
         $momentoReserva = Carbon::parse("{$fecha} {$hora}");
-        $limite = Carbon::now()->addHours(self::LEAD_TIME_HORAS);
+        $limite = $this->disponibilidadReservas->limiteAnticipacion();
 
         if ($momentoReserva->lt($limite)) {
             throw new \Exception(
                 'La reserva debe hacerse con al menos '
-                    .self::LEAD_TIME_HORAS
+                    .$this->disponibilidadReservas->anticipacionHoras()
                     ." horas de anticipacion (lo mas temprano seria {$limite->format('H:i')})."
             );
         }
@@ -532,22 +530,6 @@ class ReservaService
     }
 
     // ==================== TIEMPO ====================
-
-    /**
-     * Turnos fijos de la grilla pública: 12:00, 12:30, …, 23:00.
-     *
-     * @return list<string>
-     */
-    private function horariosDelDia(): array
-    {
-        $horarios = [];
-
-        for ($minutos = self::SLOT_INICIO_MIN; $minutos <= self::SLOT_FIN_MIN; $minutos += self::SLOT_PASO_MIN) {
-            $horarios[] = $this->minutosAHora($minutos);
-        }
-
-        return $horarios;
-    }
 
     /**
      * 'H:i:s' | 'H:i' → minutos desde 00:00.

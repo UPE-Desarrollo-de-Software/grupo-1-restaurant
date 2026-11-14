@@ -146,8 +146,10 @@ export async function llamarMozo(codigo: string): Promise<{ mensaje: string }> {
 }
 
 // GET /cliente/reservas/disponibilidad-dia?fecha= — (PÚBLICO con
-// throttle) grilla fija de turnos (12:00–23:00 cada 30 min) con el
-// aforo que queda libre en cada uno. Una sola request por fecha.
+// throttle) grilla de turnos que define el backend (ventana +
+// intervalo configurables) con el aforo que queda libre en cada uno,
+// más el resumen de la ventana vigente (`horarios`). Una sola request
+// por fecha.
 export async function disponibilidadDiaReservaWeb(
     fecha: string,
     signal?: AbortSignal,

@@ -137,6 +137,66 @@
   color: var(--color-on-surface);
 }
 
+/* ============ HORARIOS DE RESERVA (ConfiguracionMesa) ============ */
+
+.horariosSeccion {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-outline-variant);
+}
+
+.horariosTitulo {
+  color: var(--color-on-surface);
+  margin: 0 0 var(--space-2xs) 0;
+}
+
+.horariosSubtitle {
+  color: var(--color-on-surface-variant);
+  margin: 0 0 var(--space-md) 0;
+}
+
+.horariosGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.horariosPreview {
+  background-color: var(--color-surface-container);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.horariosResumen {
+  color: var(--color-on-surface);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.horariosChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+  max-height: 9rem;
+  overflow-y: auto;
+  margin-bottom: var(--space-xs);
+}
+
+.horarioChip {
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-xs);
+  color: var(--color-on-surface);
+}
+
+.horariosNota {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
 /* ============ PIN (EditarMesa) ============ */
 
 .pinBox {
@@ -435,5 +495,9 @@
 @media (min-width: 576px) {
   .row {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .horariosGrid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }

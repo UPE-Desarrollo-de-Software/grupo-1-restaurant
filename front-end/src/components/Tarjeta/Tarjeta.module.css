@@ -1,0 +1,101 @@
+/* ============================================================
+   Tarjeta.module.css
+   Base compartida de las cards de listado del panel
+   (Usuarios, Categorías, Ingredientes, Promociones, Platos,
+   Mesas y Reservas).
+
+   Un único lugar define la estructura común: superficie, borde,
+   radio, sombra, chip de índice, columna de información, fila de
+   badges y footer con borde superior + botón de acción.
+
+   Cada card conserva su CSS Module local SOLO con sus
+   particularidades (colores de badges, precio, imagen, switch…).
+   Para rediseñar la estructura de TODAS las cards alcanza con
+   editar este archivo.
+
+   Variantes de footer (explícitas para no depender del orden de
+   cascada entre módulos):
+   - footerDerecha:   card con una sola acción → botón a la derecha.
+   - footerEspaciada: dos bloques enfrentados (Editar + switch).
+   ============================================================ */
+
+.card {
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-level-1);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-sm) var(--space-md);
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Chip con el número de la entidad. En PlatoCard se combina con una
+   clase local que lo posiciona encima de la imagen. */
+.indice {
+  flex-shrink: 0;
+  background-color: var(--color-inverse-surface);
+  color: var(--color-inverse-on-surface);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2xs);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-2xs);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-surface-container);
+}
+
+/* Card con UNA sola acción: el botón se alinea a la derecha. */
+.footerDerecha {
+  justify-content: flex-end;
+}
+
+/* Card con dos bloques en el footer (ej. Editar + switch). */
+.footerEspaciada {
+  justify-content: space-between;
+}
+
+.botonAccion {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--color-primary);
+  border-color: var(--color-outline-variant);
+}
+
+.botonAccion:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.iconoAccion {
+  font-size: 0.9rem;
+}

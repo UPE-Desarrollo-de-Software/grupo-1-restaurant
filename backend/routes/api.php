@@ -107,8 +107,8 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
 //    solapadas); no hay mesa que elegir ni "mozo virtual";
 //  - disponibilidad: qué capacidades quedan libres para ese intervalo
 //    (reemplaza al antiguo mapa de elección de mesas);
-//  - disponibilidad-dia: grilla fija de turnos (12:00–23:00 cada 30
-//    min) con el aforo libre de cada uno (una sola request por fecha).
+//  - disponibilidad-dia: grilla de turnos configurada (DisponibilidadReservaService)
+//    con el aforo libre de cada uno (una sola request por fecha).
 Route::post('/cliente/reservas', [ReservaController::class, 'solicitarWeb'])
     ->middleware('throttle:60,1');
 
@@ -146,6 +146,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Aforo del lugar y composición CONFIG_MESA.
     Route::get('/configuracion', [ConfiguracionController::class, 'show']);
+
+    // Disponibilidad horaria de reservas (ventana + intervalo de turnos).
+    // No vive en la DB: ver DisponibilidadReservaService.
+    Route::get('/configuracion/disponibilidad', [ConfiguracionController::class, 'showDisponibilidad']);
 });
 
 // ==================== TOMA DE PEDIDOS (mozo / gerente) ====================
@@ -285,6 +289,10 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_mesas'])->group(function (
 
     // Aforo del lugar y composición CONFIG_MESA (replace-all).
     Route::put('/configuracion', [ConfiguracionController::class, 'update']);
+
+    // Ventana de turnos de reservas (el resto de los módulos la consume
+    // por GET /configuracion/disponibilidad y disponibilidad-dia).
+    Route::put('/configuracion/disponibilidad', [ConfiguracionController::class, 'updateDisponibilidad']);
 });
 
 Route::middleware(['auth:sanctum', 'permiso:gestionar_promociones'])->group(function () {

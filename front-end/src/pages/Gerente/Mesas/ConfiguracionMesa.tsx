@@ -2,9 +2,16 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Mesas.module.css'
-import { configMesaFilaSchema } from '../../../schemas/configuracion'
-import { getConfiguracion, updateConfiguracion } from '../../../api/configuracion'
+import { configMesaFilaSchema, disponibilidadReservaSchema } from '../../../schemas/configuracion'
+import {
+    getConfiguracion,
+    getDisponibilidadReservas,
+    updateConfiguracion,
+    updateDisponibilidadReservas,
+} from '../../../api/configuracion'
 import type { ConfigMesaFilaInput } from '../../../schemas/configuracion'
+import type { DisponibilidadReservas } from '../../../types/Configuracion'
+import { generarTurnos } from '../../../utils/horariosReserva'
 import GastroLoader from '../../../components/GastroLoader/GastroLoader'
 
 interface FilaForm {
@@ -12,10 +19,18 @@ interface FilaForm {
     cantidad: string
 }
 
+// Intervalos que admite el backend (DisponibilidadReservaService).
+const INTERVALOS = [15, 30, 45, 60]
+
 // CONFIG_MESA: composición del salón (capacidad × cantidad) que define
 // el AFORO (Σ capacidad×cantidad = personas simultáneas máximas) y el
 // tope de mesas (Σ cantidad). PUT /configuracion es replace-all; la
 // regla "no bajar el aforo bajo las mesas vivas" es 422 del backend.
+//
+// Además administra la VENTANA DE TURNOS DE RESERVAS (horarios que
+// ofrecen los tres flujos de alta). OJO: esa configuración NO vive en la
+// base de datos; el backend la guarda en un archivo de runtime (ver el
+// aviso de la propia sección).
 export function ConfiguracionMesaPage() {
     const navigate = useNavigate()
     const [filas, setFilas] = useState<FilaForm[] | null>(null)
@@ -24,6 +39,17 @@ export function ConfiguracionMesaPage() {
     const [errorApi, setErrorApi] = useState<string | null>(null)
     const [exito, setExito] = useState<string | null>(null)
     const [tocado, setTocado] = useState(false)
+
+    // ==== Horarios de reserva (ventana de turnos) ====
+    const [disponibilidad, setDisponibilidad] = useState<DisponibilidadReservas | null>(null)
+    const [errorDisponibilidad, setErrorDisponibilidad] = useState<string | null>(null)
+    const [horaInicio, setHoraInicio] = useState('')
+    const [horaFin, setHoraFin] = useState('')
+    const [intervalo, setIntervalo] = useState('30')
+    const [enviandoHorarios, setEnviandoHorarios] = useState(false)
+    const [errorHorarios, setErrorHorarios] = useState<string | null>(null)
+    const [exitoHorarios, setExitoHorarios] = useState<string | null>(null)
+    const [tocadoHorarios, setTocadoHorarios] = useState(false)
 
     useEffect(() => {
         const controller = new AbortController()
@@ -39,6 +65,26 @@ export function ConfiguracionMesaPage() {
             .catch(err => {
                 if (!controller.signal.aborted) {
                     setErrorCarga(err instanceof Error ? err.message : 'Error desconocido al cargar la configuración')
+                }
+            })
+        return () => controller.abort()
+    }, [])
+
+    useEffect(() => {
+        const controller = new AbortController()
+        getDisponibilidadReservas(controller.signal)
+            .then(disponibilidadActual => {
+                setDisponibilidad(disponibilidadActual)
+                setHoraInicio(disponibilidadActual.hora_inicio)
+                setHoraFin(disponibilidadActual.hora_fin)
+                setIntervalo(String(disponibilidadActual.intervalo_minutos))
+                setErrorDisponibilidad(null)
+            })
+            .catch(err => {
+                if (!controller.signal.aborted) {
+                    setErrorDisponibilidad(
+                        err instanceof Error ? err.message : 'Error desconocido al cargar los horarios de reserva'
+                    )
                 }
             })
         return () => controller.abort()
@@ -71,6 +117,26 @@ export function ConfiguracionMesaPage() {
         }
     }
     const filasValidas = filas !== null && filas.length > 0 && filasParseadas.length === filas.length
+
+    // Validación de la ventana con el mismo schema del PUT.
+    const resultadoHorarios = disponibilidadReservaSchema.safeParse({
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
+        intervalo_minutos: intervalo,
+    })
+    const erroresHorarios: Record<string, string> = {}
+    if (!resultadoHorarios.success) {
+        for (const issue of resultadoHorarios.error.issues) {
+            const campo = issue.path[0]
+            if (typeof campo === 'string' && !erroresHorarios[campo]) {
+                erroresHorarios[campo] = issue.message
+            }
+        }
+    }
+
+    // Vista previa local de la grilla (sólo para ver qué se va a ofrecer;
+    // la grilla real la devuelve el backend al guardar).
+    const turnosPrevistos = generarTurnos(horaInicio, horaFin, Number(intervalo))
 
     function modificarFila(indice: number, campo: 'capacidad' | 'cantidad', valor: string) {
         setFilas(prev => prev === null ? prev : prev.map((fila, i) =>
@@ -110,6 +176,32 @@ export function ConfiguracionMesaPage() {
             setErrorApi(err instanceof Error ? err.message : 'Error desconocido al actualizar la configuración')
         } finally {
             setEnviando(false)
+        }
+    }
+
+    async function handlerSubmitHorarios(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault()
+        setTocadoHorarios(true)
+        setExitoHorarios(null)
+        setErrorHorarios(null)
+        if (!resultadoHorarios.success) return
+
+        setEnviandoHorarios(true)
+        try {
+            const actualizada = await updateDisponibilidadReservas(resultadoHorarios.data)
+            setDisponibilidad(actualizada)
+            setHoraInicio(actualizada.hora_inicio)
+            setHoraFin(actualizada.hora_fin)
+            setIntervalo(String(actualizada.intervalo_minutos))
+            setExitoHorarios(
+                `Horarios actualizados: ${actualizada.total_slots} turnos de ${actualizada.hora_inicio} a ${actualizada.hora_fin}.`
+            )
+            setTocadoHorarios(false)
+        } catch (err) {
+            // 422 del back (rango inválido) llega con {message} en español.
+            setErrorHorarios(err instanceof Error ? err.message : 'Error desconocido al actualizar los horarios')
+        } finally {
+            setEnviandoHorarios(false)
         }
     }
 
@@ -232,6 +324,124 @@ export function ConfiguracionMesaPage() {
                         </Button>
                     </div>
                 </Form>
+
+                <section className={s.horariosSeccion}>
+                    <h2 className={`text-headline-sm ${s.horariosTitulo}`}>Horarios de reserva</h2>
+                    <p className={`text-body-sm ${s.horariosSubtitle}`}>
+                        Turnos que se ofrecen al cliente y al personal al crear una reserva.
+                        El alta fuera de esta ventana se rechaza.
+                    </p>
+
+                    {exitoHorarios && <Alert variant='success' className='text-body-md'>{exitoHorarios}</Alert>}
+                    {errorHorarios && <Alert variant='danger' className='text-body-md'>{errorHorarios}</Alert>}
+                    {errorDisponibilidad && (
+                        <Alert variant='danger' className='text-body-md'>{errorDisponibilidad}</Alert>
+                    )}
+
+                    <Alert variant='warning' className='text-body-sm'>
+                        Este cambio <strong>no se guarda en la base de datos</strong>: queda en el
+                        archivo de runtime del servidor. Sobrevive a un reinicio del contenedor,
+                        pero se pierde al redesplegar el backend y vuelve a los valores por defecto.
+                    </Alert>
+
+                    <Form onSubmit={handlerSubmitHorarios} noValidate>
+                        <div className={s.horariosGrid}>
+                            <Form.Group controlId='reserva-hora-inicio'>
+                                <Form.Label className={`text-label-md ${s.label}`}>Hora de apertura</Form.Label>
+                                <Form.Control
+                                    className={s.input}
+                                    type='time'
+                                    value={horaInicio}
+                                    onChange={(e) => setHoraInicio(e.target.value)}
+                                    isInvalid={tocadoHorarios && !!erroresHorarios.hora_inicio}
+                                />
+                                <Form.Control.Feedback type='invalid'>
+                                    {erroresHorarios.hora_inicio}
+                                </Form.Control.Feedback>
+                            </Form.Group>
+
+                            <Form.Group controlId='reserva-hora-fin'>
+                                <Form.Label className={`text-label-md ${s.label}`}>Hora de cierre</Form.Label>
+                                <Form.Control
+                                    className={s.input}
+                                    type='time'
+                                    value={horaFin}
+                                    onChange={(e) => setHoraFin(e.target.value)}
+                                    isInvalid={tocadoHorarios && !!erroresHorarios.hora_fin}
+                                />
+                                <Form.Control.Feedback type='invalid'>
+                                    {erroresHorarios.hora_fin}
+                                </Form.Control.Feedback>
+                            </Form.Group>
+
+                            <Form.Group controlId='reserva-intervalo'>
+                                <Form.Label className={`text-label-md ${s.label}`}>Intervalo entre turnos</Form.Label>
+                                <Form.Select
+                                    className={s.input}
+                                    value={intervalo}
+                                    onChange={(e) => setIntervalo(e.target.value)}
+                                    isInvalid={tocadoHorarios && !!erroresHorarios.intervalo_minutos}
+                                >
+                                    {INTERVALOS.map(minutos => (
+                                        <option key={minutos} value={minutos}>{minutos} minutos</option>
+                                    ))}
+                                </Form.Select>
+                                <Form.Control.Feedback type='invalid'>
+                                    {erroresHorarios.intervalo_minutos}
+                                </Form.Control.Feedback>
+                            </Form.Group>
+                        </div>
+
+                        <div className={s.horariosPreview}>
+                            <p className={`text-body-sm ${s.horariosResumen}`}>
+                                {turnosPrevistos.length > 0
+                                    ? <>Se ofrecerán <strong>{turnosPrevistos.length}</strong> turnos, de <strong>{horaInicio}</strong> a <strong>{horaFin}</strong>.</>
+                                    : 'Elegí una ventana válida para ver los turnos.'}
+                            </p>
+                            {turnosPrevistos.length > 0 && (
+                                <div className={s.horariosChips}>
+                                    {turnosPrevistos.map(turno => (
+                                        <span key={turno} className={`text-label-sm ${s.horarioChip}`}>{turno}</span>
+                                    ))}
+                                </div>
+                            )}
+                            <p className={`text-body-sm ${s.horariosNota}`}>
+                                Anticipación mínima: <strong>{disponibilidad?.anticipacion_horas ?? '—'} horas</strong>{' '}
+                                (regla del backend, no editable desde acá).
+                            </p>
+                        </div>
+
+                        <div className={s.actions}>
+                            <Button
+                                className={s.button}
+                                variant='primary'
+                                type='submit'
+                                disabled={enviandoHorarios}
+                            >
+                                {enviandoHorarios
+                                    ? <><Spinner size='sm' animation='border' className='me-2' />Guardando...</>
+                                    : 'Guardar horarios'}
+                            </Button>
+                            <Button
+                                className={s.button}
+                                variant='outline-secondary'
+                                type='button'
+                                disabled={enviandoHorarios || disponibilidad === null}
+                                onClick={() => {
+                                    if (!disponibilidad) return
+                                    setHoraInicio(disponibilidad.hora_inicio)
+                                    setHoraFin(disponibilidad.hora_fin)
+                                    setIntervalo(String(disponibilidad.intervalo_minutos))
+                                    setTocadoHorarios(false)
+                                    setErrorHorarios(null)
+                                    setExitoHorarios(null)
+                                }}
+                            >
+                                Descartar cambios
+                            </Button>
+                        </div>
+                    </Form>
+                </section>
             </Card>
         </div>
     )
