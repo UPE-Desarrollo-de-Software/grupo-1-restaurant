@@ -226,7 +226,7 @@ export function ConfiguracionMesaPage() {
                             variant='outline-secondary'
                             type='button'
                             disabled={enviando}
-                            onClick={() => navigate('/gerente/mesas')}
+                            onClick={() => navigate('/gerente/mesas/gestion')}
                         >
                             Volver
                         </Button>

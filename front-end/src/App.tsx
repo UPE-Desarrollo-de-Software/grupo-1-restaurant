@@ -13,11 +13,9 @@ import { RequireAuth } from './components/RequireAuth'
 import { LandingPage } from './pages/Landing/Landing'
 import { CrearPlatoPage } from './pages/Gerente/Carta/Platos/CrearPlato'
 import { DashboardPage } from './pages/Gerente/Dashboard/Dashboard'
-import { CartaHubPage } from './pages/Gerente/Carta/CartaHub'
 import { PromocionesHubPage } from './pages/Gerente/Carta/Promociones/PromocionesHub'
 import { CrearPromocionPage } from './pages/Gerente/Carta/Promociones/CrearPromocion'
 import { EditarPromocionPage } from './pages/Gerente/Carta/Promociones/EditarPromocion'
-import { MesasHubPage } from './pages/Gerente/Mesas/MesasHub'
 import { GestionMesasPage } from './pages/Gerente/Mesas/GestionMesas'
 import { ConfiguracionMesaPage } from './pages/Gerente/Mesas/ConfiguracionMesa'
 import { CrearMesaPage } from './pages/Gerente/Mesas/CrearMesa'
@@ -63,7 +61,9 @@ function App() {
 
               <Route element={<RequireAuth rolesPermitidos={['Gerente']}><Outlet/></RequireAuth>}>
                 <Route path='/gerente' element={<DashboardPage/>}/>
-                <Route path='/gerente/carta' element={<CartaHubPage/>}/>
+                {/* Los viejos hubs se eliminaron: sus rutas quedan como redirect
+                    al primer tab de la sección para no dejar links en blanco. */}
+                <Route path='/gerente/carta' element={<Navigate to='/gerente/carta/platos' replace/>}/>
                 <Route path='/gerente/carta/platos' element={<PlatosHubPage/>}/>
                 <Route path='/gerente/carta/platos/crear' element={<CrearPlatoPage/>}/>
                 <Route path='/gerente/carta/platos/:id/editar' element={<EditarPlatoPage/>}/>
@@ -76,7 +76,7 @@ function App() {
                 <Route path='/gerente/carta/promociones' element={<PromocionesHubPage/>}/>
                 <Route path='/gerente/carta/promociones/crear' element={<CrearPromocionPage/>}/>
                 <Route path='/gerente/carta/promociones/:id/editar' element={<EditarPromocionPage/>}/>
-                <Route path='/gerente/mesas' element={<MesasHubPage/>}/>
+                <Route path='/gerente/mesas' element={<Navigate to='/gerente/mesas/gestion' replace/>}/>
                 <Route path='/gerente/mesas/gestion' element={<GestionMesasPage/>}/>
                 <Route path='/gerente/mesas/gestion/crear' element={<CrearMesaPage/>}/>
                 <Route path='/gerente/mesas/gestion/:id/editar' element={<EditarMesaPage/>}/>
