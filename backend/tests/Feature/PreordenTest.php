@@ -314,6 +314,47 @@ test('cocina ve el pedido recien convertido', function () {
         ->assertJsonFragment(['id' => $pedido->id]);
 });
 
+test('el resumen marca es_preorden en el pedido convertido y false en uno normal', function () {
+    $reserva = preordenReservaWeb(preordenLineas(preordenPlato()));
+    preordenGerente();
+    preordenFinalizar($reserva)->assertOk();
+    preordenCrearMesa($reserva->id)->assertSuccessful();
+    $mesa = Mesa::latest('id')->firstOrFail();
+
+    // Un pedido normal en la MISMA mesa (alta de empleado), para
+    // contrastar que el flag distingue el origen.
+    $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [['plato_id' => preordenPlato()->id, 'cantidad' => 1]],
+    ])->assertCreated();
+
+    $convertidoId = Pedido::min('id');
+    $normalId = Pedido::max('id');
+    expect($convertidoId)->not->toBe($normalId);
+
+    $porId = collect($this->getJson("/api/mesas/{$mesa->id}/pedidos")
+        ->assertOk()
+        ->json('pedidos'))->keyBy('id');
+
+    expect($porId[$convertidoId]['es_preorden'])->toBeTrue()
+        ->and($porId[$normalId]['es_preorden'])->toBeFalse();
+
+    // La cuenta también marca la parte nacida de la pre-orden (badge
+    // "Tu parte" en el front). Se pide con el token del empleado.
+    $partes = $this->getJson("/api/mesas/{$mesa->id}/cuenta")->assertOk()->json('partes');
+
+    expect(collect($partes)->firstWhere('pedido_id', $convertidoId)['es_preorden'])->toBeTrue()
+        ->and(collect($partes)->firstWhere('pedido_id', $normalId)['es_preorden'])->toBeFalse();
+
+    // El comensal ve lo mismo con su PIN: el pedido de la pre-orden es
+    // "suyo" aunque el navegador no tenga sus pedidoIds.
+    $cliente = $this->withHeader('Authorization', 'Bearer '.$mesa->codigo_acceso)
+        ->getJson('/api/cliente/pedidos')
+        ->assertOk()
+        ->json('pedidos');
+
+    expect(collect($cliente)->keyBy('id')[$convertidoId]['es_preorden'])->toBeTrue();
+});
+
 test('la agenda de reservas incluye la preorden', function () {
     $plato = preordenPlato();
     preordenReservaWeb(preordenLineas($plato));

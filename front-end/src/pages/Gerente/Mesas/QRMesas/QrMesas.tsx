@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Button } from 'react-bootstrap'
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react'
 import logo from '../../../../assets/logo/gastroapp-logo-256x256.png'
+import { cargarImagen, descargarImagen, dibujarAficheQr } from '../../../../utils/descargas'
 import s from './QrMesas.module.css'
 
 // QR general del local: escanearlo abre la landing ("/"), que es la
@@ -12,13 +13,22 @@ export function QrMesasPage() {
     const destino = `${window.location.origin}/carta`
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
-    function handlerDescargar() {
-        const lienzo = canvasRef.current?.toDataURL('image/png')
+    // El PNG no es el QR "pelado": es el afiche de la app (tarjeta con
+    // sombra, logo, título, QR enmarcado y URL), todo con los tokens de
+    // GastroApp (ver utils/descargas.ts).
+    async function handlerDescargar() {
+        const lienzo = canvasRef.current
         if (!lienzo) return
-        const enlace = document.createElement('a')
-        enlace.href = lienzo
-        enlace.download = 'qr-carta-gastroapp.png'
-        enlace.click()
+
+        const afiche = await dibujarAficheQr({
+            logo: await cargarImagen(logo),
+            qr: lienzo,
+            titulo: 'Escaneá para ver la carta',
+            subtitulo: 'GastroApp · pedí desde tu celular',
+            urlDestino: destino,
+            pie: 'Personalizá tu plato, pedí y consultá tu cuenta sin esperar al mozo.',
+        })
+        descargarImagen(afiche, 'qr-carta-gastroapp.png')
     }
 
     return (

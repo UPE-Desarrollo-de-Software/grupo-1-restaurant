@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\ReservaCancelada;
 use App\Exceptions\ApiException;
 use App\Models\DetallePedido;
+use App\Models\DetallePreOrden;
 use App\Models\Mesa;
 use App\Models\Pedido;
 use App\Models\Reserva;
@@ -438,6 +439,13 @@ class MesaService
 
         $pedidos = $this->pedidos->pedidosDeVisita($mesaId, $mesa->created_at?->toDateTimeString());
 
+        // Pedidos nacidos de la pre-orden: su parte se marca para que el
+        // comensal la adopte como propia ("Tu parte") en la cuenta.
+        $dePreorden = DetallePreOrden::whereIn(
+            'pedido_id',
+            $pedidos->pluck('id')->all()
+        )->pluck('pedido_id')->flip();
+
         $porRaiz = [];
 
         foreach ($pedidos as $pedido) {
@@ -447,12 +455,15 @@ class MesaService
                 $porRaiz[$raizId] = [
                     'pedido_id' => $raizId,
                     'pedido_ids' => [],
+                    'es_preorden' => false,
                     'subtotal' => 0.0,
                     'lineas' => [],
                 ];
             }
 
             $porRaiz[$raizId]['pedido_ids'][] = $pedido->id;
+            $porRaiz[$raizId]['es_preorden'] = $porRaiz[$raizId]['es_preorden']
+                || $dePreorden->has($pedido->id);
 
             foreach ($pedido->detalles as $detalle) {
                 $porRaiz[$raizId]['lineas'][] = [
@@ -507,12 +518,20 @@ class MesaService
 
         $pedidos = $this->pedidos->todosDeVisita($mesaId, $mesa->created_at?->toDateTimeString());
 
+        // Pedidos nacidos de la pre-orden de la reserva (detalle_preorden
+        // estampado). El front los adopta como propios del comensal aunque
+        // no estén en sus pedidoIds (el dispositivo no guardó el alta).
+        $dePreorden = DetallePreOrden::whereIn(
+            'pedido_id',
+            $pedidos->pluck('id')->all()
+        )->pluck('pedido_id')->flip();
+
         $resumen = [
             'mesa_id' => $mesa->id,
             'codigo_acceso' => $mesa->codigo_acceso,
             'encontrada' => true,
             'pedidos' => $pedidos
-                ->map(fn (Pedido $pedido) => $this->pedidoAArray($pedido))
+                ->map(fn (Pedido $pedido) => $this->pedidoAArray($pedido, $dePreorden->has($pedido->id)))
                 ->values()
                 ->all(),
         ];
@@ -534,15 +553,18 @@ class MesaService
      * Vista de un pedido para el resumen: cabecera + sus líneas con el
      * `confirmado` de cada una y el gate agregado por pedido.
      *
+     * @param  bool  $esPreorden  true si el pedido nació de la pre-orden
+     *                            de la reserva (detalle_preorden).
      * @return array<string, mixed>
      */
-    private function pedidoAArray(Pedido $pedido): array
+    private function pedidoAArray(Pedido $pedido, bool $esPreorden = false): array
     {
 
         return [
             'id' => $pedido->id,
             'pedido_padre_id' => $pedido->pedido_padre_id,
             'estado' => $pedido->estado,
+            'es_preorden' => $esPreorden,
             'total' => (float) $pedido->total,
             'fecha' => $pedido->fecha,
             'lineas' => $pedido->detalles->map(fn (DetallePedido $detalle) => [

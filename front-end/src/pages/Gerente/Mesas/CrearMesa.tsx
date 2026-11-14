@@ -22,6 +22,11 @@ interface CrearMesaProps {
 export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesion = false }: CrearMesaProps) {
     const location = useLocation();
     const navigate = useNavigate()
+    // Llega desde "Habilitar su Mesa" (EditarReserva): con la reserva se
+    // vincula la mesa (hereda el PIN) y se convierte la pre-orden.
+    const reservaId = typeof location.state?.reservaId === 'number'
+        ? location.state.reservaId
+        : null
     const [capacidad, setCapacidad] = useState(
     location.state?.capacidad?.toString() ?? ''
 );
@@ -73,7 +78,12 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
     }, [])
 
     const errores: Record<string, string> = {}
-    const resultados = mesaSchema.safeParse({ capacidad, estado: 'ocupada', usuario_id: usuarioId })
+    const resultados = mesaSchema.safeParse({
+        capacidad,
+        estado: 'ocupada',
+        usuario_id: usuarioId,
+        reserva_id: reservaId ?? undefined,
+    })
     if (!resultados.success) {
         for (const issue of resultados.error.issues) {
             const campo = issue.path[0]
@@ -123,6 +133,12 @@ export function CrearMesaPage({ baseVuelta = '/gerente/mesas/gestion', soloSesio
                 <h1 className={`text-headline-md ${s.title}`}>Nueva mesa</h1>
                 {aforoInfo && (
                     <p className={`text-body-sm ${s.subtitle}`}>{aforoInfo}</p>
+                )}
+                {reservaId !== null && (
+                    <p className={`text-body-sm ${s.subtitle}`}>
+                        Vinculada a la reserva #{reservaId}: al crear la mesa, la pre-orden del
+                        cliente se envía sola a cocina.
+                    </p>
                 )}
 
                 {errorApi && <Alert variant='danger' className='text-body-md'>{errorApi}</Alert>}
