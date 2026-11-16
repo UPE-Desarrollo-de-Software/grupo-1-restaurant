@@ -25,7 +25,6 @@ export function QrMesasPage() {
             qr: lienzo,
             titulo: 'Escaneá para ver la carta',
             subtitulo: 'GastroApp · pedí desde tu celular',
-            urlDestino: destino,
             pie: 'Personalizá tu plato, pedí y consultá tu cuenta sin esperar al mozo.',
         })
         descargarImagen(afiche, 'qr-carta-gastroapp.png')
@@ -33,13 +32,9 @@ export function QrMesasPage() {
 
     return (
         <div className={s.page}>
-            <div className={s.afiche}>
-                <img src={logo} alt='GastroApp' className={s.logo} />
-                <h1 className={`text-headline-md ${s.titulo}`}>Escaneá para ver la carta</h1>
-                <QRCodeSVG value={destino} size={280} level='M' className={s.qr} />
-                <p className={`text-body-md ${s.url}`}>{destino}</p>
-            </div>
-
+            {/* Acciones arriba y pegajosas: Imprimir/Descargar quedan a
+                mano sin scrollear el preview. El QR sigue en el DOM, así
+                que window.print() imprime el afiche igual que antes. */}
             <div className={`${s.acciones} no-print`}>
                 <Button
                     variant='primary'
@@ -59,6 +54,13 @@ export function QrMesasPage() {
                     <i className='bi bi-download me-1' aria-hidden='true' />
                     Descargar PNG
                 </Button>
+            </div>
+
+            <div className={s.afiche}>
+                <img src={logo} alt='GastroApp' className={s.logo} />
+                <h1 className={`text-headline-md ${s.titulo}`}>Escaneá para ver la carta</h1>
+                <QRCodeSVG value={destino} size={180} level='M' className={s.qr} />
+                <p className={`text-body-md ${s.url}`}>{destino}</p>
             </div>
 
             {/* Lienzo fuera de pantalla para exportar el PNG en alta. */}

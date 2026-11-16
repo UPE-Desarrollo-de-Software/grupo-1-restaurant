@@ -1,19 +1,19 @@
 .card {
+  /* Un solo ancho para la imagen y el botón de agregar: así la columna
+     derecha queda alineada arriba y abajo. Se resuelve igual en .cuerpo y
+     .footer porque ambos tienen el mismo padding horizontal. */
+  --ancho-media: clamp(6rem, 24%, 8rem);
+
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: var(--space-sm);
+  flex-direction: column;
   background-color: var(--color-surface-container-lowest);
-  border-radius: var(--radius-md);
-  padding: var(--space-sm) var(--space-md);
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-level-1);
 
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
-}
-
-.card :global(.card-body) {
-  padding: 0;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -23,6 +23,15 @@
   }
 }
 
+/* Cuerpo: texto a la izquierda, imagen del producto a la derecha.
+   Menos aire abajo para que quede más pegado a la franja de acciones. */
+.cuerpo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-md) var(--space-xs);
+}
+
 .info {
   display: flex;
   flex-direction: column;
@@ -30,14 +39,29 @@
   min-width: 0;
 }
 
+/* Categoría real del plato (categoria_nombre del backend). */
+.categoria {
+  align-self: flex-start;
+  max-width: 100%;
+  margin-bottom: var(--space-xs);
+  padding: 0.125rem var(--space-xs);
+  border-radius: var(--radius-full);
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .nombre {
   color: var(--color-on-surface);
+  font-weight: 700;
   margin: 0 0 var(--space-2xs) 0;
 }
 
 .descripcion {
   color: var(--color-on-surface-variant);
-  margin: 0 0 var(--space-sm) 0;
+  margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -47,30 +71,78 @@
 
 .precio {
   color: var(--color-primary);
+  margin: var(--space-xs) 0 0 0;
 }
 
-.link {
-  color: var(--color-primary);
-  transition: color 0.15s ease;
-}
-
-.link:hover {
-  color: var(--color-primary-container);
-}
-
+/* Imagen: cuadrada, recortada y con la proporción de la referencia. */
 .media {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-xs);
+  width: var(--ancho-media);
   flex-shrink: 0;
 }
 
 .imagen {
-  width: 5.5rem;
-  height: 5.5rem;
-  flex-shrink: 0;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
   object-fit: cover;
-  border-radius: var(--radius-default);
+  border-radius: var(--radius-md);
   background-color: var(--color-surface-container);
+}
+
+.imagenVacia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-outline);
+  font-size: 1.5rem;
+}
+
+/* Franja inferior: acciones separadas a los extremos. */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-2xs) var(--space-md) var(--space-xs);
+  border-top: 1px solid var(--color-surface-container-high);
+  /* background-color: var(--color-surface-container-low); */
+  /* La franja pinta su propio fondo: hereda las esquinas de la card. */
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+}
+
+.verDetalles {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--color-primary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease;
+}
+
+.verDetalles:hover {
+  color: var(--color-primary-container);
+  text-decoration: underline;
+}
+
+.verDetalles:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.verDetalles i {
+  font-size: 0.85em;
+  transition: transform 0.15s ease;
+}
+
+.verDetalles:hover i {
+  transform: translateX(2px);
+}
+
+/* Misma columna que la imagen: el botón queda alineado con su ancho. */
+.acciones {
+  width: var(--ancho-media);
+  flex-shrink: 0;
 }

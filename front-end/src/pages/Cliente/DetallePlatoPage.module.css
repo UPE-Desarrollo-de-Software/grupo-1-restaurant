@@ -96,6 +96,13 @@
     color: var(--color-on-surface-variant);
 }
 
+/* Botón de agregar: mismo componente que la tarjeta de la carta, en un
+   ancho cómodo (no ocupa toda la columna en escritorio). */
+.acciones {
+    width: 100%;
+    max-width: 20rem;
+}
+
 .ingredientes {
     border-top: 1px solid var(--color-surface-container-high);
     padding-top: var(--space-sm);

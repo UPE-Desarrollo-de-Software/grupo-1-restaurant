@@ -64,6 +64,44 @@
     flex-wrap: wrap;
 }
 
+/* Código + QR de la mesa: bloque propio debajo de la tarjeta, con la
+   distribución de EditarMesa (etiqueta/valor a la izquierda, acciones a
+   la derecha). */
+.pinBox {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-container);
+    border: 1px dashed var(--color-outline-variant);
+}
+
+.pinEtiqueta {
+    margin: 0;
+    color: var(--color-on-surface-variant);
+}
+
+.pinValor {
+    margin: var(--space-2xs) 0 0;
+    color: var(--color-on-surface);
+    letter-spacing: 0.3em;
+    font-variant-numeric: tabular-nums;
+}
+
+.pinAyuda {
+    margin: var(--space-2xs) 0 0;
+    color: var(--color-on-surface-variant);
+}
+
+.pinAcciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
 .tarjeta {
     background: var(--color-surface-container-lowest);
     border: 1px solid var(--color-outline-variant);
@@ -116,6 +154,14 @@
     }
 
     .accionesIdentificada .btn {
+        flex: 1 1 auto;
+    }
+
+    .pinAcciones {
+        width: 100%;
+    }
+
+    .pinAcciones .btn {
         flex: 1 1 auto;
     }
 }

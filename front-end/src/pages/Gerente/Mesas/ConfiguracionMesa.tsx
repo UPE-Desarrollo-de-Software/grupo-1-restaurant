@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Mesas.module.css'
 import { configMesaFilaSchema, disponibilidadReservaSchema } from '../../../schemas/configuracion'
@@ -32,8 +31,11 @@ const INTERVALOS = [15, 30, 45, 60]
 // base de datos; el backend la guarda en un archivo de runtime (ver el
 // aviso de la propia sección).
 export function ConfiguracionMesaPage() {
-    const navigate = useNavigate()
     const [filas, setFilas] = useState<FilaForm[] | null>(null)
+    // Último estado guardado de la CONFIG_MESA: "Cancelar" restaura esto,
+    // así desaparecen las filas agregadas con "Agregar mesas" que todavía
+    // no se persistieron y las existentes vuelven a su valor guardado.
+    const [filasGuardadas, setFilasGuardadas] = useState<FilaForm[]>([])
     const [errorCarga, setErrorCarga] = useState<string | null>(null)
     const [enviando, setEnviando] = useState(false)
     const [errorApi, setErrorApi] = useState<string | null>(null)
@@ -59,7 +61,9 @@ export function ConfiguracionMesaPage() {
                     capacidad: String(fila.capacidad),
                     cantidad: String(fila.cantidad),
                 }))
-                setFilas(cargadas.length > 0 ? cargadas : [{ capacidad: '', cantidad: '' }])
+                const iniciales = cargadas.length > 0 ? cargadas : [{ capacidad: '', cantidad: '' }]
+                setFilas(iniciales)
+                setFilasGuardadas(iniciales)
                 setErrorCarga(null)
             })
             .catch(err => {
@@ -152,6 +156,16 @@ export function ConfiguracionMesaPage() {
         setFilas(prev => prev === null ? prev : prev.filter((_, i) => i !== indice))
     }
 
+    // Descarta lo no guardado: vuelve al snapshot persistido (las filas
+    // nuevas sin guardar desaparecen; las existentes recuperan su valor).
+    function cancelarCambios() {
+        if (filasGuardadas.length === 0) return
+        setFilas(filasGuardadas)
+        setTocado(false)
+        setExito(null)
+        setErrorApi(null)
+    }
+
     async function handlerSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setTocado(true)
@@ -166,7 +180,9 @@ export function ConfiguracionMesaPage() {
                 capacidad: String(fila.capacidad),
                 cantidad: String(fila.cantidad),
             }))
-            setFilas(strings.length > 0 ? strings : [{ capacidad: '', cantidad: '' }])
+            const guardadas = strings.length > 0 ? strings : [{ capacidad: '', cantidad: '' }]
+            setFilas(guardadas)
+            setFilasGuardadas(guardadas)
             setExito(
                 `Configuración actualizada: aforo ${actualizada.aforo} personas · ${actualizada.mesas_maximas} mesas máximas.`
             )
@@ -273,7 +289,7 @@ export function ConfiguracionMesaPage() {
                                 <Button
                                     size='sm'
                                     variant='outline-danger'
-                                    className='text-label-md'
+                                    className={`${s.deleteBtn} text-label-md`}
                                     type='button'
                                     disabled={(filas?.length ?? 0) <= 1 || enviando}
                                     title={(filas?.length ?? 0) <= 1 ? 'Debe quedar al menos una fila' : 'Quitar fila'}
@@ -286,17 +302,19 @@ export function ConfiguracionMesaPage() {
                         ))}
                     </div>
 
-                    <Button
-                        size='sm'
-                        variant='outline-primary'
-                        className='text-label-md'
-                        type='button'
-                        disabled={enviando}
-                        onClick={agregarFila}
-                    >
-                        <i className='bi bi-plus-lg me-1' aria-hidden='true' />
-                        Agregar fila
-                    </Button>
+                    <div className={s.accionesFilas}>
+                        <Button
+                            size='sm'
+                            variant='outline-primary'
+                            className='text-label-md'
+                            type='button'
+                            disabled={enviando}
+                            onClick={agregarFila}
+                        >
+                            <i className='bi bi-plus-lg me-1' aria-hidden='true' />
+                            Agregar mesas
+                        </Button>
+                    </div>
 
                     <div className={s.configDerivados}>
                         <span className='text-body-md'>
@@ -308,19 +326,19 @@ export function ConfiguracionMesaPage() {
                     </div>
 
                     <div className={s.actions}>
-                        <Button className={s.button} variant='primary' type='submit' disabled={enviando}>
+                        <Button className='text-label-md' variant='primary' type='submit' disabled={enviando}>
                             {enviando
                                 ? <><Spinner size='sm' animation='border' className='me-2' />Guardando...</>
-                                : 'Guardar configuración'}
+                                : 'Guardar cambios'}
                         </Button>
                         <Button
-                            className={s.button}
+                            className='text-label-md'
                             variant='outline-secondary'
                             type='button'
-                            disabled={enviando}
-                            onClick={() => navigate('/gerente/mesas/gestion')}
+                            disabled={enviando || filasGuardadas.length === 0}
+                            onClick={cancelarCambios}
                         >
-                            Volver
+                            Cancelar
                         </Button>
                     </div>
                 </Form>
@@ -329,7 +347,6 @@ export function ConfiguracionMesaPage() {
                     <h2 className={`text-headline-sm ${s.horariosTitulo}`}>Horarios de reserva</h2>
                     <p className={`text-body-sm ${s.horariosSubtitle}`}>
                         Turnos que se ofrecen al cliente y al personal al crear una reserva.
-                        El alta fuera de esta ventana se rechaza.
                     </p>
 
                     {exitoHorarios && <Alert variant='success' className='text-body-md'>{exitoHorarios}</Alert>}
@@ -337,12 +354,6 @@ export function ConfiguracionMesaPage() {
                     {errorDisponibilidad && (
                         <Alert variant='danger' className='text-body-md'>{errorDisponibilidad}</Alert>
                     )}
-
-                    <Alert variant='warning' className='text-body-sm'>
-                        Este cambio <strong>no se guarda en la base de datos</strong>: queda en el
-                        archivo de runtime del servidor. Sobrevive a un reinicio del contenedor,
-                        pero se pierde al redesplegar el backend y vuelve a los valores por defecto.
-                    </Alert>
 
                     <Form onSubmit={handlerSubmitHorarios} noValidate>
                         <div className={s.horariosGrid}>
@@ -407,23 +418,22 @@ export function ConfiguracionMesaPage() {
                             )}
                             <p className={`text-body-sm ${s.horariosNota}`}>
                                 Anticipación mínima: <strong>{disponibilidad?.anticipacion_horas ?? '—'} horas</strong>{' '}
-                                (regla del backend, no editable desde acá).
                             </p>
                         </div>
 
                         <div className={s.actions}>
                             <Button
-                                className={s.button}
+                                className='text-label-md'
                                 variant='primary'
                                 type='submit'
                                 disabled={enviandoHorarios}
                             >
                                 {enviandoHorarios
                                     ? <><Spinner size='sm' animation='border' className='me-2' />Guardando...</>
-                                    : 'Guardar horarios'}
+                                    : 'Guardar cambios'}
                             </Button>
                             <Button
-                                className={s.button}
+                                className='text-label-md'
                                 variant='outline-secondary'
                                 type='button'
                                 disabled={enviandoHorarios || disponibilidad === null}
@@ -437,7 +447,7 @@ export function ConfiguracionMesaPage() {
                                     setExitoHorarios(null)
                                 }}
                             >
-                                Descartar cambios
+                                Cancelar
                             </Button>
                         </div>
                     </Form>

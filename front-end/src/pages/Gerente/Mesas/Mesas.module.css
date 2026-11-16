@@ -66,6 +66,8 @@
   display: flex;
   gap: var(--space-sm);
   margin-top: var(--space-sm);
+    flex-wrap: wrap;
+  justify-content: right;
 }
 
 .actions .button {
@@ -76,6 +78,10 @@
 
 .zonaWrap {
   margin-top: var(--space-xl);
+}
+
+.deleteBtn{
+  margin-top: 32px;
 }
 
 /* ============ TOOLBAR DEL HUB (Nueva mesa + acciones) ============ */
@@ -123,6 +129,14 @@
 
 .configFila .btn {
   margin-top: 1.9rem;
+}
+
+/* "Agregar mesas" alineado a la derecha del formulario (el padre es un
+   <form> en block: ms-auto no alcanza). */
+.accionesFilas {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-xs);
 }
 
 .configDerivados {

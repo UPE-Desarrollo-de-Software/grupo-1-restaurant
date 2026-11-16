@@ -12,6 +12,7 @@ export function UsuariosHubPage() {
 
   return (
     <div className={`${s.page} ${s.hub}`}>
+      <h1 className={`text-headline-md ${s.title}`}>Usuarios</h1>
       <Buscador
         placeHolder='Buscar usuario por nombre, email o id...'
         valor={busqueda}

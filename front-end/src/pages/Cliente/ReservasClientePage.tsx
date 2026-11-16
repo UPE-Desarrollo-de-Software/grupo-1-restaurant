@@ -7,7 +7,6 @@ import { hoyLocal, reservaWebSchema } from '../../schemas/cliente'
 import { useAhora } from '../../hooks/useAhora'
 import { useHorariosReserva } from '../../hooks/useHorariosReserva'
 import { GrillaHorarios } from '../../components/Reservas/GrillaHorarios'
-import { DetalleSlotHorario } from '../../components/Reservas/DetalleSlotHorario'
 import { PreordenCliente } from '../../components/Cliente/PreordenCliente'
 import { descargarComprobanteReserva } from '../../utils/comprobanteReserva'
 import { ANTICIPACION_HORAS_POR_DEFECTO } from '../../utils/horariosReserva'
@@ -91,6 +90,16 @@ export function ReservasClientePage() {
     const personasValidas = Number.isInteger(Number(cantPersonas)) && Number(cantPersonas) >= 1
     const personas = personasValidas ? Number(cantPersonas) : 0
 
+    // Datos mínimos para ver los horarios: nombre + cantidad de personas
+    // (mismo mínimo que `reservaWebSchema`). Se derivan en cada render, así
+    // al completarlos o editarlos la grilla se habilita/oculta sola.
+    const nombreCompleto = nombreApellido.trim().length >= 3
+    const datosCompletos = nombreCompleto && personasValidas
+    const datosFaltantes = [
+        !nombreCompleto ? 'tu nombre y apellido' : null,
+        !personasValidas ? 'la cantidad de personas' : null,
+    ].filter((dato): dato is string => dato !== null)
+
     // Contexto de la grilla: la anticipación la manda el backend
     // (`horarios.anticipacion_horas`); el valor de respaldo sólo cubre un
     // backend previo a la configuración centralizada.
@@ -102,12 +111,17 @@ export function ReservasClientePage() {
         personas,
     }
 
-    const slotSeleccionado = slots.find(slot => slot.hora === hora) ?? null
-
     function cambiarFecha(valor: string) {
         setFecha(valor)
         // El horario pertenece a la fecha anterior: no lo arrastres.
         setHora('')
+    }
+
+    function cambiarNombre(valor: string) {
+        setNombreApellido(valor)
+        // Si el nombre vuelve a quedar incompleto la grilla se oculta: el
+        // horario elegido ya no corresponde a un formulario válido.
+        if (valor.trim().length < 3) setHora('')
     }
 
     function cambiarPersonas(valor: string) {
@@ -214,8 +228,8 @@ export function ReservasClientePage() {
                                 type='text'
                                 placeholder='Ana Pérez'
                                 value={nombreApellido}
-                                onChange={e => setNombreApellido(e.target.value)}
-                                isInvalid={tocado && !!errores.nombreApellido}
+                                onChange={e => cambiarNombre(e.target.value)}
+                                isInvalid={(tocado || fecha !== '') && !!errores.nombreApellido}
                             />
                             <Form.Control.Feedback type='invalid'>{errores.nombreApellido}</Form.Control.Feedback>
                         </Form.Group>
@@ -243,7 +257,7 @@ export function ReservasClientePage() {
                                 placeholder='4'
                                 value={cantPersonas}
                                 onChange={e => cambiarPersonas(e.target.value)}
-                                isInvalid={tocado && !!errores.cantPersonas}
+                                isInvalid={(tocado || fecha !== '') && !!errores.cantPersonas}
                             />
                             <Form.Control.Feedback type='invalid'>{errores.cantPersonas}</Form.Control.Feedback>
                         </Form.Group>
@@ -265,26 +279,36 @@ export function ReservasClientePage() {
                         {fecha && (
                             <Form.Label className='text-label-md'>
                                 Horarios disponibles
-                                {diaHorarios?.horarios
+                                {datosCompletos && diaHorarios?.horarios
                                     ? ` (${diaHorarios.horarios.inicio} a ${diaHorarios.horarios.fin})`
                                     : ''}
                             </Form.Label>
                         )}
-                        
+
                         {!fecha && (
                             <Form.Text className='text-body-sm'>
                                 Elegí una fecha para ver los horarios disponibles.
                             </Form.Text>
                         )}
 
-                        {cargandoHorarios && (
+                        {/* Sin nombre ni personas no hay turnos: se guía al
+                            cliente con los datos que faltan y los campos
+                            quedan marcados con el estilo de validación. */}
+                        {fecha && !datosCompletos && (
+                            <Form.Text className='text-body-sm text-danger d-block'>
+                                <i className='bi bi-exclamation-circle me-1' aria-hidden='true' />
+                                Completá para ver los horarios: {datosFaltantes.join(' · ')}.
+                            </Form.Text>
+                        )}
+
+                        {fecha && datosCompletos && cargandoHorarios && (
                             <p className='text-body-sm mb-0 d-flex align-items-center gap-2'>
                                 <Spinner size='sm' animation='border' />
                                 Cargando horarios…
                             </p>
                         )}
 
-                        {errorHorarios && (
+                        {fecha && datosCompletos && errorHorarios && (
                             <div className='text-body-sm'>
                                 <span className='d-block mb-2'>{errorHorarios}</span>
                                 <Button
@@ -299,13 +323,13 @@ export function ReservasClientePage() {
                             </div>
                         )}
 
-                        {fecha && !cargandoHorarios && !errorHorarios && slots.length === 0 && (
+                        {fecha && datosCompletos && !cargandoHorarios && !errorHorarios && slots.length === 0 && (
                             <Form.Text className='text-body-sm'>
                                 No hay horarios para esa fecha.
                             </Form.Text>
                         )}
 
-                        {slots.length > 0 && (
+                        {datosCompletos && slots.length > 0 && (
                             <GrillaHorarios
                                 slots={slots}
                                 seleccionada={hora}
@@ -314,13 +338,11 @@ export function ReservasClientePage() {
                             />
                         )}
 
-                        {tocado && errores.hora && slots.length > 0 && (
+                        {datosCompletos && tocado && errores.hora && slots.length > 0 && (
                             <Form.Text className='text-body-sm text-danger d-block'>
                                 {errores.hora}
                             </Form.Text>
                         )}
-
-                        <DetalleSlotHorario slot={slotSeleccionado} />
                     </Form.Group>
 
                     <PreordenCliente
@@ -332,7 +354,7 @@ export function ReservasClientePage() {
                     <Button
                         type='submit'
                         variant='primary'
-                        className={`text-label-lg ${s.botonEnviar}`}
+                        className={`text-label-lg mt-3 ${s.botonEnviar}`}
                         disabled={enviando}
                     >
                         {enviando

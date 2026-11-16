@@ -125,8 +125,11 @@ export function EditarMesaPage() {
         }
     }
 
+    // Sólo mozos (mismo criterio que el alta, CrearMesa): el selector es
+    // para el mozo responsable. El asignado se mantiene seleccionado
+    // aunque esté inactivo.
     const opcionesUsuarios = usuarios.filter(
-        user => user.activo || String(user.id) === usuarioId
+        user => user.rol?.nombre === 'Mozo' && (user.activo || String(user.id) === usuarioId)
     )
 
     if (cargando) {

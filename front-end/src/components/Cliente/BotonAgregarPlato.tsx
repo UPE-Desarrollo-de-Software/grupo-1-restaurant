@@ -4,13 +4,21 @@ import { getPlato } from '../../api/platos'
 import { useCliente } from '../../context/ClienteContext/useCliente'
 import type { PlatoListar, PlatoObtener } from '../../types/Menu'
 import { PersonalizarPlatoModal } from './PersonalizarPlatoModal'
+import { ModalIdentificacionMesa } from './ModalIdentificacionMesa'
 import s from './BotonAgregarPlato.module.css'
 
-// "+ Agregar" de la tarjeta de la Carta: SOLO se muestra con la mesa
-// identificada (sin mesa no hay forma de armar un pedido). Al usarlo:
-// si el plato no tiene ingredientes entra directo al borrador; si los
-// tiene, abre el modal de personalización con el detalle ya cargado.
-export function BotonAgregarPlato({ plato }: { plato: PlatoListar }) {
+// "+ Agregar" de la tarjeta de la Carta: siempre visible. Con la mesa
+// identificada agrega al borrador (si el plato tiene ingredientes abre la
+// personalización); sin mesa no agrega nada y avisa que primero hay que
+// identificarse con el código de la mesa. Se reusa en DetallePlatoPage,
+// donde `detalleCargado` evita un GET /platos/{id} extra.
+interface BotonAgregarPlatoProps {
+    plato: PlatoListar
+    // Detalle ya obtenido por la pantalla que lo usa (con ingredientes).
+    detalleCargado?: PlatoObtener
+}
+
+export function BotonAgregarPlato({ plato, detalleCargado }: BotonAgregarPlatoProps) {
     const { mesaIdentificada, agregarLinea } = useCliente()
 
     const [buscando, setBuscando] = useState(false)
@@ -18,6 +26,7 @@ export function BotonAgregarPlato({ plato }: { plato: PlatoListar }) {
     const [agregado, setAgregado] = useState(false)
     const [detalle, setDetalle] = useState<PlatoObtener | null>(null)
     const [mostrarModal, setMostrarModal] = useState(false)
+    const [avisoMesa, setAvisoMesa] = useState(false)
 
     // Feedback "✓ Agregado": se autolimpia para no dejar estado pegado.
     useEffect(() => {
@@ -26,13 +35,19 @@ export function BotonAgregarPlato({ plato }: { plato: PlatoListar }) {
         return () => clearTimeout(temporizador)
     }, [agregado])
 
-    if (!mesaIdentificada || !plato.disponible) return null
+    if (!plato.disponible) return null
 
     async function manejarClic() {
+        // Sin mesa no hay pedido posible: se avisa y no se agrega nada.
+        if (!mesaIdentificada) {
+            setAvisoMesa(true)
+            return
+        }
+
         setBuscando(true)
         setError(null)
         try {
-            const obtenido = await getPlato(plato.id)
+            const obtenido = detalleCargado ?? await getPlato(plato.id)
             if (obtenido.ingredientes.length > 0) {
                 setDetalle(obtenido)
                 setMostrarModal(true)
@@ -75,6 +90,8 @@ export function BotonAgregarPlato({ plato }: { plato: PlatoListar }) {
             </button>
 
             {error && <span role='alert' className={`text-body-sm ${s.error}`}>{error}</span>}
+
+            <ModalIdentificacionMesa show={avisoMesa} onCancelar={() => setAvisoMesa(false)} />
 
             <PersonalizarPlatoModal
                 show={mostrarModal}

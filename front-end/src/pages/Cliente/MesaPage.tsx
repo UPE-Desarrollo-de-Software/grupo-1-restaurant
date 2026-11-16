@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
 import { Link, useSearchParams } from 'react-router-dom'
 import { acceder } from '../../api/cliente'
-import { QrMesaModal } from '../../components/Mesas/QrMesaModal'
+import { QrMesaClienteModal } from '../../components/Cliente/QrMesaClienteModal'
 import { useCliente } from '../../context/ClienteContext/useCliente'
 import { codigoMesaSchema } from '../../schemas/cliente'
 import type { ClienteMesa } from '../../types/Cliente'
@@ -135,14 +135,25 @@ export function MesaPage() {
                         <p className={`text-body-sm ${s.textoIdentificada}`}>
                             Ya podés armar tu pedido.
                         </p>
-                        <p className={`text-body-sm ${s.textoIdentificada}`}>
-                            Código de la mesa: <strong>{mesa.codigo_acceso}</strong>
-                        </p>
                     </div>
                     <div className={s.accionesIdentificada}>
                         <Link to='/carta' className='btn btn-primary text-label-md'>Ir a la Carta</Link>
                         <Link to='/pedido' className='btn btn-outline-primary text-label-md'>Mi pedido</Link>
-                        <Button variant='outline-primary' className='text-label-md' type='button' onClick={copiarCodigo}>
+                    </div>
+                </section>
+
+                {/* Acciones de la mesa (mismo bloque que EditarMesa): el
+                    código y el QR se comparten con el resto de la mesa. */}
+                <section className={s.pinBox} aria-label='Código y QR de la mesa'>
+                    <div>
+                        <p className={`text-label-sm ${s.pinEtiqueta}`}>Código de la mesa</p>
+                        <p className={`text-headline-md ${s.pinValor}`}>{mesa.codigo_acceso}</p>
+                        <p className={`text-body-sm ${s.pinAyuda}`}>
+                            Pasáselo a otro comensal para que pida desde su celular.
+                        </p>
+                    </div>
+                    <div className={s.pinAcciones}>
+                        <Button variant='outline-secondary' className='text-label-md' type='button' onClick={copiarCodigo}>
                             <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
                             {copiado ? 'Copiado' : 'Copiar código'}
                         </Button>
@@ -185,7 +196,7 @@ export function MesaPage() {
                     </Modal.Footer>
                 </Modal>
 
-                <QrMesaModal
+                <QrMesaClienteModal
                     mesa={qrAbierto ? { id: mesa.id, codigo_acceso: mesa.codigo_acceso } : null}
                     onCerrar={() => setQrAbierto(false)}
                 />

@@ -25,12 +25,20 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   de otra mesa, pide confirmación antes de cambiar (se descarta el borrador sin
   enviar); el parámetro se limpia de la URL tras procesarse. El PIN muere con la
   visita (borrado lógico al cerrar la mesa). El formulario manual de `/mesa`
-  sigue siendo el fallback (PIN tipeado o QR inválido). **El mismo `QrMesaModal`
-  también se abre desde el detalle de la mesa** (botón "Ver QR" en `MozoMesa`,
-  `EditarMesa` y en la tarjeta "Mesa identificada" de `MesaPage`): ahí `onListo`/
-  `onCrearMas` son opcionales y el footer queda en "Cerrar"; el prop `mesa` sólo
-  exige `{id, codigo_acceso}`. En `MesaPage` el cliente además ve y copia su
-  código para pasárselo a otro comensal.
+  sigue siendo el fallback (PIN tipeado o QR inválido). **El `QrMesaModal`
+  (staff) se abre desde el detalle de la mesa** (botón "Ver QR" en `MozoMesa` y
+  `EditarMesa`): el prop `mesa` sólo exige `{id, codigo_acceso}`. El afiche
+  visible (logo, "Mesa #NN", QR y código) es el componente compartido
+  `components/Mesas/AficheMesaQr.tsx` (+ `AficheMesaQr.module.css`, que también
+  tiene el `@media print`); la URL que codifica el QR y el rótulo "Mesa #NN"
+  salen de `utils/qrMesa.ts` (`destinoQrMesa`/`tituloMesa`). **Bug conocido (no
+  arreglado por decisión del equipo):** ese modal siempre renderiza "Crear más"
+  y "Listo", pero en `MozoMesa`/`EditarMesa` no reciben `onCrearMas`/`onListo`
+  y no hacen nada; sólo la X cierra. **El comensal usa su propio modal**,
+  `components/Cliente/QrMesaClienteModal.tsx` (mismo afiche, footer con
+  "Cerrar", sin "Crear más" y sin descarga PNG), que es el que abre el botón
+  "Mostrar QR" de `MesaPage`; ahí el cliente además ve y copia su código para
+  pasárselo a otro comensal.
 - La credencial del comensal es el `codigo_acceso` de la mesa (4 dígitos, lo reparte
   el mozo; el backend valida `size:4` y preserva ceros a la izquierda). Viaja como
   `Authorization: Bearer <codigo>` en `/cliente/*` (middleware `cliente` del backend;
@@ -39,7 +47,11 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   throttle 60/min por IP → 429 con mensaje en español). Es de un solo uso: al
   validar, la página queda directamente en la tarjeta "Mesa identificada" (no se
   puede cambiar el código desde acá ni hay modal de éxito ni navegación
-  automática). `ClienteProvider` guarda
+  automática). La tarjeta conserva sólo la navegación ("Ir a la Carta", "Mi
+  pedido"); el **código y el QR viven en un bloque aparte debajo** (`.pinBox` en
+  `MesaPage.module.css`, misma distribución que `EditarMesa`: etiqueta + valor a
+  la izquierda, "Copiar código" y "Mostrar QR" a la derecha, reusando
+  `copiarCodigo` y `QrMesaClienteModal`). `ClienteProvider` guarda
   `{mesa, pedidoIds, confirmarPendiente, borrador}` en localStorage con la clave
   `gastro_cliente`. Al recargar se revalida con `GET /cliente/pedidos`: 401/403
   (código muerto) limpia la sesión; un fallo de red la conserva.
@@ -76,12 +88,21 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   grilla está compartida** por los tres flujos de alta (cliente `ReservasClientePage`,
   gerente y mozo `CrearReserva`): `hooks/useHorariosReserva.ts` (cachea por fecha),
   `utils/horariosReserva.ts` (`momentoSlot`, `fueraDeAnticipacion`,
-  `motivoDeshabilitado`, `generarTurnos`) y los componentes
-  `components/Reservas/GrillaHorarios.tsx` + `DetalleSlotHorario.tsx`. Se
+  `motivoDeshabilitado`, `generarTurnos`) y el componente
+  `components/Reservas/GrillaHorarios.tsx`. El detalle del turno elegido
+  (`components/Reservas/DetalleSlotHorario.tsx`: aforo libre + combinaciones de
+  capacidades) **sólo se usa en el alta del staff** (`CrearReserva`, Gerente y
+  Mozo); la vista del cliente ya no lo muestra (import muerto eliminado). Se
   deshabilitan los turnos que no cumplen la anticipación (comparando el instante
   completo, igual que el back), los que no tienen aforo para la cantidad de
   personas y, si falta la cantidad, todos con el motivo correspondiente en el
-  `title`. El alta no cambia. **La respuesta trae
+  `title`. **En la vista del cliente la grilla sólo se renderiza con los datos
+  mínimos completos** (`nombreApellido` con trim ≥ 3 y `cantPersonas` ≥ 1, los
+  mismos mínimos de `reservaWebSchema`): sin ellos no se muestran los turnos y
+  aparece un mensaje con lo que falta, con esos dos campos marcados `isInvalid`;
+  como es un derivado por render, editar los datos la habilita/oculta al
+  instante (si el nombre vuelve a quedar incompleto se limpia `hora` desde el
+  `onChange`, sin efectos). El alta no cambia. **La respuesta trae
   `reserva.codigo`** (PIN de 4 dígitos, string con ceros a la izquierda, único
   entre pendientes; lo genera el back): es lo que se muestra/copia/descarga en el
   modal de éxito y en el PDF — el `reserva.id` ya NO se muestra (`pinReserva()`
@@ -315,7 +336,7 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
 - Estilos: Bootstrap + CSS Modules por componente (`*.module.css`, importados como `s`). Los design tokens viven en `src/styles/tokens.css`, importados DESPUÉS de `bootstrap.min.css` en `src/main.tsx` — preservar ese orden. Clases utilitarias como `text-headline-lg`, `text-body-md`, `text-price-display`, `elevation-1` son tokens propios, no de Bootstrap; preferirlas sobre colores/fuentes hardcodeadas.
 - **Cards de listado: base compartida** en `src/components/Tarjeta/Tarjeta.module.css` (importada como `t`). Define la estructura común (`.card`, `.body`, `.fila`, `.indice`, `.info`, `.badges`, `.footer`, `.botonAccion`, `.iconoAccion`) y el footer con borde superior. Cada card local (`UsuarioCard`, `CategoriaCard`, `IngredienteCard`, `PromocionCard`, `MesaCard`, `ReservaCard`, `Platos/PlatoCard`) importa la base con `t` y su `.module.css` conserva **sólo** las particularidades (colores de badges, precio, imagen, switch…). Regla del footer: card con **una sola acción** → `t.footerDerecha` (botón a la derecha); `PlatoCard` es la excepción con Editar + switch → `t.footerEspaciada`. Para cambiar la estructura de todas las cards, editar `Tarjeta.module.css`, no las copias.
 - Fetch de datos: hooks en `src/hooks` (`usePlatos`, `useCategorias`, `useIngredientes`) consultan `API_BASE_URL` con `AbortController`; seguir este patrón en fetches nuevos (abortar al desmontar, mensaje de error en español si el status no es 2xx). Dentro de componentes, el set de estado va en los callbacks async (`.then`/`.catch` o `try/catch` de una IIFE) — ver `usePlatos` o `CrearReserva`.
-- **Carta del cliente (`/carta`)**: `pages/Cliente/Carta.tsx` hace los fetches (`usePlatos` + `useCategorias`), filtra con `aplicarFiltroPlatos(platos, filtroCategoria, 'todos')` y por texto (nombre/descripción) usando `normalizarTexto` (`src/utils/busqueda.ts`, compartido con la `Lista` del panel). `MenuList` sólo recibe `platos/loading/error/busqueda` y pinta las `PlatoCard`. `FiltroCategorias` tiene `mostrarEstado` (default `true`); el cliente pasa `false` porque `GET /platos` sólo devuelve platos disponibles.
+- **Carta del cliente (`/carta`)**: `pages/Cliente/Carta.tsx` hace los fetches (`usePlatos` + `useCategorias`), filtra con `aplicarFiltroPlatos(platos, filtroCategoria, 'todos')` y por texto (nombre/descripción) usando `normalizarTexto` (`src/utils/busqueda.ts`, compartido con la `Lista` del panel). `MenuList` sólo recibe `platos/loading/error/busqueda` y pinta las `PlatoCard`. `FiltroCategorias` tiene `mostrarEstado` (default `true`); el cliente pasa `false` porque `GET /platos` sólo devuelve platos disponibles. **Card de la carta** (`Menu/PlatoCard.tsx` + `.module.css`): horizontal. Arriba `.cuerpo` con el badge de la **categoría real** (`plato.categoria_nombre`, verde `secondary-container`, se omite si viene vacía), nombre, descripción (2 líneas) y precio en `primary` a la izquierda, y la imagen cuadrada a la derecha (`.media` de `clamp(6rem, 24%, 8rem)`, `object-fit: cover`, placeholder `bi bi-image` si no hay `imagen_url`). Abajo `.footer` (`surface-container-low` + borde superior) con "Ver detalles" (`text-label-md` en `primary` + flecha, link a `/plato/:id`) a la izquierda y el botón "＋ Agregar" a la derecha, **en la misma columna que la imagen**: el ancho lo define `--ancho-media` en `.card` y lo usan `.media` y `.acciones` (el `.boton` va al 100%). **`BotonAgregarPlato` siempre se muestra**: sin mesa identificada no agrega nada y abre `components/Cliente/ModalIdentificacionMesa.tsx` ("Cancelar" cierra; "Ir a mi mesa" navega a `/mesa`), desde donde el cliente se identifica y vuelve a la carta. El mismo botón se reusa en **`DetallePlatoPage`** (`/plato/:id`), con `detalleCargado={plato}` para que no repita el `GET /platos/{id}`: ahí se le pasa un `PlatoListar` armado con `aPlatoListar()` (el show no trae `categoria_nombre`) y el ancho se limita con `.acciones` (`max-width: 20rem`).
 - **`set-state-in-effect` (ESLint, react-hooks v7)**: está prohibido hacer `setX` síncrono en el body de un `useEffect`. El estado de carga se deriva (ej. `cargando = resumen === null && !error`) o se setea dentro del callback async. El reset limpio de modales se logra por remount: render condicional + `key` (ver `PersonalizarPlatoModal`).
 - Las rutas se declaran centralmente en `src/App.tsx` (NO hay catch-all `*`: un link a una ruta inexistente queda en blanco). Públicas de cliente: `/` (landing), `/carta`, `/plato/:id`, `/pedido`, `/reservas`, `/mesa`, y `/menu` (alias `Navigate` → `/carta`, repara el fallback de RequireAuth/Login). Staff: `/login`, `/cocina` (redirect a `/cocina/comandas`), `/cocina/comandas`, `/cocina/comandas/:id`, `/cocina/historial` (RequireAuth Cocina), `/mozo` + `/mozo/mesas/crear`, `/mozo/mesas/:id`, `/mozo/reservas*` (RequireAuth Mozo). Sección de gerente bajo `/gerente` protegida con `RequireAuth rolesPermitidos={['Gerente']}` + `<Outlet/>` anidado: Dashboard, Carta ABM (`/gerente/carta/platos`, `/categorias`, `/ingredientes`, `/promociones` con `/crear` y `/:id/editar`), ABM de usuarios en `/gerente/usuarios` (hub, `/crear`, `/:id/editar`), Mesas (`/gestion`, `/gestion/:id/editar`, `/configuracion`, `/qr`, `/comandas`), Reservas (hub/crear/editar). `/gerente/carta` y `/gerente/mesas` ya no tienen hub: son `Navigate` al primer tab de la sección (`/gerente/carta/platos`, `/gerente/mesas/gestion`), igual que `/menu`. La ruta `/register` fue eliminada: el alta de usuarios vive en `/gerente/usuarios/crear` (el backend registra en `POST /usuarios/registrar`, no `POST /usuarios`). Páginas en `src/pages`, layouts en `src/layouts`. El placeholder de pantallas sin armar es `src/components/Building.tsx` (usado por la página Gerente).
 - **Navegación y opción activa**: la regla vive en `src/navigation/rutas.ts` → `opcionActiva(pathname, opcion)` (más `esSubruta`) y la usan `SubNavbar`, `BottomNavbar` y `SideNavbar` con `Link` + `aria-current` manual (no `NavLink`: su `aria-current` no es configurable). Una opción está activa si la ruta coincide con `to` o cae dentro del sub-árbol de `raiz` (por defecto `to`), comparando por segmento; con `end: true` sólo cuenta la coincidencia exacta. Eso hace que cada tab siga seleccionada en las pantallas secundarias (`/crear`, `/:id/editar`) sin parches por pantalla. `raiz` se usa cuando el link no es la raíz de lo que cubre (ej. `Carta` del bottom nav apunta a `/gerente/carta/platos` pero cubre `/gerente/carta`; en Mozo `to: '/mozo'` con `raiz: '/mozo/mesas'`). El `SubNavbar` sólo existe para **Gerente → Carta** y **Gerente → Mesas** (secciones en `navigation/secciones.ts` + `useSubnav()`); Reservas, Usuarios y todos los módulos del Mozo se navegan sólo con el bottom nav.
