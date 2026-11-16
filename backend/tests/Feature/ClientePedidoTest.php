@@ -411,8 +411,10 @@ test('la cuenta corta por created_at de la visita y sigue tras destruir la mesa'
     // visita no terminó hasta que el cliente pague.
     comensal($this, $codigo)->getJson('/api/cliente/pedidos')->assertOk();
 
-    // Pagó: el mozo cierra la visita y recién ahí la mesa queda
-    // DESTRUIDA (borrado lógico); los pedidos siguen existiendo.
+    // Pagó: el mozo registra el cobro en efectivo y recién ahí cierra
+    // la visita (exige cuenta saldada); la mesa queda DESTRUIDA
+    // (borrado lógico); los pedidos siguen existiendo.
+    conMozo($this, $mzo)->postJson("/api/mesas/{$mesa->id}/pagos", ['monto' => 800])->assertStatus(201);
     conMozo($this, $mzo)->postJson("/api/mesas/{$mesa->id}/cerrar")->assertOk();
 
     expect(Mesa::find($mesa->id))->toBeNull();

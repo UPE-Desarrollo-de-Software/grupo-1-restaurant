@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    // Mercado Pago — Checkout Pro (pago del comensal).
+    // Feature flag: sin MP_ACCESS_TOKEN el módulo queda apagado
+    // (503 en /cliente/pagos y el botón de pago oculto en el front).
+    'mercadopago' => [
+        'enabled' => (bool) env('MP_ENABLED', true),
+        'access_token' => env('MP_ACCESS_TOKEN'),
+        'public_key' => env('MP_PUBLIC_KEY'),
+        'webhook_secret' => env('MP_WEBHOOK_SECRET'),
+        // Base pública del BACK (notification_url del webhook).
+        'app_url' => env('APP_URL'),
+        // Base pública del FRONT (back_urls del checkout → /pedido).
+        // Vacío = misma base que el back (despliegue mono-dominio).
+        'return_url' => env('MP_RETURN_URL'),
+    ],
+
 ];

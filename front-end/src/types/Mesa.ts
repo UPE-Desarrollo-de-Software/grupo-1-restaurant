@@ -4,6 +4,7 @@
 
 import z from "zod";
 import type { mesaSchema } from "../schemas/mesas";
+import type { PagoResumen, SaldoPagos } from "./Pago";
 
 export type MesaInput = z.infer<typeof mesaSchema>
 
@@ -61,6 +62,11 @@ export interface CuentaMesa {
     partes: ParteCuenta[]
     total: number
     grupo?: CuentaMesa[]
+    // Pagos de la visita (DER v3.2 — Mercado Pago): lo que ya se
+    // acreditó y lo que falta, por si el mozo consulta la cuenta.
+    // Las mesas del grupo traen lo mismo (misma forma).
+    saldo?: SaldoPagos
+    pagos?: PagoResumen[]
 }
 
 export interface LineaPedidoResumen {

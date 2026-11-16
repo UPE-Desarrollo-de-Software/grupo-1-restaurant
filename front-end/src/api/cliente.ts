@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "../config/env"
 import type { ClienteMesa } from "../types/Cliente"
 import type { CuentaMesa, ResumenMesa } from "../types/Mesa"
+import type { PagosCliente, PreferenciaPago, TipoPago, VerificacionPago } from "../types/Pago"
 import type { DisponibilidadDiaReservaWeb, LineaPreorden, Reserva, ReservaResponse, ReservaWebAlta } from "../types/Reserva"
 import type { AltaPedidosMesa } from "./pedidos"
 
@@ -123,6 +124,72 @@ export async function getCuentaCliente(codigo: string, signal?: AbortSignal): Pr
         throw new ErrorCliente('No se pudo obtener la cuenta de la mesa. Probá de nuevo.', response.status)
     }
     return data as CuentaMesa
+}
+
+// GET /cliente/pagos — saldo de la visita (total/pagado/pendiente por
+// parte), historial de pagos y feature flag `habilitado` (sin
+// MP_ACCESS_TOKEN el back lo manda en false y el front oculta los
+// botones). 401 → código de mesa inválido.
+export async function getPagosCliente(codigo: string, signal?: AbortSignal): Promise<PagosCliente> {
+    const response = await fetch(`${API_BASE_URL}/cliente/pagos`, {
+        method: 'GET',
+        headers: cabecera(codigo),
+        signal,
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(mensajeCliente(response.status, data, `Error ${response.status} al consultar los pagos de la mesa`), response.status)
+    }
+    return data as PagosCliente
+}
+
+// POST /cliente/pagos — inicia un pago Checkout Pro. El monto lo
+// calcula el backend (el `monto` del body se ignora); responde 201
+// con `init_point` (URL de pago) para navegar. 503 → módulo apagado,
+// 422 → cuenta/parté ya saldada.
+export async function crearPagoCliente(
+    codigo: string,
+    datos: { tipo: TipoPago; pedido_id?: number },
+): Promise<PreferenciaPago> {
+    const response = await fetch(`${API_BASE_URL}/cliente/pagos`, {
+        method: 'POST',
+        headers: {
+            ...cabecera(codigo),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(datos),
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(mensajeCliente(response.status, data, `Error ${response.status} al iniciar el pago`), response.status)
+    }
+    return data as PreferenciaPago
+}
+
+// POST /cliente/pagos/verificar — al volver del checkout: el back
+// consulta el pago REAL en Mercado Pago (la URL de retorno no es
+// fuente de verdad) y devuelve el estado + saldo refrescado en una
+// sola request. 422 → sin referencia o pago de otra mesa; 502 → MP
+// sin responder (el front reintenta).
+export async function verificarPagoCliente(
+    codigo: string,
+    datos: { payment_id?: string; preference_id?: string },
+    signal?: AbortSignal,
+): Promise<VerificacionPago> {
+    const response = await fetch(`${API_BASE_URL}/cliente/pagos/verificar`, {
+        method: 'POST',
+        headers: {
+            ...cabecera(codigo),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(datos),
+        signal,
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(mensajeCliente(response.status, data, `Error ${response.status} al verificar el pago`), response.status)
+    }
+    return data as VerificacionPago
 }
 
 // POST /cliente/llamar — "llamar al mozo": sin body. Rate limit del
