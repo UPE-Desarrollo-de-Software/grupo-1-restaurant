@@ -125,6 +125,14 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         setSesion(prev => prev ? { ...prev, borrador: [] } : prev)
     }, [])
 
+    // Salida de la visita: solo estado local (no hay endpoint de logout
+    // de comensal). El effect de persistencia borra `gastro_cliente` y
+    // los pedidos ya enviados siguen viviendo en la mesa.
+    const salirDeMesa = useCallback(() => {
+        setSesion(null)
+        setResumen(null)
+    }, [])
+
     const enviar = useCallback(async () => {
         if (!sesion) {
             throw new Error('Identificá tu mesa antes de enviar el pedido.')
@@ -193,6 +201,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         cantidadBorrador: borrador.reduce((acum, linea) => acum + linea.cantidad, 0),
         totalBorrador: borrador.reduce((acum, linea) => acum + importeLinea(linea), 0),
         pedidoIds: sesion?.pedidoIds ?? [],
+        confirmarPendiente: sesion?.confirmarPendiente ?? false,
         resumen,
         revalidando,
         aplicarIdentificacion,
@@ -200,12 +209,13 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         editarLinea,
         eliminarLinea,
         cancelarBorrador,
+        salirDeMesa,
         enviar,
         recargarResumen,
     }), [
         sesion, borrador, resumen, revalidando,
         aplicarIdentificacion, agregarLinea, editarLinea, eliminarLinea,
-        cancelarBorrador, enviar, recargarResumen,
+        cancelarBorrador, salirDeMesa, enviar, recargarResumen,
     ])
 
     return <ContextoCliente.Provider value={valor}>{children}</ContextoCliente.Provider>

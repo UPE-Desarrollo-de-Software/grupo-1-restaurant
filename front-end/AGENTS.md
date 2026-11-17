@@ -47,14 +47,25 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   throttle 60/min por IP → 429 con mensaje en español). Es de un solo uso: al
   validar, la página queda directamente en la tarjeta "Mesa identificada" (no se
   puede cambiar el código desde acá ni hay modal de éxito ni navegación
-  automática). La tarjeta conserva sólo la navegación ("Ir a la Carta", "Mi
-  pedido"); el **código y el QR viven en un bloque aparte debajo** (`.pinBox` en
-  `MesaPage.module.css`, misma distribución que `EditarMesa`: etiqueta + valor a
-  la izquierda, "Copiar código" y "Mostrar QR" a la derecha, reusando
-  `copiarCodigo` y `QrMesaClienteModal`). `ClienteProvider` guarda
-  `{mesa, pedidoIds, confirmarPendiente, borrador}` en localStorage con la clave
-  `gastro_cliente`. Al recargar se revalida con `GET /cliente/pedidos`: 401/403
-  (código muerto) limpia la sesión; un fallo de red la conserva.
+  automática). La tarjeta conserva la navegación ("Ir a la Carta") + **"Salir de
+  mesa"** (`Button` outline, mismo lugar que ocupaba "Mi pedido"): abre
+  `ConfirmacionModal` y, al confirmar, `salirDeMesa()` (`useCliente`) +
+  `navigate('/carta')`. Salir es **sólo estado local** (`setSesion(null)` +
+  `setResumen(null)`; el effect de `ClienteProvider` borra
+  `localStorage['gastro_cliente']`): no hay endpoint de logout de comensal, los
+  pedidos ya enviados siguen en la visita y los cierra el mozo al cobrar, y se
+  descarta el borrador (si `confirmarPendiente`, el modal avisa que esas líneas
+  no llegan a cocina). Es la vía para corregir un código mal tipeado, porque el
+  código de 4 dígitos puede caer en otra mesa viva y una vez identificado no
+  había forma de salir. Al salir se pierden los `pedidoIds`: si reingresa con el
+  mismo código, la vista Cuenta ya no marca "Tu parte". El **código y el QR
+  viven en un bloque aparte debajo** (`.pinBox` en `MesaPage.module.css`, misma
+  distribución que `EditarMesa`: etiqueta + valor a la izquierda, "Copiar código"
+  y "Mostrar QR" a la derecha, reusando `copiarCodigo` y `QrMesaClienteModal`).
+  `ClienteProvider` guarda `{mesa, pedidoIds, confirmarPendiente, borrador}` en
+  localStorage con la clave `gastro_cliente`. Al recargar se revalida con
+  `GET /cliente/pedidos`: 401/403 (código muerto) limpia la sesión; un fallo de
+  red la conserva.
 - **Estado compartido del cliente**: `src/context/ClienteContext/` —
   `ClienteProvider.tsx` (solo el Provider) + `useCliente.ts` (contexto y hook).
   Lo consumen `MesaPage`, `BotonAgregarPlato`, `PersonalizarPlatoModal` y

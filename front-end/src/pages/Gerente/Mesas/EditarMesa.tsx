@@ -238,7 +238,7 @@ export function EditarMesaPage() {
                         <Button className={s.button} variant='primary' type='submit' disabled={enviando}>
                             {enviando
                                 ? <><Spinner size='sm' animation='border' className='me-2' />Guardando...</>
-                                : 'Guardar cambios'}
+                                : 'Guardar'}
                         </Button>
                         <Button
                             className={s.button}
@@ -247,7 +247,7 @@ export function EditarMesaPage() {
                             disabled={enviando}
                             onClick={() => navigate('/gerente/mesas/gestion')}
                         >
-                            Cancelar edición
+                            Cancelar
                         </Button>
                     </div>
                 </Form>
@@ -264,8 +264,7 @@ export function EditarMesaPage() {
                     Cerrar visita
                 </Button>
                 <p className={`text-body-sm ${s.subtitle} mb-0`}>
-                    Si el cliente ya pagó, cerrá la visita: la mesa se elimina del sistema, su
-                    código deja de valer y se cancelan sus reservas pendientes.
+                    Si el cliente ya pagó, cerrá la visita y la mesa se elimina del sistema.
                 </p>
             </div>
 

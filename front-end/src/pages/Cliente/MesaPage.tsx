@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { acceder } from '../../api/cliente'
+import { ConfirmacionModal } from '../../components/Cliente/ConfirmacionModal'
 import { QrMesaClienteModal } from '../../components/Cliente/QrMesaClienteModal'
 import { useCliente } from '../../context/ClienteContext/useCliente'
 import { codigoMesaSchema } from '../../schemas/cliente'
@@ -20,8 +21,14 @@ type ResultadoQr =
 // /mesa?codigo=XXXX) valida sola vía POST /acceso; si no, con el código
 // de 4 dígitos que reparte el mozo. Es de un solo uso por visita: al
 // validar, la página queda en la tarjeta "Mesa identificada".
+// "Salir de mesa" cierra la sesión LOCAL del comensal (no hay logout en
+// el backend) para poder corregir un código mal tipeado.
 export function MesaPage() {
-    const { mesa, borrador, aplicarIdentificacion } = useCliente()
+    const {
+        mesa, borrador, confirmarPendiente,
+        aplicarIdentificacion, salirDeMesa,
+    } = useCliente()
+    const navigate = useNavigate()
 
     const [codigo, setCodigo] = useState('')
     const [errorCampo, setErrorCampo] = useState<string | null>(null)
@@ -29,6 +36,7 @@ export function MesaPage() {
     const [validando, setValidando] = useState(false)
     const [copiado, setCopiado] = useState(false)
     const [qrAbierto, setQrAbierto] = useState(false)
+    const [salirAbierto, setSalirAbierto] = useState(false)
 
     // QR en la URL (?codigo=XXXX): se procesa una sola vez (al terminar
     // se limpia el parámetro con replace, así un refresh no reintenta).
@@ -118,6 +126,14 @@ export function MesaPage() {
         }
     }
 
+    // Salir = estado local, sin backend: el código deja de viajar y el
+    // cliente vuelve a la carta sin vínculo con la mesa.
+    function confirmarSalida() {
+        setSalirAbierto(false)
+        salirDeMesa()
+        navigate('/carta')
+    }
+
     if (mesa) {
         return (
             <div className={s.pagina}>
@@ -138,7 +154,14 @@ export function MesaPage() {
                     </div>
                     <div className={s.accionesIdentificada}>
                         <Link to='/carta' className='btn btn-primary text-label-md'>Ir a la Carta</Link>
-                        <Link to='/pedido' className='btn btn-outline-primary text-label-md'>Mi pedido</Link>
+                        <Button
+                            variant='outline-primary'
+                            className='text-label-md'
+                            type='button'
+                            onClick={() => setSalirAbierto(true)}
+                        >
+                            Salir de mesa
+                        </Button>
                     </div>
                 </section>
 
@@ -200,6 +223,35 @@ export function MesaPage() {
                     mesa={qrAbierto ? { id: mesa.id, codigo_acceso: mesa.codigo_acceso } : null}
                     onCerrar={() => setQrAbierto(false)}
                 />
+
+                <ConfirmacionModal
+                    show={salirAbierto}
+                    titulo='Salir de mesa'
+                    textoConfirmar='Salir de la mesa'
+                    textoCancelar='Quedarme'
+                    onConfirmar={confirmarSalida}
+                    onCancelar={() => setSalirAbierto(false)}
+                >
+                    <p className='text-body-md mb-2'>
+                        Vas a salir de la mesa.
+                    </p>
+                    <p className='text-body-sm mb-2'>
+                        Los pedidos que ya enviaste siguen en la mesa: no se cancelan ni se borran.
+                    </p>
+                    <p className='text-body-sm mb-2'>
+                        Si entras de nuevo, no vas a ver tus pedidos.
+                    </p>
+                    {confirmarPendiente ? (
+                        <p className='text-body-sm mb-0'>
+                            Quedó un envío sin confirmar: si salís ahora, esas líneas no llegan a
+                            la cocina.
+                        </p>
+                    ) : borrador.length > 0 && (
+                        <p className='text-body-sm mb-0'>
+                            Se descarta el pedido que armaste y no llegaste a enviar.
+                        </p>
+                    )}
+                </ConfirmacionModal>
             </div>
         )
     }
