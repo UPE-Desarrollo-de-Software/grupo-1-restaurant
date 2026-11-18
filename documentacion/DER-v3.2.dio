@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Página-1" id="c3k_4oN0WYAYLgLRn1Yz">
-        <mxGraphModel dx="2218" dy="401" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="2812" dy="591" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -1559,11 +1559,11 @@
                     </mxCell>
                 </UserObject>
                 <UserObject label="genera" mermaidId="e:MESA-&gt;PEDIDO#0" mermaidBaseStyle="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=ERmandOne;startSize=14;endArrow=ERzeroToMany;endSize=14;jumpStyle=arc;jumpSize=12;strokeColor=#000000;strokeWidth=2;html=1;fontSize=14;labelBackgroundColor=#FFFFFF;fontFamily=Recursive;fontColor=#28253D;exitX=0.65;exitY=1;entryX=0.5;entryY=0;" mermaidBaseValue="genera" id="e_218be350">
-                    <mxCell edge="1" parent="1" source="v_1fa5adf4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=ERmandOne;startSize=14;endArrow=ERzeroToMany;endSize=14;jumpStyle=arc;jumpSize=12;strokeWidth=2;html=1;fontSize=14;labelBackgroundColor=#FFFFFF;fontFamily=Recursive;fontColor=#28253D;exitX=0.65;exitY=1;entryX=0.5;entryY=0;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" target="v_4cb4cf28">
-                        <mxGeometry relative="1" x="0.43818334735071485" as="geometry">
+                    <mxCell edge="1" parent="1" source="v_1fa5adf4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=ERmandOne;startSize=14;endArrow=ERzeroToMany;endSize=14;jumpStyle=arc;jumpSize=12;strokeWidth=2;html=1;fontSize=14;labelBackgroundColor=#FFFFFF;fontFamily=Recursive;fontColor=#28253D;exitX=0.65;exitY=1;entryX=0.25;entryY=0;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;entryDx=0;entryDy=0;" target="v_4cb4cf28">
+                        <mxGeometry relative="1" x="0.3195" as="geometry">
                             <Array as="points">
-                                <mxPoint x="350" y="994"/>
-                                <mxPoint x="480" y="994"/>
+                                <mxPoint x="349.3" y="994"/>
+                                <mxPoint x="432.6" y="994"/>
                             </Array>
                         </mxGeometry>
                     </mxCell>
@@ -1737,168 +1737,168 @@
                 </UserObject>
                 <UserObject label="PAGO" mermaidId="n:PAGO" mermaidBaseStyle="shape=table;startSize=39.75;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontSize=16;fontFamily=Recursive;strokeWidth=2;align=center;resizeLast=1;html=1;fillColor=#EFF6FF;strokeColor=#60A5FA;fontColor=#28253D;shadow=1;shadowColor=#000000;shadowOffsetX=4;shadowOffsetY=4;shadowBlur=0;shadowOpacity=6;" mermaidBaseValue="PAGO" id="mp_tbl">
                     <mxCell parent="1" style="shape=table;startSize=39.75;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontSize=14;fontFamily=Recursive;strokeWidth=2;align=center;resizeLast=1;html=1;shadow=1;shadowColor=#000000;shadowOffsetX=4;shadowOffsetY=4;shadowBlur=0;shadowOpacity=6;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;movable=1;resizable=1;rotatable=1;deletable=1;editable=1;locked=0;connectable=1;" vertex="1">
-                        <mxGeometry height="399" width="280" x="520" y="650" as="geometry"/>
+                        <mxGeometry height="399" width="309.6086956521742" x="856" y="598" as="geometry"/>
                     </mxCell>
                 </UserObject>
                 <mxCell id="mp_row1" parent="mp_tbl" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=1;strokeWidth=2;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" vertex="1">
-                    <mxGeometry height="40" width="280" y="39" as="geometry"/>
+                    <mxGeometry height="40" width="309.6086956521742" y="39" as="geometry"/>
                 </mxCell>
                 <mxCell id="mp_ty1" parent="mp_row1" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="int" vertex="1">
-                    <mxGeometry height="40" width="60" as="geometry">
-                        <mxRectangle height="40" width="60" as="alternateBounds"/>
+                    <mxGeometry height="40" width="89.60869565217422" as="geometry">
+                        <mxRectangle height="40" width="89.60869565217422" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_nm1" parent="mp_row1" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="PAGO_ID" vertex="1">
-                    <mxGeometry height="40" width="177" x="60" as="geometry">
+                    <mxGeometry height="40" width="177" x="89.60869565217422" as="geometry">
                         <mxRectangle height="40" width="177" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_ky1" parent="mp_row1" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="PK" vertex="1">
-                    <mxGeometry height="40" width="43" x="237" as="geometry">
+                    <mxGeometry height="40" width="43" x="266.6086956521742" as="geometry">
                         <mxRectangle height="40" width="43" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_row2" parent="mp_tbl" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=1;strokeWidth=2;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" vertex="1">
-                    <mxGeometry height="40" width="280" y="79" as="geometry"/>
+                    <mxGeometry height="40" width="309.6086956521742" y="79" as="geometry"/>
                 </mxCell>
                 <mxCell id="mp_ty2" parent="mp_row2" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="int" vertex="1">
-                    <mxGeometry height="40" width="60" as="geometry">
-                        <mxRectangle height="40" width="60" as="alternateBounds"/>
+                    <mxGeometry height="40" width="89.60869565217422" as="geometry">
+                        <mxRectangle height="40" width="89.60869565217422" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_nm2" parent="mp_row2" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="MESA_ID" vertex="1">
-                    <mxGeometry height="40" width="177" x="60" as="geometry">
+                    <mxGeometry height="40" width="177" x="89.60869565217422" as="geometry">
                         <mxRectangle height="40" width="177" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_ky2" parent="mp_row2" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="FK" vertex="1">
-                    <mxGeometry height="40" width="43" x="237" as="geometry">
+                    <mxGeometry height="40" width="43" x="266.6086956521742" as="geometry">
                         <mxRectangle height="40" width="43" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_row3" parent="mp_tbl" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=1;strokeWidth=2;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" vertex="1">
-                    <mxGeometry height="40" width="280" y="119" as="geometry"/>
+                    <mxGeometry height="40" width="309.6086956521742" y="119" as="geometry"/>
                 </mxCell>
                 <mxCell id="mp_ty3" parent="mp_row3" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="int" vertex="1">
-                    <mxGeometry height="40" width="60" as="geometry">
-                        <mxRectangle height="40" width="60" as="alternateBounds"/>
+                    <mxGeometry height="40" width="89.60869565217422" as="geometry">
+                        <mxRectangle height="40" width="89.60869565217422" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_nm3" parent="mp_row3" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="PEDIDO_ID" vertex="1">
-                    <mxGeometry height="40" width="177" x="60" as="geometry">
+                    <mxGeometry height="40" width="177" x="89.60869565217422" as="geometry">
                         <mxRectangle height="40" width="177" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_ky3" parent="mp_row3" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="FK" vertex="1">
-                    <mxGeometry height="40" width="43" x="237" as="geometry">
+                    <mxGeometry height="40" width="43" x="266.6086956521742" as="geometry">
                         <mxRectangle height="40" width="43" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_row4" parent="mp_tbl" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=1;strokeWidth=2;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" vertex="1">
-                    <mxGeometry height="40" width="280" y="159" as="geometry"/>
+                    <mxGeometry height="40" width="309.6086956521742" y="159" as="geometry"/>
                 </mxCell>
                 <mxCell id="mp_ty4" parent="mp_row4" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="string" vertex="1">
-                    <mxGeometry height="40" width="60" as="geometry">
-                        <mxRectangle height="40" width="60" as="alternateBounds"/>
+                    <mxGeometry height="40" width="89.60869565217422" as="geometry">
+                        <mxRectangle height="40" width="89.60869565217422" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_nm4" parent="mp_row4" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="TIPO" vertex="1">
-                    <mxGeometry height="40" width="177" x="60" as="geometry">
+                    <mxGeometry height="40" width="177" x="89.60869565217422" as="geometry">
                         <mxRectangle height="40" width="177" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_ky4" parent="mp_row4" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="" vertex="1">
-                    <mxGeometry height="40" width="43" x="237" as="geometry">
+                    <mxGeometry height="40" width="43" x="266.6086956521742" as="geometry">
                         <mxRectangle height="40" width="43" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_row5" parent="mp_tbl" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=1;strokeWidth=2;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" vertex="1">
-                    <mxGeometry height="40" width="280" y="199" as="geometry"/>
+                    <mxGeometry height="40" width="309.6086956521742" y="199" as="geometry"/>
                 </mxCell>
                 <mxCell id="mp_ty5" parent="mp_row5" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="decimal" vertex="1">
-                    <mxGeometry height="40" width="60" as="geometry">
-                        <mxRectangle height="40" width="60" as="alternateBounds"/>
+                    <mxGeometry height="40" width="89.60869565217422" as="geometry">
+                        <mxRectangle height="40" width="89.60869565217422" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_nm5" parent="mp_row5" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="MONTO" vertex="1">
-                    <mxGeometry height="40" width="177" x="60" as="geometry">
+                    <mxGeometry height="40" width="177" x="89.60869565217422" as="geometry">
                         <mxRectangle height="40" width="177" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_ky5" parent="mp_row5" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="" vertex="1">
-                    <mxGeometry height="40" width="43" x="237" as="geometry">
+                    <mxGeometry height="40" width="43" x="266.6086956521742" as="geometry">
                         <mxRectangle height="40" width="43" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_row6" parent="mp_tbl" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=1;strokeWidth=2;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" vertex="1">
-                    <mxGeometry height="40" width="280" y="239" as="geometry"/>
+                    <mxGeometry height="40" width="309.6086956521742" y="239" as="geometry"/>
                 </mxCell>
                 <mxCell id="mp_ty6" parent="mp_row6" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="string" vertex="1">
-                    <mxGeometry height="40" width="60" as="geometry">
-                        <mxRectangle height="40" width="60" as="alternateBounds"/>
+                    <mxGeometry height="40" width="89.60869565217422" as="geometry">
+                        <mxRectangle height="40" width="89.60869565217422" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_nm6" parent="mp_row6" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="ESTADO" vertex="1">
-                    <mxGeometry height="40" width="177" x="60" as="geometry">
+                    <mxGeometry height="40" width="177" x="89.60869565217422" as="geometry">
                         <mxRectangle height="40" width="177" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_ky6" parent="mp_row6" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="" vertex="1">
-                    <mxGeometry height="40" width="43" x="237" as="geometry">
+                    <mxGeometry height="40" width="43" x="266.6086956521742" as="geometry">
                         <mxRectangle height="40" width="43" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_row7" parent="mp_tbl" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=1;strokeWidth=2;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" vertex="1">
-                    <mxGeometry height="40" width="280" y="279" as="geometry"/>
+                    <mxGeometry height="40" width="309.6086956521742" y="279" as="geometry"/>
                 </mxCell>
                 <mxCell id="mp_ty7" parent="mp_row7" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="string" vertex="1">
-                    <mxGeometry height="40" width="60" as="geometry">
-                        <mxRectangle height="40" width="60" as="alternateBounds"/>
+                    <mxGeometry height="40" width="89.60869565217422" as="geometry">
+                        <mxRectangle height="40" width="89.60869565217422" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_nm7" parent="mp_row7" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="MP_PREFERENCE_ID" vertex="1">
-                    <mxGeometry height="40" width="177" x="60" as="geometry">
+                    <mxGeometry height="40" width="177" x="89.60869565217422" as="geometry">
                         <mxRectangle height="40" width="177" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_ky7" parent="mp_row7" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="" vertex="1">
-                    <mxGeometry height="40" width="43" x="237" as="geometry">
+                    <mxGeometry height="40" width="43" x="266.6086956521742" as="geometry">
                         <mxRectangle height="40" width="43" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_row8" parent="mp_tbl" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=1;strokeWidth=2;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" vertex="1">
-                    <mxGeometry height="40" width="280" y="319" as="geometry"/>
+                    <mxGeometry height="40" width="309.6086956521742" y="319" as="geometry"/>
                 </mxCell>
                 <mxCell id="mp_ty8" parent="mp_row8" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="string" vertex="1">
-                    <mxGeometry height="40" width="60" as="geometry">
-                        <mxRectangle height="40" width="60" as="alternateBounds"/>
+                    <mxGeometry height="40" width="89.60869565217422" as="geometry">
+                        <mxRectangle height="40" width="89.60869565217422" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_nm8" parent="mp_row8" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="MP_PAYMENT_ID" vertex="1">
-                    <mxGeometry height="40" width="177" x="60" as="geometry">
+                    <mxGeometry height="40" width="177" x="89.60869565217422" as="geometry">
                         <mxRectangle height="40" width="177" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_ky8" parent="mp_row8" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="UQ" vertex="1">
-                    <mxGeometry height="40" width="43" x="237" as="geometry">
+                    <mxGeometry height="40" width="43" x="266.6086956521742" as="geometry">
                         <mxRectangle height="40" width="43" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_row9" parent="mp_tbl" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=1;strokeWidth=2;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" vertex="1">
-                    <mxGeometry height="40" width="280" y="359" as="geometry"/>
+                    <mxGeometry height="40" width="309.6086956521742" y="359" as="geometry"/>
                 </mxCell>
                 <mxCell id="mp_ty9" parent="mp_row9" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="datetime" vertex="1">
-                    <mxGeometry height="40" width="60" as="geometry">
-                        <mxRectangle height="40" width="60" as="alternateBounds"/>
+                    <mxGeometry height="40" width="89.60869565217422" as="geometry">
+                        <mxRectangle height="40" width="89.60869565217422" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_nm9" parent="mp_row9" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="FECHA" vertex="1">
-                    <mxGeometry height="40" width="177" x="60" as="geometry">
+                    <mxGeometry height="40" width="177" x="89.60869565217422" as="geometry">
                         <mxRectangle height="40" width="177" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="mp_ky9" parent="mp_row9" style="shape=partialRectangle;connectable=0;strokeWidth=2;fontFamily=Recursive;top=1;left=1;bottom=1;right=1;align=left;spacingLeft=8;overflow=hidden;fontSize=14;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" value="" vertex="1">
-                    <mxGeometry height="40" width="43" x="237" as="geometry">
+                    <mxGeometry height="40" width="43" x="266.6086956521742" as="geometry">
                         <mxRectangle height="40" width="43" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
