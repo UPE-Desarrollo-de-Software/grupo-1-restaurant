@@ -56,6 +56,7 @@ class MesaService
         private ConfigMesaRepository $configMesas,
         private ReservaRepository $reservas,
         private PreordenService $preordenes,
+        private PagoService $pagos,
     ) {}
 
     // ==================== CRUD Y CICLO DE VIDA ====================
@@ -286,11 +287,14 @@ class MesaService
      * de valer y se cancelan reservas pendientes legadas), pero con
      * la validación previa y accesible para el mozo.
      *
+     * La visita sólo termina CON EL PAGO: además de cero pedidos
+     * activos, exige la cuenta SALDADA (422 si queda saldo por
+     * cobrar — efectivo registrado o pago acreditado en MP).
      *
      * @return int cantidad de reservas canceladas
      *
      * @throws ModelNotFoundException si la mesa no existe o ya se cerró
-     * @throws \Exception si quedan pedidos activos
+     * @throws \Exception si quedan pedidos activos o saldo pendiente
      */
     public function cerrarVisita(int $id): int
     {
@@ -300,6 +304,16 @@ class MesaService
             throw new \Exception(
                 'No se puede cerrar la mesa: quedan pedidos activos. '
                     .'Cobrá la cuenta y entregá (o cancelá) todos los pedidos primero.'
+            );
+        }
+
+        $saldo = $this->pagos->saldo($this->cuenta($mesa->id));
+
+        if ($saldo['pendiente'] > 0.01) {
+            throw new \Exception(
+                'No se puede cerrar la mesa: la cuenta tiene un saldo pendiente de $'
+                    .number_format($saldo['pendiente'], 2, ',', '.')
+                    .'. Cobralo (efectivo o Mercado Pago) antes de cerrar la visita.'
             );
         }
 

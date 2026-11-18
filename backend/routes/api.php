@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HistorialComandaController;
 use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\MesaController;
+use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PlatoController;
 use App\Http\Controllers\PromocionController;
@@ -70,6 +71,13 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/acceso', [ClienteController::class, 'acceder'])
     ->middleware('throttle:60,1');
 
+// WEBHOOK DE MERCADO PAGO (vía pública: lo llama MP, no el
+// comensal). Valida la firma HMAC x-signature (401 si falla) y
+// procesa el pago contra la API de MP (fuente de verdad). Throttle
+// suave: MP reintenta si no recibe 200.
+Route::match(['post', 'get'], '/webhooks/mercado-pago', [PagoController::class, 'notificacion'])
+    ->middleware('throttle:120,1');
+
 // ==================== COMENSAL (auto-pedido) ====================
 // Sin auth:sanctum: el middleware 'cliente' resuelve la mesa desde el
 // Bearer codigo_acceso (401 si falta o si la mesa fue destruida).
@@ -90,6 +98,13 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
 
     // Cuenta dividida en partes por pedido raíz.
     Route::get('/cuenta', [ClienteController::class, 'cuenta']);
+
+    // Pagos con Mercado Pago (Checkout Pro): saldo + historial, y
+    // alta de preferencia (el monto lo calcula el backend). El
+    // verificar reconcilia el retorno del checkout contra MP.
+    Route::get('/pagos', [PagoController::class, 'index']);
+    Route::post('/pagos', [PagoController::class, 'crear']);
+    Route::post('/pagos/verificar', [PagoController::class, 'verificar']);
 
     // "Llamar al mozo": emite el broadcast mesa.atencion (rate limit
     // manual por mesa, 1/min, adentro del controller).
@@ -170,8 +185,14 @@ Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () 
     Route::post('/mesas/{mesa}/ocupar', [MesaController::class, 'ocupar']);
 
     // Fin de la VISITA: el cliente PAGÓ la cuenta y el mozo cierra la
-    // mesa (borrado lógico). Exige cero pedidos activos (422 si quedan).
+    // mesa (borrado lógico). Exige cero pedidos activos (422 si quedan)
+    // y cuenta SALDADA (422 si queda saldo por cobrar).
     Route::post('/mesas/{mesa}/cerrar', [MesaController::class, 'cerrar']);
+
+    // Cobro en EFECTIVO: el mozo registra lo que cobró al cerrar la
+    // visita (monto = saldo pendiente precargado y editable, validado
+    // server-side). El pago nace aprobado con medio_pago=efectivo.
+    Route::post('/mesas/{mesa}/pagos', [PagoController::class, 'cobrarEfectivo']);
 
     // Agrupación de lectura de varias mesas (no fusiona pedidos; los
     // códigos tampoco cambian).

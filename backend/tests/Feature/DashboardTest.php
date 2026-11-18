@@ -2,6 +2,7 @@
 
 use App\Models\DetallePedido;
 use App\Models\Mesa;
+use App\Models\Pago;
 use App\Models\Pedido;
 use App\Models\Plato;
 use App\Models\Reserva;
@@ -232,4 +233,35 @@ test('reservas_hoy solo cuenta las de hoy y suma personas de pendientes', functi
         ->assertJsonPath('reservas_hoy.canceladas', 0)
         ->assertJsonPath('reservas_hoy.no_asistio', 0)
         ->assertJsonPath('reservas_hoy.total_personas_pendientes', 5);
+});
+
+test('el dashboard desglosa los cobros aprobados por medio de pago', function () {
+    $mesa = Mesa::factory()->create();
+
+    $fila = fn (array $atributos) => Pago::create(array_merge([
+        'mesa_id' => $mesa->id,
+        'tipo' => 'total',
+        'estado' => 'aprobado',
+        'fecha' => now()->toDateTimeString(),
+    ], $atributos));
+
+    $fila(['monto' => 500, 'medio_pago' => 'efectivo']);
+    $fila(['monto' => 300, 'medio_pago' => 'mercado_pago']);
+    // Rechazado NO es cobro.
+    $fila(['monto' => 999, 'estado' => 'rechazado', 'medio_pago' => 'mercado_pago']);
+    // Fuera del período tampoco.
+    $fila([
+        'monto' => 777,
+        'medio_pago' => 'efectivo',
+        'fecha' => now()->subDays(2)->toDateTimeString(),
+    ]);
+
+    $hoy = now()->toDateString();
+    conReporte($this, tokenReporte('Gerente'))
+        ->getJson("/api/dashboard?desde={$hoy}&hasta={$hoy}")
+        ->assertOk()
+        ->assertJsonPath('cobros.efectivo.cantidad', 1)
+        ->assertJsonPath('cobros.efectivo.total', 500)
+        ->assertJsonPath('cobros.mercado_pago.cantidad', 1)
+        ->assertJsonPath('cobros.mercado_pago.total', 300);
 });

@@ -193,6 +193,13 @@ test('la visita termina cuando el mozo cierra la mesa tras el pago', function ()
     $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => 'en_preparacion'])
         ->assertStatus(422);
 
+    // El mozo cobra en efectivo (saldo pendiente) y con el pago
+    // registrado puede cerrar la visita.
+    $total = $this->getJson("/api/mesas/{$mesa->id}/cuenta")->assertOk()->json('total');
+    $this->postJson("/api/mesas/{$mesa->id}/pagos", ['monto' => $total])
+        ->assertStatus(201)
+        ->assertJsonPath('saldo.pendiente', 0);
+
     // El mozo cierra la visita (cliente pagó): la mesa queda DESTRUIDA
     // (borrado lógico), para la app dejó de existir.
     $this->postJson("/api/mesas/{$mesa->id}/cerrar")->assertStatus(200);

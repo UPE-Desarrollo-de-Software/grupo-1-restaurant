@@ -125,6 +125,30 @@ export async function cerrarMesa(id: number): Promise<{ message: string; reserva
     }
 }
 
+// POST /mesas/{id}/pagos: cobro en EFECTIVO registrado por el mozo
+// al cerrar la visita. El monto lo manda el mozo (saldo pendiente
+// precargado y editable) pero el back lo valida contra el saldo
+// vigente (422 si supera el pendiente o si MP tiene un pago en
+// proceso). El pago nace aprobado con medio_pago=efectivo.
+export async function cobrarEfectivo(id: number, monto: number): Promise<{ message: string; pendiente: number }> {
+    const response = await fetch(`${API_BASE_URL}/mesas/${id}/pagos`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ monto }),
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new Error(mensajeErrorApi(response.status, data, 'No se pudo registrar el cobro en efectivo'))
+    }
+    return {
+        message: mensajeDe(data, 'Cobro en efectivo registrado.'),
+        pendiente: Number(data?.saldo?.pendiente ?? 0),
+    }
+}
+
 // GET /mesas/{id}/cuenta: cuenta dividida en partes por pedido raíz de
 // la visita actual (corte por ocupada_desde; funciona con mesa borrada).
 export async function getCuentaMesa(id: number, signal?: AbortSignal): Promise<CuentaMesa> {
