@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\DetallePedido;
+use App\Models\Pago;
 use App\Models\Pedido;
 use App\Repositories\ConfigMesaRepository;
 use App\Repositories\MesaRepository;
+use App\Repositories\PagoRepository;
 use App\Repositories\PedidoRepository;
 use App\Repositories\ReservaRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -49,6 +51,7 @@ class ReporteService
         private ReservaRepository $reservas,
         private MesaRepository $mesas,
         private ConfigMesaRepository $configMesas,
+        private PagoRepository $pagos,
     ) {}
 
     // ==================== DASHBOARD ====================
@@ -69,6 +72,7 @@ class ReporteService
                     ? round($ventas['total'] / $ventas['cantidad'], 2)
                     : 0.0,
             ],
+            'cobros' => $this->cobrosPorMedio($desde, $hasta),
             'pedidos_por_estado' => $this->pedidosPorEstado($desde, $hasta),
             'platos_mas_vendidos' => $this->pedidos->platosMasVendidos($desde, $hasta, self::ESTADOS_VENTA)
                 ->map(fn ($fila) => [
@@ -97,6 +101,25 @@ class ReporteService
         $salida = [];
         foreach (self::ESTADOS_TODOS as $estado) {
             $salida[$estado] = $conteos[$estado] ?? 0;
+        }
+
+        return $salida;
+    }
+
+    /**
+     * Cobros APROBADOS en el período, desglosados por `medio_pago`
+     * (efectivo vs Mercado Pago), con ambos medios siempre presentes
+     * (0 los vacíos).
+     *
+     * @return array<string, array{cantidad: int, total: float}>
+     */
+    private function cobrosPorMedio(string $desde, string $hasta): array
+    {
+        $agrupados = $this->pagos->aprobadosEntre($desde, $hasta);
+
+        $salida = [];
+        foreach ([Pago::MEDIO_EFECTIVO, Pago::MEDIO_MERCADO_PAGO] as $medio) {
+            $salida[$medio] = $agrupados[$medio] ?? ['cantidad' => 0, 'total' => 0.0];
         }
 
         return $salida;

@@ -9,6 +9,7 @@ import { PedidoCard } from '../../components/Pedidos/PedidoCard'
 import { TomarPedido } from '../../components/Pedidos/TomarPedido'
 import { usePedidosRealtime } from '../../realtime/useRealtimeEmpleado'
 import type { CuentaMesa, MesaConCodigo, ParteCuenta, ResumenMesa } from '../../types/Mesa'
+import type { PagoResumen } from '../../types/Pago'
 import s from './MozoMesa.module.css'
 
 // Atención de una mesa desde el rol Mozo: comanda con acciones de estado
@@ -31,12 +32,34 @@ const formatearFecha = (fecha: string): string => {
 }
 
 // No se exporta: react-refresh/only-export-components.
-function BloqueParte({ parte, indice }: { parte: ParteCuenta; indice: number }) {
+// Cómo se cobró lo aprobado: por pedido si se pasa `pedidoId` (los
+// pagos "total" saldan cualquier parte), si no de toda la visita.
+// null = todavía no hay pagos aprobados.
+function prefijoPago(pagos: PagoResumen[] | undefined, pedidoId?: number): string | null {
+    const aplicables = (pagos ?? []).filter(pago =>
+        pago.estado === 'aprobado'
+        && (pedidoId === undefined || pago.tipo === 'total' || pago.pedido_id === pedidoId)
+    )
+    if (aplicables.length === 0) return null
+    const efectivo = aplicables.some(pago => pago.medio_pago === 'efectivo')
+    const mercadoPago = aplicables.some(pago => pago.medio_pago === 'mercado_pago')
+    if (efectivo && mercadoPago) return 'Pago mixto'
+    return efectivo ? 'Cobrado en efectivo' : 'Cobrado por MP'
+}
+
+// No se exporta: react-refresh/only-export-components.
+function BloqueParte({ parte, indice, saldo, pagos }: { parte: ParteCuenta; indice: number; saldo?: { pagado: number; pendiente: number }; pagos?: PagoResumen[] }) {
+    const medio = (saldo?.pagado ?? 0) > 0 ? (prefijoPago(pagos, parte.pedido_id) ?? 'Pagado') : null
     return (
         <Card className={s.parteCard}>
             <div className={s.pedidoHeader}>
                 <span className={`text-headline-sm ${s.pedidoTitulo}`}>Parte {indice + 1}</span>
-                <span className={`text-label-sm ${s.badgeEstado}`}>Pedido #{parte.pedido_id}</span>
+                <span>
+                    {medio && (
+                        <span className={`text-label-sm ${s.badgeOk} me-1`}>{medio}</span>
+                    )}
+                    <span className={`text-label-sm ${s.badgeEstado}`}>Pedido #{parte.pedido_id}</span>
+                </span>
             </div>
             <ul className={s.lineas}>
                 {parte.lineas.map(linea => (
@@ -58,6 +81,14 @@ function BloqueParte({ parte, indice }: { parte: ParteCuenta; indice: number }) 
                 <span className='text-label-md'>Subtotal de la parte</span>
                 <span className='text-price-display'>{formatearPrecio(parte.subtotal)}</span>
             </div>
+            {saldo && saldo.pagado > 0 && (
+                <div className={s.pedidoTotal}>
+                    <span className='text-label-md'>Saldo pendiente</span>
+                    <span className='text-body-md'>
+                        {saldo.pendiente > 0 ? formatearPrecio(saldo.pendiente) : 'Saldada'}
+                    </span>
+                </div>
+            )}
         </Card>
     )
 }
@@ -343,6 +374,24 @@ export function MozoMesaPage() {
                         <p className='text-price-display'>{formatearPrecio(cuenta.total)}</p>
                     </div>
 
+                    {/* Pagos de la visita: lo acreditado y lo que falta
+                        (el cierre lo hace el mozo, pero el pago puede
+                        haberlo hecho el comensal por su parte). */}
+                    {cuenta.saldo && (
+                        <div className={s.totalBox}>
+                            <p className={`text-label-md ${s.totalEtiqueta}`}>
+                                {cuenta.saldo.pendiente > 0 ? 'Saldo pendiente' : 'Cuenta saldada'}
+                            </p>
+                            <p className='text-price-display'>{formatearPrecio(cuenta.saldo.pendiente)}</p>
+                            <p className={`text-body-sm ${s.totalEtiqueta}`}>
+                                {cuenta.saldo.pagado > 0
+                                    ? (prefijoPago(cuenta.pagos) ?? 'Pagado')
+                                    : 'Pagado'}{' '}
+                                {formatearPrecio(cuenta.saldo.pagado)} de {formatearPrecio(cuenta.saldo.total)}
+                            </p>
+                        </div>
+                    )}
+
                     <div>
                         <Button
                             size='sm'
@@ -360,7 +409,13 @@ export function MozoMesaPage() {
                         <p className={`text-body-md text-center ${s.vacio}`}>Sin pedidos en esta visita.</p>
                     ) : (
                         cuenta.partes.map((parte, indice) => (
-                            <BloqueParte key={parte.pedido_id} parte={parte} indice={indice} />
+                            <BloqueParte
+                                key={parte.pedido_id}
+                                parte={parte}
+                                indice={indice}
+                                saldo={cuenta.saldo?.partes.find(p => p.pedido_id === parte.pedido_id)}
+                                pagos={cuenta.pagos}
+                            />
                         ))
                     )}
 
@@ -380,7 +435,13 @@ export function MozoMesaPage() {
                                         </span>
                                     </div>
                                     {hermana.partes.map((parte, indice) => (
-                                        <BloqueParte key={parte.pedido_id} parte={parte} indice={indice} />
+                                        <BloqueParte
+                                            key={parte.pedido_id}
+                                            parte={parte}
+                                            indice={indice}
+                                            saldo={hermana.saldo?.partes.find(p => p.pedido_id === parte.pedido_id)}
+                                            pagos={hermana.pagos}
+                                        />
                                     ))}
                                 </div>
                             ))}
