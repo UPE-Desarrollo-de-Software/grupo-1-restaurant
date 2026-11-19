@@ -116,6 +116,41 @@ class PagoService
             ->all();
     }
 
+    /**
+     * Detalle de UN pago de Mercado Pago: el JSON crudo que guardó
+     * `procesarNotificacion` (fee_details con cada comisión,
+     * transaction_details con el neto acreditado, etc.).
+     *
+     * No consulta la API de MP: sirve lo persistido (pagos anteriores
+     * al guardado o sin procesar devuelven `mp_detalle` en null).
+     *
+     * @return array{pago_id: int, monto: float, estado: string, medio_pago: string, mp_detalle: array<string, mixed>|null}
+     *
+     * @throws \Exception (422) no existe, de otra mesa o es efectivo
+     */
+    public function detalle(int $pagoId, int $mesaId): array
+    {
+        $pago = $this->pagos->porId($pagoId);
+
+        if ($pago === null) {
+            throw new \Exception('No se encontró ese pago.');
+        }
+
+        $this->exigirMesaPropia($pago, $mesaId);
+
+        if ($pago->medio_pago !== Pago::MEDIO_MERCADO_PAGO) {
+            throw new \Exception('Ese pago no fue con Mercado Pago.');
+        }
+
+        return [
+            'pago_id' => $pago->id,
+            'monto' => round((float) $pago->monto, 2),
+            'estado' => $pago->estado,
+            'medio_pago' => $pago->medio_pago,
+            'mp_detalle' => $pago->mp_detalle,
+        ];
+    }
+
     // ==================== ALTA DE PAGO ====================
 
     /**
@@ -325,9 +360,12 @@ class PagoService
 
         // Mismo pago que cambia de estado (p. ej. aprobado →
         // reembolsado) o primer/último intento: reflejar siempre.
+        // El JSON crudo de MP (fee_details, transaction_details…) queda
+        // guardado para exponerlo por /cliente/pagos/{id}/detalle.
         $pago->update([
             'estado' => $estado,
             'mp_payment_id' => (string) $paymentId,
+            'mp_detalle' => $pagoMp,
         ]);
 
         return $pago;

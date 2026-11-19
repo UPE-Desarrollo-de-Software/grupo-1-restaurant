@@ -52,6 +52,7 @@ class Pago extends Model
         'medio_pago',
         'mp_preference_id',
         'mp_payment_id',
+        'mp_detalle',
         'fecha',
     ];
 
@@ -60,6 +61,7 @@ class Pago extends Model
         return [
             'monto' => 'float',
             'fecha' => 'datetime',
+            'mp_detalle' => 'array',
         ];
     }
 

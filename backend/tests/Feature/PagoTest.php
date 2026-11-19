@@ -490,6 +490,105 @@ test('el webhook con firma valida aprueba el pago notificado', function () {
         ->and($pago->fresh()->mp_payment_id)->toBe('987654');
 });
 
+test('el webhook guarda el json de mp con las comisiones del pago', function () {
+    pagoHabilitar();
+    pagoHttpFake([
+        'fee_details' => [
+            ['amount' => 60.5, 'fee_payer' => 'collector', 'type' => 'mercadopago_fee'],
+        ],
+        'transaction_details' => [
+            'net_received_amount' => 939.5,
+            'total_paid_amount' => 1000,
+        ],
+    ]);
+    $mesa = pagoMesa();
+    $plato = pagoPlato(1000);
+
+    pagoPedir($this, $mesa, $plato, 1)->assertStatus(201);
+    pagoComensal($this, $mesa->codigo_acceso)
+        ->postJson('/api/cliente/pagos', ['tipo' => 'total'])
+        ->assertStatus(201);
+
+    $pago = Pago::sole();
+
+    $this->postJson(
+        '/api/webhooks/mercado-pago?type=payment&data.id=987654',
+        [],
+        pagoFirmar('987654'),
+    )->assertOk()->assertJsonPath('estado', 'aprobado');
+
+    // El JSON crudo de MP queda en mp_detalle: comisiones + neto.
+    $detalle = $pago->fresh()->mp_detalle;
+
+    expect($detalle['fee_details'][0]['amount'])->toBe(60.5)
+        ->and($detalle['fee_details'][0]['type'])->toBe('mercadopago_fee')
+        ->and($detalle['transaction_details']['net_received_amount'])->toBe(939.5)
+        ->and($detalle['transaction_details']['total_paid_amount'])->toBe(1000);
+});
+
+test('el detalle del pago se expone al cliente de la mesa', function () {
+    pagoHabilitar();
+    $mesa = pagoMesa();
+
+    $pago = Pago::create([
+        'mesa_id' => $mesa->id,
+        'tipo' => Pago::TIPO_TOTAL,
+        'monto' => 1000,
+        'estado' => Pago::ESTADO_APROBADO,
+        'mp_payment_id' => '987654',
+        'mp_detalle' => [
+            'fee_details' => [
+                ['amount' => 60.5, 'fee_payer' => 'collector', 'type' => 'mercadopago_fee'],
+            ],
+            'transaction_details' => ['net_received_amount' => 939.5],
+        ],
+    ]);
+
+    pagoComensal($this, $mesa->codigo_acceso)
+        ->getJson("/api/cliente/pagos/{$pago->id}/detalle")
+        ->assertOk()
+        ->assertJsonPath('pago_id', $pago->id)
+        ->assertJsonPath('monto', 1000)
+        ->assertJsonPath('mp_detalle.fee_details.0.amount', 60.5)
+        ->assertJsonPath('mp_detalle.transaction_details.net_received_amount', 939.5);
+});
+
+test('el detalle del pago no existe para otra mesa ni para efectivo', function () {
+    pagoHabilitar();
+    $mesa = pagoMesa();
+    $otraMesa = pagoMesa();
+
+    $pagoAjeno = Pago::create([
+        'mesa_id' => $otraMesa->id,
+        'tipo' => Pago::TIPO_TOTAL,
+        'monto' => 1000,
+        'estado' => Pago::ESTADO_APROBADO,
+        'mp_payment_id' => '111222',
+    ]);
+    $efectivo = Pago::create([
+        'mesa_id' => $mesa->id,
+        'tipo' => Pago::TIPO_TOTAL,
+        'monto' => 500,
+        'estado' => Pago::ESTADO_APROBADO,
+        'medio_pago' => Pago::MEDIO_EFECTIVO,
+    ]);
+
+    // Pago de otra visita.
+    pagoComensal($this, $mesa->codigo_acceso)
+        ->getJson("/api/cliente/pagos/{$pagoAjeno->id}/detalle")
+        ->assertStatus(422);
+
+    // Un cobro en efectivo no pasa por MP.
+    pagoComensal($this, $mesa->codigo_acceso)
+        ->getJson("/api/cliente/pagos/{$efectivo->id}/detalle")
+        ->assertStatus(422);
+
+    // Inexistente.
+    pagoComensal($this, $mesa->codigo_acceso)
+        ->getJson('/api/cliente/pagos/999999/detalle')
+        ->assertStatus(422);
+});
+
 test('el webhook es idempotente por mp_payment_id', function () {
     pagoHabilitar();
     pagoHttpFake();
@@ -685,6 +784,8 @@ test('el retorno del checkout apunta al front y la notificacion al back', functi
     expect($datos['back_urls']['success'])->toBe('https://gastro.example/pedido')
         ->and($datos['back_urls']['pending'])->toBe('https://gastro.example/pedido')
         ->and($datos['back_urls']['failure'])->toBe('https://gastro.example/pedido')
+        // Con el pago aprobado MP redirige solo al front.
+        ->and($datos['auto_return'])->toBe('approved')
         ->and($datos['notification_url'])->toBe('http://localhost:8000/api/webhooks/mercado-pago')
         ->and($datos['external_reference'])->toBe((string) $pago->id);
 });

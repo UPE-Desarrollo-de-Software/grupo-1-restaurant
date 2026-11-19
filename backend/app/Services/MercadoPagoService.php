@@ -89,6 +89,9 @@ class MercadoPagoService
                     'failure' => $datos['retorno'],
                 ]
                 : null,
+            // Con el pago aprobado MP redirige SOLO al success (si no,
+            // muestra el botón "Volver al sitio" y hay que apretarlo).
+            'auto_return' => isset($datos['retorno']) ? 'approved' : null,
             // false (default): admite estados pendiente/aprobado/
             // rechazado; el webhook los traduce al estado del PAGO.
             'binary_mode' => false,
