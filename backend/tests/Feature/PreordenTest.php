@@ -169,9 +169,9 @@ test('editar la preorden con el PIN correcto devuelve 200 y guarda la linea', fu
 test('editar la preorden con un PIN inexistente responde igual que /acceso', function () {
     $plato = preordenPlato();
 
-    $esperado = $this->postJson('/api/acceso', ['codigo' => '0000'])->getStatusCode();
+    $esperado = $this->postJson('/api/acceso', ['codigo' => '000000'])->getStatusCode();
 
-    $this->putJson('/api/cliente/reservas/0000/preordenes', [
+    $this->putJson('/api/cliente/reservas/000000/preordenes', [
         'preorden' => preordenLineas($plato),
     ])->assertStatus($esperado);
 });
@@ -182,7 +182,7 @@ test('editar la preorden con un PIN mal formado devuelve 422', function (string 
     $this->putJson("/api/cliente/reservas/{$pin}/preordenes", [
         'preorden' => preordenLineas($plato),
     ])->assertStatus(422);
-})->with(['muy corto' => '12', 'letras' => 'abcd', 'muy largo' => '12345']);
+})->with(['muy corto' => '12', 'cinco digitos' => '12345', 'letras' => 'abcd', 'muy largo' => '1234567']);
 
 test('editar la preorden de una reserva no pendiente devuelve 422', function (string $estado) {
     $reserva = preordenReservaWeb(preordenLineas(preordenPlato()));

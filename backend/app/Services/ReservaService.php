@@ -203,7 +203,7 @@ class ReservaService
             }
 
             // El PIN lo genera SIEMPRE el service (igual que la mesa):
-            // 4 dígitos únicos entre las reservas pendientes.
+            // 6 dígitos únicos entre las reservas pendientes.
             $datos['codigo'] = $this->reservas->nuevoCodigoAcceso();
 
             $reserva = $this->reservas->crear([

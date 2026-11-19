@@ -47,11 +47,13 @@ export interface Ingrediente {
 }
 
 // Ingrediente de un plato (GET/POST/PUT de platos): incluye los flags del pivot
-// `plato_ingrediente` (llegan 1/0, se normalizan a boolean en la capa API).
+// `plato_ingrediente` (llegan 1/0, se normalizan a boolean en la capa API) y el
+// recargo propio del plato (`null` = hereda el del catálogo).
 export interface IngredientePlato extends Ingrediente {
     pivot: {
         opcional: boolean
         por_defecto: boolean
+        precio_adicional: number | null
     }
 }
 

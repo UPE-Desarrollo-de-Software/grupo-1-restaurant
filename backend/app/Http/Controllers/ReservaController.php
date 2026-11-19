@@ -147,7 +147,7 @@ class ReservaController extends Controller
     /**
      * GET /api/reservas?estado=&fecha=&mesa_id=&codigo= (empleado):
      * filtros opcionales para la agenda del día o de la semana.
-     * `codigo` es el PIN de 4 dígitos que muestra el cliente. Toda
+     * `codigo` es el PIN de 6 dígitos que muestra el cliente. Toda
      * reserva trae su `preorden` (qué viene para la llegada).
      */
     public function index(Request $request)
@@ -156,7 +156,7 @@ class ReservaController extends Controller
             'estado' => 'sometimes|nullable|in:pendiente,cancelada,finalizada,no_asistio',
             'fecha' => 'sometimes|nullable|date_format:Y-m-d',
             'mesa_id' => 'sometimes|nullable|integer',
-            'codigo' => ['sometimes', 'nullable', 'string', 'regex:/^\d{4}$/'],
+            'codigo' => ['sometimes', 'nullable', 'string', 'regex:/^\d{6}$/'],
         ]);
 
         $reservas = ($this->listar)(
@@ -251,14 +251,14 @@ class ReservaController extends Controller
 
     /**
      * GET /api/cliente/reservas/{codigo}/preordenes (público con
-     * throttle): la pre-orden de la reserva con su PIN de 4 dígitos.
+     * throttle): la pre-orden de la reserva con su PIN de 6 dígitos.
      * Mismo criterio que /acceso: PIN mal formado → 422, PIN que no
      * corresponde a ninguna reserva → 401.
      */
     public function preordenCliente(string $codigo)
     {
-        if (! preg_match('/^\d{4}$/', $codigo)) {
-            return response()->json(['message' => 'El PIN debe ser de exactamente 4 dígitos.'], 422);
+        if (! preg_match('/^\d{6}$/', $codigo)) {
+            return response()->json(['message' => 'El PIN de la reserva tiene 6 dígitos.'], 422);
         }
 
         try {
@@ -277,8 +277,8 @@ class ReservaController extends Controller
      */
     public function actualizarPreordenCliente(string $codigo, Request $request)
     {
-        if (! preg_match('/^\d{4}$/', $codigo)) {
-            return response()->json(['message' => 'El PIN debe ser de exactamente 4 dígitos.'], 422);
+        if (! preg_match('/^\d{6}$/', $codigo)) {
+            return response()->json(['message' => 'El PIN de la reserva tiene 6 dígitos.'], 422);
         }
 
         $datos = $this->validarLineas($request);
@@ -304,8 +304,8 @@ class ReservaController extends Controller
      */
     public function eliminarPreordenCliente(string $codigo)
     {
-        if (! preg_match('/^\d{4}$/', $codigo)) {
-            return response()->json(['message' => 'El PIN debe ser de exactamente 4 dígitos.'], 422);
+        if (! preg_match('/^\d{6}$/', $codigo)) {
+            return response()->json(['message' => 'El PIN de la reserva tiene 6 dígitos.'], 422);
         }
 
         try {

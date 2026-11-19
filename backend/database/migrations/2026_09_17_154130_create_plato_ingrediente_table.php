@@ -14,6 +14,10 @@ return new class extends Migration
      *  - `por_defecto`:  viene incluido en el plato (solo esos se pueden
      *                    excluir; los que no vienen por defecto se pueden
      *                    agregar).
+     *
+     * `precio_adicional` es el recargo de ESE ingrediente en ESE plato
+     * (override del recargo de catálogo `ingredientes.precioAdicional`).
+     * `null` = hereda el catálogo; `0` = sin recargo explícito.
      */
     public function up(): void
     {
@@ -30,6 +34,7 @@ return new class extends Migration
 
             $table->boolean('opcional')->default(true);
             $table->boolean('por_defecto')->default(true);
+            $table->decimal('precio_adicional', 10, 2)->nullable();
 
             $table->unique(['plato_id', 'ingrediente_id']);
         });

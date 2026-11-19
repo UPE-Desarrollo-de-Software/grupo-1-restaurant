@@ -47,7 +47,7 @@ function pagoDeshabilitar(): void
     ]);
 }
 
-/** Mesa viva con su codigo_acceso de 4 dígitos. */
+/** Mesa viva con su codigo_acceso de 6 dígitos. */
 function pagoMesa(): Mesa
 {
     return Mesa::factory()->create();

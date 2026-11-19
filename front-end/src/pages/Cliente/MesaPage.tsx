@@ -18,9 +18,9 @@ type ResultadoQr =
     | { codigo: string; tipo: 'error'; error: string }
 
 // Identificación de la mesa: con el QR de la visita (URL
-// /mesa?codigo=XXXX) valida sola vía POST /acceso; si no, con el código
-// de 4 dígitos que reparte el mozo. Es de un solo uso por visita: al
-// validar, la página queda en la tarjeta "Mesa identificada".
+// /mesa?codigo=XXXXXX) valida sola vía POST /acceso; si no, con el
+// código de 6 dígitos que reparte el mozo. Es de un solo uso por
+// visita: al validar, la página queda en la tarjeta "Mesa identificada".
 // "Salir de mesa" cierra la sesión LOCAL del comensal (no hay logout en
 // el backend) para poder corregir un código mal tipeado.
 export function MesaPage() {
@@ -38,11 +38,11 @@ export function MesaPage() {
     const [qrAbierto, setQrAbierto] = useState(false)
     const [salirAbierto, setSalirAbierto] = useState(false)
 
-    // QR en la URL (?codigo=XXXX): se procesa una sola vez (al terminar
+    // QR en la URL (?codigo=XXXXXX): se procesa una sola vez (al terminar
     // se limpia el parámetro con replace, así un refresh no reintenta).
     const [parametros, setParametros] = useSearchParams()
     const codigoQr = parametros.get('codigo') ?? ''
-    const codigoQrValido = /^\d{4}$/.test(codigoQr) ? codigoQr : null
+    const codigoQrValido = /^\d{6}$/.test(codigoQr) ? codigoQr : null
     const [rtaQr, setRtaQr] = useState<ResultadoQr | null>(null)
     const entrandoQr = codigoQrValido !== null && (rtaQr === null || rtaQr.codigo !== codigoQrValido)
 
@@ -292,13 +292,13 @@ export function MesaPage() {
                             type='text'
                             inputMode='numeric'
                             autoComplete='off'
-                            maxLength={4}
-                            placeholder='1234'
+                            maxLength={6}
+                            placeholder='123456'
                             className={`text-headline-md ${s.codigoInput}`}
                             value={codigo}
                             isInvalid={errorCampo !== null}
                             aria-describedby='codigo-ayuda'
-                            onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                            onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         />
                         <Form.Control.Feedback type='invalid' className='text-body-sm'>
                             {errorCampo}

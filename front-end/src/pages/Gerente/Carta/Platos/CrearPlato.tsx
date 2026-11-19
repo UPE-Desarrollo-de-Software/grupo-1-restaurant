@@ -12,10 +12,10 @@ import { formatearPrecio } from '../../../../utils/historial'
 import { platoSchema } from '../../../../schemas/carta'
 import { createPlato, subirImagenPlato } from '../../../../api/platos'
 import { validarImagenPlato } from '../../../../utils/imagenPlato'
+import { ConfiguradorIngredientes } from '../../../../components/Platos/ConfiguradorIngredientes'
 import {
-    ETIQUETAS_ESTADO_INGREDIENTE,
-    flagsDesdeEstado,
-    type EstadoIngredientePlato,
+    ingredientesParaPayload,
+    type ConfiguracionIngrediente,
 } from '../../../../utils/ingredientePlato'
 
 export function CrearPlatoPage() {
@@ -32,8 +32,8 @@ export function CrearPlatoPage() {
     // el formulario o descartar un archivo inválido.
     const [recargaInput, setRecargaInput] = useState(0)
     const [disponible, setDisponible] = useState(true)
-    // Estado por ingrediente id; los no presentes quedan fuera del plato.
-    const [ingredientes, setIngredientes] = useState<Record<number, EstadoIngredientePlato>>({})
+    // Configuración por ingrediente id; los no presentes quedan fuera del plato.
+    const [ingredientes, setIngredientes] = useState<Record<number, ConfiguracionIngrediente>>({})
 
     const vistaPrevia = useVistaPreviaImagen(archivo)
 
@@ -48,11 +48,8 @@ export function CrearPlatoPage() {
     const [tocado, setTocado] = useState(false)
 
     const errores: Record<string, string> = {}
-    // El backend acepta objetos con los flags del pivot (opcional/por_defecto).
-    const ingredientesConFlags = Object.entries(ingredientes).map(([id, estado]) => ({
-        ingrediente_id: Number(id),
-        ...flagsDesdeEstado(estado),
-    }))
+    // Objetos con los flags del pivot y, si es Opcional, su recargo propio.
+    const ingredientesConFlags = ingredientesParaPayload(ingredientes)
     const resultados = platoSchema.safeParse({
         categoria_id,
         promocion_id: promocion_id === '' ? null : promocion_id,
@@ -71,13 +68,8 @@ export function CrearPlatoPage() {
         }
     }
 
-    function cambiarEstadoIngrediente(id: number, estado: EstadoIngredientePlato | '') {
-        setIngredientes(prev => {
-            const siguiente = { ...prev }
-            if (estado === '') delete siguiente[id]
-            else siguiente[id] = estado
-            return siguiente
-        })
+    function cambiarIngrediente(id: number, configuracion: ConfiguracionIngrediente) {
+        setIngredientes(prev => ({ ...prev, [id]: configuracion }))
     }
 
     function elegirArchivo(elegido: File | null) {
@@ -261,36 +253,12 @@ export function CrearPlatoPage() {
                     </Form.Group>
 
                     <Form.Group className={s.field} controlId='abm-plato-ingredientes'>
-                        <Form.Label className={`text-label-md ${s.label}`}>Ingredientes</Form.Label>
-                        <div className={s.ingredientsBox}>
-                            {loadingIngredientes ? (
-                                    <p className={`text-body-sm ${s.empty}`}>Cargando ingredientes...</p>
-                            ) :
-                            listaIngredientes.length === 0 ? (
-                                <p className={`text-body-sm ${s.empty}`}>No tiene ingredientes cargados</p>
-                            ) : (
-                                listaIngredientes.map(ing => (
-                                    <div key={ing.id} className={`text-body-sm ${s.ingredientItem}`}>
-                                        <span>{ing.nombre}</span>
-                                        <Form.Select
-                                            className={s.input}
-                                            aria-label={`Estado de ${ing.nombre}`}
-                                            value={ingredientes[ing.id] ?? ''}
-                                            onChange={(e) =>
-                                                cambiarEstadoIngrediente(ing.id, e.target.value as EstadoIngredientePlato | '')
-                                            }
-                                        >
-                                            <option value=''>No incluir</option>
-                                            {(Object.keys(ETIQUETAS_ESTADO_INGREDIENTE) as EstadoIngredientePlato[]).map(estado => (
-                                                <option key={estado} value={estado}>
-                                                    {ETIQUETAS_ESTADO_INGREDIENTE[estado]}
-                                                </option>
-                                            ))}
-                                        </Form.Select>
-                                    </div>
-                                ))
-                            )}
-                        </div>
+                        <ConfiguradorIngredientes
+                            ingredientes={listaIngredientes}
+                            cargando={loadingIngredientes}
+                            configuracion={ingredientes}
+                            onCambiar={cambiarIngrediente}
+                        />
                     </Form.Group>
 
                     <Form.Group className={s.field} controlId='abm-plato-disponible'>

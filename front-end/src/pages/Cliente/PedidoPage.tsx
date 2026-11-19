@@ -484,7 +484,7 @@ export function PedidoPage() {
                     <h1 className='text-headline-md'>Tu pedido en mesa</h1>
                     <p className={`text-body-md ${s.vacioTexto}`}>
                         Para ver y armar tu pedido necesitás identificar la mesa con el código de
-                        4 dígitos que te dio tu mozo.
+                        6 dígitos que te dio tu mozo.
                     </p>
                     <div className={s.vacioAcciones}>
                         <Link to='/mesa' className='btn btn-primary text-label-md'>Ingresar código de mesa</Link>

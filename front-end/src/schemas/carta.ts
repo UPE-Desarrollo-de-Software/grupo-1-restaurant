@@ -24,6 +24,11 @@ export const platoSchema = z.object({
                 ingrediente_id: z.number().int().min(1, 'ID de ingrediente inválido'),
                 opcional: z.boolean().optional(),
                 por_defecto: z.boolean().optional(),
+                // Recargo propio del plato: '' o null = hereda el catálogo.
+                precio_adicional: z.preprocess(
+                    (valor) => (valor === '' || valor == null ? null : valor),
+                    z.coerce.number().min(0, 'El recargo no puede ser negativo').nullable().optional()
+                ),
             }),
         ])
     ).optional()

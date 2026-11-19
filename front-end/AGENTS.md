@@ -39,11 +39,11 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   "Cerrar", sin "Crear más" y sin descarga PNG), que es el que abre el botón
   "Mostrar QR" de `MesaPage`; ahí el cliente además ve y copia su código para
   pasárselo a otro comensal.
-- La credencial del comensal es el `codigo_acceso` de la mesa (4 dígitos, lo reparte
-  el mozo; el backend valida `size:4` y preserva ceros a la izquierda). Viaja como
+- La credencial del comensal es el `codigo_acceso` de la mesa (6 dígitos, lo reparte
+  el mozo; el backend valida `digits:6` y preserva ceros a la izquierda). Viaja como
   `Authorization: Bearer <codigo>` en `/cliente/*` (middleware `cliente` del backend;
   NO hay Sanctum ni `login-cliente` para el cliente).
-- `/mesa` (pública, `MesaPage`): form de 4 dígitos → `POST /acceso` (público,
+- `/mesa` (pública, `MesaPage`): form de 6 dígitos → `POST /acceso` (público,
   throttle 60/min por IP → 429 con mensaje en español). Es de un solo uso: al
   validar, la página queda directamente en la tarjeta "Mesa identificada" (no se
   puede cambiar el código desde acá ni hay modal de éxito ni navegación
@@ -56,7 +56,7 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   pedidos ya enviados siguen en la visita y los cierra el mozo al cobrar, y se
   descarta el borrador (si `confirmarPendiente`, el modal avisa que esas líneas
   no llegan a cocina). Es la vía para corregir un código mal tipeado, porque el
-  código de 4 dígitos puede caer en otra mesa viva y una vez identificado no
+  código de 6 dígitos puede caer en otra mesa viva y una vez identificado no
   había forma de salir. Al salir se pierden los `pedidoIds`: si reingresa con el
   mismo código, la vista Cuenta ya no marca "Tu parte". El **código y el QR
   viven en un bloque aparte debajo** (`.pinBox` en `MesaPage.module.css`, misma
@@ -114,7 +114,7 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   como es un derivado por render, editar los datos la habilita/oculta al
   instante (si el nombre vuelve a quedar incompleto se limpia `hora` desde el
   `onChange`, sin efectos). El alta no cambia. **La respuesta trae
-  `reserva.codigo`** (PIN de 4 dígitos, string con ceros a la izquierda, único
+  `reserva.codigo`** (PIN de 6 dígitos, string con ceros a la izquierda, único
   entre pendientes; lo genera el back): es lo que se muestra/copia/descarga en el
   modal de éxito y en el PDF — el `reserva.id` ya NO se muestra (`pinReserva()`
   en `ReservasClientePage`/`CrearReserva` deja el id sólo como fallback). **La

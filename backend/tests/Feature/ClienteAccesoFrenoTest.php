@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Mesa;
-use App\Repositories\EloquentMesaRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -10,7 +9,6 @@ uses(RefreshDatabase::class);
  * Frenos del acceso del comensal (sin token):
  *  - POST /api/acceso: 10 fallos por minuto e IP; los aciertos no gastan cupo.
  *  - /api/cliente/*: 10 fallos por minuto e IP con el Bearer.
- *  - nuevoCodigoAcceso(): corta a los 50 intentos en vez de colgarse.
  *
  * OJO: los helpers globales (mesaVisita, comensal, etc.) viven en
  * ClientePedidoTest — no redeclararlos acá (colisionan en toda la suite).
@@ -29,11 +27,11 @@ test('acceso: los aciertos no gastan cupo', function () {
 
 test('acceso: 10 fallos por minuto responden 429 con Retry-After', function () {
     for ($intento = 0; $intento < 10; $intento++) {
-        $this->postJson('/api/acceso', ['codigo' => '0000'])
+        $this->postJson('/api/acceso', ['codigo' => '000000'])
             ->assertStatus(401);
     }
 
-    $this->postJson('/api/acceso', ['codigo' => '0000'])
+    $this->postJson('/api/acceso', ['codigo' => '000000'])
         ->assertStatus(429)
         ->assertHeader('Retry-After')
         ->assertJsonPath('message', 'Demasiados intentos: esperá un momento y volvé a intentar.');
@@ -41,7 +39,7 @@ test('acceso: 10 fallos por minuto responden 429 con Retry-After', function () {
 
 test('cliente: 10 fallos por minuto responden 429 y frenan la IP', function () {
     for ($intento = 0; $intento < 10; $intento++) {
-        $this->withHeader('Authorization', 'Bearer 0000')
+        $this->withHeader('Authorization', 'Bearer 000000')
             ->getJson('/api/cliente/pedidos')
             ->assertStatus(401);
     }
@@ -67,17 +65,4 @@ test('cliente: 10 fallos por minuto responden 429 y frenan la IP', function () {
     $this->withHeader('Authorization', 'Bearer '.$codigo)
         ->getJson('/api/cliente/pedidos')
         ->assertOk();
-});
-
-test('codigo: el generador corta a los 50 intentos', function () {
-    $repositorio = new class extends EloquentMesaRepository
-    {
-        public function codigoExiste(string $codigo): bool
-        {
-            return true;
-        }
-    };
-
-    expect(fn () => $repositorio->nuevoCodigoAcceso())
-        ->toThrow(RuntimeException::class, 'No hay códigos de mesa disponibles');
 });

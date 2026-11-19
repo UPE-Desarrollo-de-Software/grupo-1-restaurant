@@ -47,34 +47,15 @@ class EloquentMesaRepository implements MesaRepository
         return (int) Mesa::sum('capacidad');
     }
 
-    public function codigoExiste(string $codigo): bool
-    {
-        // withTrashed: un código de una mesa destruida no debe volver a
-        // emitirse (el unique de la BD lo impediría igual).
-        return Mesa::withTrashed()
-            ->where('codigo_acceso', $codigo)
-            ->exists();
-    }
-
     /**
-     * Código de 4 dígitos libre. Corta a los 50 intentos: si el pool
-     * está agotado (10.000 visitas acumuladas, `codigoExiste` también
-     * mira las mesas cerradas) lanza en vez de colgarse para siempre.
-     * `MesaController::store` catchea \Exception → 422 con el mensaje.
+     * Candidato de 6 dígitos (1.000.000 de combinaciones). La unicidad
+     * la garantiza el UNIQUE de la BD: `MesaService::crearMesa` inserta
+     * y regenera ante una colisión, así dos altas simultáneas no
+     * compiten por el mismo chequeo previo.
      */
     public function nuevoCodigoAcceso(): string
     {
-        for ($intento = 0; $intento < 50; $intento++) {
-            $codigo = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-
-            if (! $this->codigoExiste($codigo)) {
-                return $codigo;
-            }
-        }
-
-        throw new \RuntimeException(
-            'No hay códigos de mesa disponibles: el salón llegó al límite de 10.000 visitas. Cerrá el local y avisá al administrador.'
-        );
+        return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     }
 
     public function porGrupo(int $grupoCodigo, array $excluirIds = []): Collection

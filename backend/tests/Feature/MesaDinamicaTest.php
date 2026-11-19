@@ -7,6 +7,8 @@ use App\Models\Plato;
 use App\Models\Reserva;
 use App\Models\Rol;
 use App\Models\Usuario;
+use App\Repositories\EloquentMesaRepository;
+use App\Repositories\MesaRepository;
 use Carbon\Carbon;
 use Database\Seeders\PermisoSeeder;
 use Database\Seeders\RolSeeder;
@@ -76,10 +78,62 @@ test('el mozo crea una mesa dinamica con su codigo de acceso', function () {
     $mesa = $response->json('mesa');
     expect($mesa['estado'])->toBe('libre')
         ->and($mesa['capacidad'])->toBe(4)
-        ->and($mesa['codigo_acceso'])->toMatch('/^\d{4}$/');
+        ->and($mesa['codigo_acceso'])->toMatch('/^\d{6}$/');
 
     // El código es único entre las mesas vivas.
     expect(Mesa::where('codigo_acceso', $mesa['codigo_acceso'])->count())->toBe(1);
+});
+
+test('el generador de codigo de mesa emite 6 digitos', function () {
+    expect(app(MesaRepository::class)->nuevoCodigoAcceso())
+        ->toMatch('/^\d{6}$/');
+});
+
+test('si el codigo choca con el UNIQUE se reintenta con otro', function () {
+    fijarAforo(10);
+    Mesa::factory()->create(['codigo_acceso' => '111111']);
+
+    // El primer candidato ya está tomado: el INSERT falla y el service
+    // regenera. El segundo candidato está libre.
+    app()->instance(MesaRepository::class, new class extends EloquentMesaRepository
+    {
+        /** @var list<string> */
+        public array $codigos = ['111111', '222222'];
+
+        public function nuevoCodigoAcceso(): string
+        {
+            return array_shift($this->codigos);
+        }
+    });
+
+    $mesa = conEmpleado($this, tokenEmpleado('Mozo'))
+        ->postJson('/api/mesas', ['capacidad' => 4])
+        ->assertStatus(201)
+        ->json('mesa');
+
+    expect($mesa['codigo_acceso'])->toBe('222222')
+        ->and(Mesa::where('codigo_acceso', '222222')->count())->toBe(1);
+});
+
+test('si se agotan los reintentos de codigo la mesa responde 422', function () {
+    fijarAforo(10);
+    Mesa::factory()->create(['codigo_acceso' => '111111']);
+
+    // Todos los candidatos chocan: a los 10 intentos corta con 422.
+    app()->instance(MesaRepository::class, new class extends EloquentMesaRepository
+    {
+        public function nuevoCodigoAcceso(): string
+        {
+            return '111111';
+        }
+    });
+
+    conEmpleado($this, tokenEmpleado('Mozo'))
+        ->postJson('/api/mesas', ['capacidad' => 4])
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'No se pudo generar un código de acceso único para la mesa. Volvé a intentar.');
+
+    expect(Mesa::count())->toBe(1);
 });
 
 test('crear mesa respeta el aforo del lugar', function () {
@@ -233,7 +287,7 @@ test('el alta es del mozo y la baja logica del gerente', function () {
     expect(Mesa::find($mesaId))->toBeNull()
         ->and(Mesa::withTrashed()->find($mesaId))->not->toBeNull()
         // Para la app la mesa dejó de existir: su código no entra.
-        ->and($codigo)->toMatch('/^\d{4}$/');
+        ->and($codigo)->toMatch('/^\d{6}$/');
 
     $this->postJson('/api/acceso', ['codigo' => $codigo])->assertStatus(401);
 });

@@ -55,7 +55,9 @@ class ClienteController extends Controller
     public function acceder(Request $request)
     {
         $datos = $request->validate([
-            'codigo' => 'required|string|size:4',
+            'codigo' => 'required|string|digits:6',
+        ], [
+            'codigo.digits' => 'El código de la mesa tiene 6 dígitos.',
         ]);
 
         // Sin ip2long(): sirve igual para IPv4 e IPv6.

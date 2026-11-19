@@ -28,8 +28,8 @@ export function PreordenClientePage() {
         setErrorApi(null)
         setExito(null)
 
-        if (!/^\d{4}$/.test(pin)) {
-            setErrorCampo('El PIN debe tener exactamente 4 dígitos')
+        if (!/^\d{6}$/.test(pin)) {
+            setErrorCampo('El PIN de la reserva tiene 6 dígitos')
             return
         }
         setErrorCampo(null)
@@ -117,13 +117,13 @@ export function PreordenClientePage() {
                                 type='text'
                                 inputMode='numeric'
                                 autoComplete='off'
-                                maxLength={4}
-                                placeholder='1234'
+                                maxLength={6}
+                                placeholder='123456'
                                 className={`text-headline-md ${s.pinInput}`}
                                 value={pin}
                                 isInvalid={errorCampo !== null}
                                 aria-describedby='preorden-pin-ayuda'
-                                onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                             />
                             <Form.Control.Feedback type='invalid' className='text-body-sm'>
                                 {errorCampo}
@@ -159,7 +159,7 @@ export function PreordenClientePage() {
                     <div className={s.ayuda} id='preorden-pin-ayuda'>
                         <p className={`text-body-sm ${s.ayudaTitulo}`}>¿Dónde está mi PIN?</p>
                         <p className='text-body-sm'>
-                            Es el código de 4 dígitos que te dimos al confirmar la reserva. No es
+                            Es el código de 6 dígitos que te dimos al confirmar la reserva. No es
                             el número de tu pedido.
                         </p>
                         <p className='text-body-sm mb-0'>

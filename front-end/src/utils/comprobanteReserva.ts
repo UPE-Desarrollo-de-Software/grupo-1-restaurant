@@ -9,7 +9,7 @@ import { PALETA, canales, cargarImagen } from './descargas'
 // pre-orden con el PIN.
 
 export interface ComprobanteReserva {
-    /** PIN de 4 dígitos (clave de la reserva para el cliente). */
+    /** PIN de 6 dígitos (clave de la reserva para el cliente). */
     pin: string
     /** 'Y-m-d' (tal cual la manda el backend). */
     fecha: string

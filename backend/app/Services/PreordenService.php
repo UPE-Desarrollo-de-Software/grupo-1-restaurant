@@ -56,7 +56,7 @@ class PreordenService
     }
 
     /**
-     * Pre-orden de una reserva por su PIN de 4 dígitos (edición
+     * Pre-orden de una reserva por su PIN de 6 dígitos (edición
      * pública del cliente); lanza ModelNotFoundException si no hay
      * ninguna reserva con ese PIN.
      *
@@ -223,7 +223,7 @@ class PreordenService
     // ==================== INTERNAS ====================
 
     /**
-     * Reserva por su PIN de 4 dígitos; lanza ModelNotFoundException
+     * Reserva por su PIN de 6 dígitos; lanza ModelNotFoundException
      * si no hay ninguna (el controller responde igual que /acceso).
      */
     private function reservaPorCodigo(string $codigo): Reserva

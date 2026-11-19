@@ -35,7 +35,7 @@ class Reserva extends Model
 
     protected $fillable = [
         'mesa_id', // legacy: nullable y sin uso en el alta nueva
-        'codigo', // PIN de 4 dígitos (único entre pendientes)
+        'codigo', // PIN de 6 dígitos (único entre pendientes)
         'contacto_solicitante',
         'fecha',
         'hora',

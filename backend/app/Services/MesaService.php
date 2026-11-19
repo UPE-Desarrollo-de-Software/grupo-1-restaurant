@@ -16,6 +16,7 @@ use App\Repositories\PedidoRepository;
 use App\Repositories\ReservaRepository;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -87,7 +88,7 @@ class MesaService
      * [hora − 60, hora + 30); el salón no puede superar
      * aforo − reservas) y el TOPE de mesas (ambos derivados de
      * CONFIG_MESA) y genera el único código de acceso de la mesa
-     * (4 dígitos) ANTES de crearla.
+     * (6 dígitos) ANTES de crearla.
      *
      * `reserva_id` (opcional): si viene, la mesa se arma PARA esa
      * reserva (pendiente o finalizada). La PRIMERA de la reserva
@@ -95,10 +96,10 @@ class MesaService
      * HEREDA el PIN de la reserva como `codigo_acceso`, así el
      * cliente usa el mismo código desde la reserva hasta el último
      * pedido (POST /acceso). Como `codigo_acceso` es UNIQUE para
-     * siempre (incluso mesas destruidas, `codigoExiste` es
-     * withTrashed) y el PIN de reserva se recicla, si el candidato
-     * ya está tomado se hace fallback a un código generado. El
-     * `codigo_acceso` NUNCA viene del request.
+     * siempre (incluso mesas destruidas) y el PIN de reserva se
+     * recicla, si el candidato ya está tomado el INSERT falla y se
+     * reintenta con un código generado. El `codigo_acceso` NUNCA
+     * viene del request.
      *
      * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?, reserva_id?}
      *
@@ -151,18 +152,16 @@ class MesaService
         // `reserva_id`, la mesa principal hereda el PIN de la reserva
         // (continuidad: el mismo código de la reserva hasta el último
         // pedido); si ya está tomado por una mesa (viva o destruida)
-        // → fallback a un código generado.
+        // el INSERT choca y se reintenta con un código generado.
         $hereda = $reserva !== null && $reserva->mesa_id === null;
 
-        if ($hereda && ! $this->mesas->codigoExiste($reserva->codigo)) {
-            $datos['codigo_acceso'] = $reserva->codigo;
-        } else {
-            $datos['codigo_acceso'] = $this->mesas->nuevoCodigoAcceso();
-        }
+        $datos['codigo_acceso'] = $hereda
+            ? $reserva->codigo
+            : $this->mesas->nuevoCodigoAcceso();
 
         $datos['estado'] = $datos['estado'] ?? 'libre';
 
-        $mesa = $this->mesas->crear($datos);
+        $mesa = $this->crearConCodigoLibre($datos);
 
         // La reserva queda vinculada a SU mesa principal: a partir de
         // acá las mesas siguientes de la misma reserva generan código
@@ -182,6 +181,38 @@ class MesaService
         }
 
         return $mesa;
+    }
+
+    /**
+     * Inserta la mesa reintentando si el UNIQUE de `codigo_acceso`
+     * choca (carrera entre dos altas o PIN heredado ya usado). Un
+     * UNIQUE de otra columna se relanza tal cual: el reintento es
+     * sólo para el código.
+     *
+     * `nuevoCodigoAcceso()` es un candidato puro (no consulta la BD),
+     * así que la colisión se detecta recién en el INSERT.
+     *
+     * @param  array<string, mixed>  $datos
+     *
+     * @throws \RuntimeException si se agotan los reintentos
+     */
+    private function crearConCodigoLibre(array $datos): Mesa
+    {
+        for ($intento = 0; $intento < 10; $intento++) {
+            try {
+                return $this->mesas->crear($datos);
+            } catch (UniqueConstraintViolationException $e) {
+                if (! str_contains($e->getMessage(), 'codigo_acceso')) {
+                    throw $e;
+                }
+
+                $datos['codigo_acceso'] = $this->mesas->nuevoCodigoAcceso();
+            }
+        }
+
+        throw new \RuntimeException(
+            'No se pudo generar un código de acceso único para la mesa. Volvé a intentar.'
+        );
     }
 
     /**

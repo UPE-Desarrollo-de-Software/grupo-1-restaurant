@@ -28,7 +28,7 @@ export function AficheMesaQr({ mesa }: AficheMesaQrProps) {
         className={s.qr}
       />
       <p className={`text-body-sm ${s.ayuda}`}>
-        O ingresá el código de 4 dígitos en la app.
+        O ingresá el código de 6 dígitos en la app.
       </p>
       <p className={`text-headline-md ${s.codigo}`}>{mesa.codigo_acceso}</p>
 

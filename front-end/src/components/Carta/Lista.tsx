@@ -85,7 +85,7 @@ const SIN_FILTRO: Record<Tipo, string> = {
 // Vive en src/utils/busqueda.ts (la carta del cliente usa la misma regla).
 // La unión es mixta: cada item se busca por los campos que tiene
 // (Reserva no tiene `nombre`; se busca por contacto, estado, mesa y
-// código PIN de 4 dígitos).
+// código PIN de 6 dígitos).
 function filtrar(items: ItemLista[], busqueda?: string): ItemLista[] {
   const consulta = normalizarTexto((busqueda ?? '').trim().replace(/^#/, ''))
   if (!consulta) return items
@@ -96,7 +96,7 @@ function filtrar(items: ItemLista[], busqueda?: string): ItemLista[] {
     || ('estado' in item && typeof item.estado === 'string' && normalizarTexto(item.estado).includes(consulta))
     // PIN de reserva: búsqueda parcial ("36" encuentra "3658").
     || ('codigo' in item && typeof item.codigo === 'string' && normalizarTexto(item.codigo).includes(consulta))
-    // Código de acceso de la mesa (mismos 4 dígitos, búsqueda parcial).
+    // Código de acceso de la mesa (mismos 6 dígitos, búsqueda parcial).
     || ('codigo_acceso' in item && typeof item.codigo_acceso === 'string' && normalizarTexto(item.codigo_acceso).includes(consulta))
     || ('mesa' in item && item.mesa != null && normalizarTexto(`mesa ${item.mesa.id}`).includes(consulta))
     || String(item.id).includes(consulta)

@@ -19,7 +19,11 @@ type PlatoListarJSON = Omit<PlatoListar, 'precio' | 'disponible' | 'promocion'> 
 
 type IngredientePlatoJSON = Omit<IngredientePlato, 'precioAdicional' | 'pivot'> & {
     precioAdicional: string | number
-    pivot?: { opcional?: number | boolean; por_defecto?: number | boolean }
+    pivot?: {
+        opcional?: number | boolean
+        por_defecto?: number | boolean
+        precio_adicional?: string | number | null
+    }
 }
 
 type PlatoObtenerJSON = Omit<PlatoObtener, 'precio' | 'disponible' | 'ingredientes' | 'promocion'> & {
@@ -52,6 +56,10 @@ function normalizarPlatoObtener(plato: PlatoConIngredientesJSON): PlatoObtener {
             pivot: {
                 opcional: Boolean(ing.pivot?.opcional),
                 por_defecto: Boolean(ing.pivot?.por_defecto),
+                // null = el plato hereda el recargo de catálogo: no convertir a 0.
+                precio_adicional: ing.pivot?.precio_adicional == null
+                    ? null
+                    : Number(ing.pivot.precio_adicional),
             },
         })),
     }

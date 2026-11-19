@@ -6,7 +6,7 @@ import type { DisponibilidadDiaReservaWeb, LineaPreorden, Reserva, ReservaRespon
 import type { AltaPedidosMesa } from "./pedidos"
 
 // Auto-pedido del comensal: NO usa Sanctum. La credencial es el
-// codigo_acceso de la mesa (4 dígitos) y viaja como Bearer en /cliente/*.
+// codigo_acceso de la mesa (6 dígitos) y viaja como Bearer en /cliente/*.
 // El 401 en este flujo no es "sesión expirada": es código inválido o
 // mesa destruida, así que se traduce a un mensaje accionable propio.
 

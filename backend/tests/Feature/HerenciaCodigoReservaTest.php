@@ -21,7 +21,8 @@ beforeEach(function () {
  * {reserva_id}): el cliente usa el MISMO código desde la reserva
  * hasta el último pedido (POST /acceso con reservations.codigo).
  * Cubre: herencia simple (pendiente y finalizada), fallback por
- * colisión (mesa viva y destruida: codigoExiste es withTrashed),
+ * colisión (mesa viva y destruida: el UNIQUE de la BD también mira las
+ * destruidas),
  * solo la primera mesa hereda, flujo comensal, inyección de
  * codigo_acceso, reserva inválida e inmutabilidad del código.
  *
@@ -65,7 +66,7 @@ function aforoHerencia(int $capacidad): void
 
 test('la mesa principal de la reserva hereda su PIN', function () {
     aforoHerencia(100);
-    $reserva = Reserva::factory()->create(['codigo' => '0421']);
+    $reserva = Reserva::factory()->create(['codigo' => '042199']);
     $mzo = empleadoHerencia($this, tokenHerencia('Mozo'));
 
     $mesa = $mzo->postJson('/api/mesas', [
@@ -75,13 +76,13 @@ test('la mesa principal de la reserva hereda su PIN', function () {
 
     // El mismo código de la reserva vale como codigo_acceso de la
     // mesa: continuidad desde el alta hasta el último pedido.
-    expect($mesa['codigo_acceso'])->toBe('0421')
+    expect($mesa['codigo_acceso'])->toBe('042199')
         ->and(Reserva::findOrFail($reserva->id)->mesa_id)->toBe($mesa['id']);
 });
 
 test('una reserva finalizada tambien hereda su PIN', function () {
     aforoHerencia(100);
-    $reserva = Reserva::factory()->confirmadaFinalizada()->create(['codigo' => '0777']);
+    $reserva = Reserva::factory()->confirmadaFinalizada()->create(['codigo' => '077799']);
     $mzo = empleadoHerencia($this, tokenHerencia('Mozo'));
 
     $mesa = $mzo->postJson('/api/mesas', [
@@ -89,28 +90,28 @@ test('una reserva finalizada tambien hereda su PIN', function () {
         'reserva_id' => $reserva->id,
     ])->assertStatus(201)->json('mesa');
 
-    expect($mesa['codigo_acceso'])->toBe('0777');
+    expect($mesa['codigo_acceso'])->toBe('077799');
 });
 
 test('sin reserva_id la mesa genera su propio codigo', function () {
     aforoHerencia(100);
-    Reserva::factory()->create(['codigo' => '0421']);
+    Reserva::factory()->create(['codigo' => '042199']);
     $mzo = empleadoHerencia($this, tokenHerencia('Mozo'));
 
     $mesa = $mzo->postJson('/api/mesas', ['capacidad' => 4])
         ->assertStatus(201)
         ->json('mesa');
 
-    // Código generado normal: 4 dígitos y distinto al de la reserva.
-    expect($mesa['codigo_acceso'])->toMatch('/^\d{4}$/')
-        ->and($mesa['codigo_acceso'])->not->toBe('0421');
+    // Código generado normal: 6 dígitos y distinto al de la reserva.
+    expect($mesa['codigo_acceso'])->toMatch('/^\d{6}$/')
+        ->and($mesa['codigo_acceso'])->not->toBe('042199');
 });
 
 test('si el PIN ya lo tiene una mesa viva hace fallback', function () {
     aforoHerencia(100);
-    $reserva = Reserva::factory()->create(['codigo' => '0421']);
+    $reserva = Reserva::factory()->create(['codigo' => '042199']);
     // Otra mesa (viva) ya usa ese código: el unique no lo permite.
-    Mesa::factory()->create(['codigo_acceso' => '0421']);
+    Mesa::factory()->create(['codigo_acceso' => '042199']);
     $mzo = empleadoHerencia($this, tokenHerencia('Mozo'));
 
     $mesa = $mzo->postJson('/api/mesas', [
@@ -118,20 +119,20 @@ test('si el PIN ya lo tiene una mesa viva hace fallback', function () {
         'reserva_id' => $reserva->id,
     ])->assertStatus(201)->json('mesa');
 
-    // Fallback silencioso: genera otro código de 4 dígitos, no
+    // Fallback silencioso: genera otro código de 6 dígitos, no
     // hereda el tomado.
-    expect($mesa['codigo_acceso'])->not->toBe('0421')
-        ->and($mesa['codigo_acceso'])->toMatch('/^\d{4}$/')
+    expect($mesa['codigo_acceso'])->not->toBe('042199')
+        ->and($mesa['codigo_acceso'])->toMatch('/^\d{6}$/')
         // La mesa igual queda vinculada como principal de la reserva.
         ->and(Reserva::findOrFail($reserva->id)->mesa_id)->toBe($mesa['id']);
 });
 
 test('si el PIN lo tiene una mesa destruida tambien hace fallback', function () {
     aforoHerencia(100);
-    $reserva = Reserva::factory()->create(['codigo' => '0421']);
+    $reserva = Reserva::factory()->create(['codigo' => '042199']);
     // Borrado lógico: el código de la mesa destruida no se reusa
-    // (codigoExiste es withTrashed).
-    Mesa::factory()->create(['codigo_acceso' => '0421'])->delete();
+    // (el UNIQUE de codigo_acceso también alcanza a las destruidas).
+    Mesa::factory()->create(['codigo_acceso' => '042199'])->delete();
     $mzo = empleadoHerencia($this, tokenHerencia('Mozo'));
 
     $mesa = $mzo->postJson('/api/mesas', [
@@ -139,13 +140,13 @@ test('si el PIN lo tiene una mesa destruida tambien hace fallback', function () 
         'reserva_id' => $reserva->id,
     ])->assertStatus(201)->json('mesa');
 
-    expect($mesa['codigo_acceso'])->not->toBe('0421')
-        ->and($mesa['codigo_acceso'])->toMatch('/^\d{4}$/');
+    expect($mesa['codigo_acceso'])->not->toBe('042199')
+        ->and($mesa['codigo_acceso'])->toMatch('/^\d{6}$/');
 });
 
 test('solo la primera mesa de la reserva hereda el PIN', function () {
     aforoHerencia(100);
-    $reserva = Reserva::factory()->create(['codigo' => '0421']);
+    $reserva = Reserva::factory()->create(['codigo' => '042199']);
     $mzo = empleadoHerencia($this, tokenHerencia('Mozo'));
 
     $primera = $mzo->postJson('/api/mesas', [
@@ -160,15 +161,15 @@ test('solo la primera mesa de la reserva hereda el PIN', function () {
 
     // El PIN es único (y /acceso resuelve UNA mesa): solo la
     // principal lo lleva; la segunda genera el suyo.
-    expect($primera['codigo_acceso'])->toBe('0421')
-        ->and($segunda['codigo_acceso'])->not->toBe('0421')
-        ->and($segunda['codigo_acceso'])->toMatch('/^\d{4}$/')
+    expect($primera['codigo_acceso'])->toBe('042199')
+        ->and($segunda['codigo_acceso'])->not->toBe('042199')
+        ->and($segunda['codigo_acceso'])->toMatch('/^\d{6}$/')
         ->and(Reserva::findOrFail($reserva->id)->mesa_id)->toBe($primera['id']);
 });
 
 test('el cliente entra con el PIN de la reserva y usa el Bearer', function () {
     aforoHerencia(100);
-    $reserva = Reserva::factory()->create(['codigo' => '0421']);
+    $reserva = Reserva::factory()->create(['codigo' => '042199']);
     $mzo = empleadoHerencia($this, tokenHerencia('Mozo'));
 
     $mesa = $mzo->postJson('/api/mesas', [
@@ -177,13 +178,13 @@ test('el cliente entra con el PIN de la reserva y usa el Bearer', function () {
     ])->assertStatus(201)->json('mesa');
 
     // POST /acceso con el PIN de la reserva resuelve SU mesa.
-    $this->postJson('/api/acceso', ['codigo' => '0421'])
+    $this->postJson('/api/acceso', ['codigo' => '042199'])
         ->assertOk()
         ->assertJsonPath('mesa.id', $mesa['id'])
-        ->assertJsonPath('mesa.codigo_acceso', '0421');
+        ->assertJsonPath('mesa.codigo_acceso', '042199');
 
     // Y ese mismo código sirve de Bearer en las rutas del comensal.
-    $this->withHeader('Authorization', 'Bearer 0421')
+    $this->withHeader('Authorization', 'Bearer 042199')
         ->getJson('/api/cliente/pedidos')
         ->assertOk();
 });
@@ -200,7 +201,7 @@ test('el codigo_acceso que llega en el request se ignora', function () {
     ])->assertStatus(201)->json('mesa');
 
     expect($mesa['codigo_acceso'])->not->toBe('9999')
-        ->and($mesa['codigo_acceso'])->toMatch('/^\d{4}$/');
+        ->and($mesa['codigo_acceso'])->toMatch('/^\d{6}$/');
 });
 
 test('solo reservas pendientes o finalizadas arman mesa', function () {
@@ -224,7 +225,7 @@ test('solo reservas pendientes o finalizadas arman mesa', function () {
 
 test('editar la mesa no cambia el codigo heredado', function () {
     aforoHerencia(100);
-    $reserva = Reserva::factory()->create(['codigo' => '0421']);
+    $reserva = Reserva::factory()->create(['codigo' => '042199']);
     $mzo = empleadoHerencia($this, tokenHerencia('Mozo'));
 
     $mesaId = $mzo->postJson('/api/mesas', [
@@ -241,5 +242,5 @@ test('editar la mesa no cambia el codigo heredado', function () {
             'codigo_acceso' => '9999',
         ])->assertOk();
 
-    expect(Mesa::findOrFail($mesaId)->codigo_acceso)->toBe('0421');
+    expect(Mesa::findOrFail($mesaId)->codigo_acceso)->toBe('042199');
 });

@@ -7,7 +7,7 @@ export type EstadoReserva = 'pendiente' | 'cancelada' | 'finalizada' | 'no_asist
 
 export interface Reserva {
     id: number
-    // PIN de 4 dígitos (string con ceros a la izquierda): lo genera el
+    // PIN de 6 dígitos (string con ceros a la izquierda): lo genera el
     // back y es la CLAVE de la reserva para el cliente (búsqueda en la
     // agenda, edición de la pre-orden). Siempre viene en el JSON; se
     // declara opcional con fallback al id por respuestas viejas.

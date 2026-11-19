@@ -15,11 +15,11 @@ import GastroLoader from '../../../../components/GastroLoader/GastroLoader'
 import { ExitoModal } from '../../../../components/Modales/ExitoModal'
 import { ErrorModal } from '../../../../components/Modales/ErrorModal'
 import { formatearPrecio } from '../../../../utils/historial'
+import { ConfiguradorIngredientes } from '../../../../components/Platos/ConfiguradorIngredientes'
 import {
-  ETIQUETAS_ESTADO_INGREDIENTE,
-  estadoDesdePivot,
-  flagsDesdeEstado,
-  type EstadoIngredientePlato,
+  configuracionDesdeIngrediente,
+  ingredientesParaPayload,
+  type ConfiguracionIngrediente,
 } from '../../../../utils/ingredientePlato'
 
 // Resultado de una acción (guardar / eliminar) que se muestra en un modal:
@@ -57,9 +57,9 @@ export function EditarPlatoPage() {
   // Remount del <input type=file> (no controlado) al limpiarlo.
   const [recargaInput, setRecargaInput] = useState(0)
   const [disponible, setDisponible] = useState(true)
-  // Estado por ingrediente id; los no presentes quedan fuera del plato.
-  // El PUT reemplaza la lista completa del pivot con estos flags.
-  const [ingredientes, setIngredientes] = useState<Record<number, EstadoIngredientePlato>>({})
+  // Configuración por ingrediente id; los no presentes quedan fuera del plato.
+  // El PUT reemplaza la lista completa del pivot con estos flags y recargos.
+  const [ingredientes, setIngredientes] = useState<Record<number, ConfiguracionIngrediente>>({})
 
   const vistaPrevia = useVistaPreviaImagen(archivo)
   // Lo que se muestra: el archivo nuevo, o la imagen del server mientras
@@ -90,12 +90,12 @@ export function EditarPlatoPage() {
         setPrecio(String(plato.precio))
         setImagenActual(plato.imagen_url)
         setDisponible(plato.disponible)
-        // `estadoDesdePivot` devuelve null para el caso inerte (sin flags):
-        // ese ingrediente queda fuera del plato.
+        // `configuracionDesdeIngrediente` devuelve null para el caso inerte
+        // (sin flags): ese ingrediente queda fuera del plato.
         setIngredientes(Object.fromEntries(
           plato.ingredientes
-            .map(ing => [ing.id, estadoDesdePivot(ing.pivot)] as const)
-            .filter((par): par is readonly [number, EstadoIngredientePlato] => par[1] !== null)
+            .map(ing => [ing.id, configuracionDesdeIngrediente(ing)] as const)
+            .filter((par): par is readonly [number, ConfiguracionIngrediente] => par[1] !== null)
         ))
       })
       .catch(err => {
@@ -111,11 +111,9 @@ export function EditarPlatoPage() {
 
   const errores: Record<string, string> = {}
   // El PUT reemplaza la lista del pivot: cada ingrediente se envía con sus
-  // flags explícitos (obligatorio / por defecto / agregar).
-  const ingredientesConFlags = Object.entries(ingredientes).map(([idIngrediente, estado]) => ({
-    ingrediente_id: Number(idIngrediente),
-    ...flagsDesdeEstado(estado),
-  }))
+  // flags explícitos (obligatorio / por defecto / agregar) y, si es Opcional,
+  // con su recargo propio.
+  const ingredientesConFlags = ingredientesParaPayload(ingredientes)
   const resultados = platoSchema.safeParse({
     categoria_id,
     promocion_id: promocion_id === '' ? null : promocion_id,
@@ -134,13 +132,8 @@ export function EditarPlatoPage() {
     }
   }
 
-  function cambiarEstadoIngrediente(idIngrediente: number, estado: EstadoIngredientePlato | '') {
-    setIngredientes(prev => {
-      const siguiente = { ...prev }
-      if (estado === '') delete siguiente[idIngrediente]
-      else siguiente[idIngrediente] = estado
-      return siguiente
-    })
+  function cambiarIngrediente(idIngrediente: number, configuracion: ConfiguracionIngrediente) {
+    setIngredientes(prev => ({ ...prev, [idIngrediente]: configuracion }))
   }
 
   function elegirArchivo(elegido: File | null) {
@@ -403,41 +396,12 @@ export function EditarPlatoPage() {
             </Form.Group>
 
             <Form.Group className={s.field} controlId='editar-plato-ingredientes'>
-              <Form.Label className={`text-label-md ${s.label}`}>Ingredientes</Form.Label>
-              {/* <p className={`text-body-sm ${s.ayuda}`}>
-                Definí cómo participa cada ingrediente en el plato: obligatorio (siempre va),
-                por defecto (el cliente puede quitarlo) o para agregar (el cliente lo agrega y
-                se le cobra su precio adicional).
-              </p> */}
-              <div className={s.ingredientsBox}>
-                {loadingIngredientes ? (
-                  <p className={`text-body-sm ${s.empty}`}>Cargando ingredientes...</p>
-                ) :
-                listaIngredientes.length === 0 ? (
-                  <p className={`text-body-sm ${s.empty}`}>No tiene ingredientes cargados</p>
-                ) : (
-                  listaIngredientes.map(ing => (
-                    <div key={ing.id} className={`text-body-sm ${s.ingredientItem}`}>
-                      <span>{ing.nombre}</span>
-                      <Form.Select
-                        className={s.input}
-                        aria-label={`Estado de ${ing.nombre}`}
-                        value={ingredientes[ing.id] ?? ''}
-                        onChange={(e) =>
-                          cambiarEstadoIngrediente(ing.id, e.target.value as EstadoIngredientePlato | '')
-                        }
-                      >
-                        <option value=''>No incluir</option>
-                        {(Object.keys(ETIQUETAS_ESTADO_INGREDIENTE) as EstadoIngredientePlato[]).map(estado => (
-                          <option key={estado} value={estado}>
-                            {ETIQUETAS_ESTADO_INGREDIENTE[estado]}
-                          </option>
-                        ))}
-                      </Form.Select>
-                    </div>
-                  ))
-                )}
-              </div>
+              <ConfiguradorIngredientes
+                ingredientes={listaIngredientes}
+                cargando={loadingIngredientes}
+                configuracion={ingredientes}
+                onCambiar={cambiarIngrediente}
+              />
             </Form.Group>
 
             <Form.Group className={s.field} controlId='editar-plato-disponible'>

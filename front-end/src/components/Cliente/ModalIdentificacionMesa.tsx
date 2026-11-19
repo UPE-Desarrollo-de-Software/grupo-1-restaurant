@@ -29,7 +29,7 @@ export function ModalIdentificacionMesa({ show, onCancelar }: ModalIdentificacio
                     Para empezar tu pedido pone el código de tu mesa.
                 </p>
                 <p className='text-body-sm mb-0'>
-                    Pedile el código de 4 dígitos a tu mozo.
+                    Pedile el código de 6 dígitos a tu mozo.
                 </p>
             </Modal.Body>
             <Modal.Footer>

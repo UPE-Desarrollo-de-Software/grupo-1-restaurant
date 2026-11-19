@@ -26,7 +26,7 @@ const formatearFecha = (fecha: string): string => {
   return `${dia}/${mes}/${anio}`
 }
 
-// PIN que el cliente presenta al llegar: el `codigo` de 4 dígitos del
+// PIN que el cliente presenta al llegar: el `codigo` de 6 dígitos del
 // backend (string, conserva los ceros a la izquierda). Fallback al id por
 // respuestas viejas.
 const pinReserva = (reserva: Reserva): string =>

@@ -16,7 +16,7 @@ export interface Mesa {
     usuario_id?: number | null
     grupo_codigo?: number | null
     ocupada_desde?: string | null
-    // PIN de 4 dígitos (string, preserva ceros a la izquierda). Opcional
+    // PIN de 6 dígitos (string, preserva ceros a la izquierda). Opcional
     // porque no todas las respuestas lo traen (ej. relaciones anidadas).
     codigo_acceso?: string | null
 }
