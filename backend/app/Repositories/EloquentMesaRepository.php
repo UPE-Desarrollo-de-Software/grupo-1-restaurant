@@ -56,13 +56,25 @@ class EloquentMesaRepository implements MesaRepository
             ->exists();
     }
 
+    /**
+     * Código de 4 dígitos libre. Corta a los 50 intentos: si el pool
+     * está agotado (10.000 visitas acumuladas, `codigoExiste` también
+     * mira las mesas cerradas) lanza en vez de colgarse para siempre.
+     * `MesaController::store` catchea \Exception → 422 con el mensaje.
+     */
     public function nuevoCodigoAcceso(): string
     {
-        do {
+        for ($intento = 0; $intento < 50; $intento++) {
             $codigo = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-        } while ($this->codigoExiste($codigo));
 
-        return $codigo;
+            if (! $this->codigoExiste($codigo)) {
+                return $codigo;
+            }
+        }
+
+        throw new \RuntimeException(
+            'No hay códigos de mesa disponibles: el salón llegó al límite de 10.000 visitas. Cerrá el local y avisá al administrador.'
+        );
     }
 
     public function porGrupo(int $grupoCodigo, array $excluirIds = []): Collection

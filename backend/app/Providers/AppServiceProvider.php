@@ -28,6 +28,9 @@ use App\Repositories\PromocionRepository;
 use App\Repositories\ReservaRepository;
 use App\Repositories\RolRepository;
 use App\Repositories\UsuarioRepository;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -57,10 +60,32 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Bootstrap any application services.
+     * Rate limiters con nombre.
+     *
+     * `comensal` protege /cliente/*: 60 requests por minuto por VISITA
+     * (la credencial es el Bearer = codigo_acceso) más una red de
+     * seguridad de 600 por minuto por IP. Reemplaza al `throttle:60,1`
+     * compartido: antes todas las mesas del local gastaban el mismo
+     * cupo por IP y se frenaban entre ellas.
      */
     public function boot(): void
     {
-        //
+        RateLimiter::for('comensal', function (Request $request) {
+            // ThrottleRequests corre ANTES del middleware `cliente`
+            // (tiene prioridad propia), así que todavía no hay mesa
+            // resuelta: la llave sale del Bearer crudo, hasheado.
+            $credencial = $request->bearerToken() ?? $request->ip();
+
+            $respuesta = fn (Request $peticion, array $headers) => response()->json(
+                ['message' => 'Demasiados pedidos seguidos: esperá un momento y volvé a intentar.'],
+                429,
+                $headers,
+            );
+
+            return [
+                Limit::perMinute(60)->by(hash('sha256', $credencial))->response($respuesta),
+                Limit::perMinute(600)->by($request->ip())->response($respuesta),
+            ];
+        });
     }
 }

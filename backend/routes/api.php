@@ -65,11 +65,12 @@ Route::get('/ingredientes/{id}', [IngredienteController::class, 'show']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
-// ACCESO DEL COMENSAL (auto-pedido): público y con throttle. Body:
-// { codigo } → devuelve la mesa; el front guarda el código y lo manda
-// como Authorization: Bearer <codigo> en /cliente/*. No hay token.
-Route::post('/acceso', [ClienteController::class, 'acceder'])
-    ->middleware('throttle:60,1');
+// ACCESO DEL COMENSAL (auto-pedido): público. Body: { codigo } →
+// devuelve la mesa; el front guarda el código y lo manda como
+// Authorization: Bearer <codigo> en /cliente/*. No hay token. El
+// freno anti-adivinanza (10 fallos/min por IP) vive en el controller:
+// sólo cuentan los intentos fallidos.
+Route::post('/acceso', [ClienteController::class, 'acceder']);
 
 // WEBHOOK DE MERCADO PAGO (vía pública: lo llama MP, no el
 // comensal). Valida la firma HMAC x-signature (401 si falla) y
@@ -81,8 +82,10 @@ Route::match(['post', 'get'], '/webhooks/mercado-pago', [PagoController::class, 
 // ==================== COMENSAL (auto-pedido) ====================
 // Sin auth:sanctum: el middleware 'cliente' resuelve la mesa desde el
 // Bearer codigo_acceso (401 si falta o si la mesa fue destruida).
+// `throttle:comensal` (AppServiceProvider): 60/min por visita +
+// 600/min por IP, con mensaje en español.
 
-Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(function () {
+Route::middleware(['cliente', 'throttle:comensal'])->prefix('cliente')->group(function () {
 
     // Resumen de lectura: todos los pedidos de la visita (activos y
     // finalizados, cada uno con su estado).
