@@ -1,4 +1,4 @@
-import type { PlatoListar, PlatoObtener, PlatoInput, PlatoResponse, IngredientePlato, Promocion } from "../types/Menu"
+import type { PlatoListar, PlatoObtener, PlatoInput, PlatoResponse, IngredientePlato, Promocion, AumentoPreciosInput, AumentoPreciosResponse } from "../types/Menu"
 import { API_BASE_URL } from "../config/env"
 import { getToken } from "./auth"
 import { mensajeErrorApi } from "./error"
@@ -309,4 +309,39 @@ export async function deletePlato(id: number, signal?: AbortSignal): Promise<{ m
     }
 
     return { message: data?.message ?? 'Plato eliminado exitosamente' }
+}
+
+// POST /platos/aumentar-precios (auth + permiso gestionar_platos):
+// aumento masivo de la carta por categoría o completa. El backend calcula
+// y persiste en el mismo request; la respuesta trae los platos afectados
+// con precio_anterior → precio_nuevo (la fuente de verdad para el resumen,
+// no el cálculo del front).
+export async function aumentarPrecios(datos: AumentoPreciosInput): Promise<AumentoPreciosResponse> {
+    const response = await fetch(`${API_BASE_URL}/platos/aumentar-precios`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify(datos),
+    })
+
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new Error(mensajeErrorApi(response.status, data, `Error ${response.status} al actualizar los precios`))
+    }
+
+    return {
+        message: data?.message ?? 'Se actualizaron los precios',
+        total: Number(data?.total ?? 0),
+        actualizados: (Array.isArray(data?.actualizados) ? data.actualizados : []).map(
+            (fila: { id: number; nombre: string; precio_anterior: string | number; precio_nuevo: string | number }) => ({
+                id: Number(fila.id),
+                nombre: String(fila.nombre),
+                precio_anterior: Number(fila.precio_anterior),
+                precio_nuevo: Number(fila.precio_nuevo),
+            })
+        ),
+    }
 }

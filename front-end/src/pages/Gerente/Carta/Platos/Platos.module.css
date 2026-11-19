@@ -153,6 +153,70 @@
   margin-top: 0;
 }
 
+/* Acciones del hub de platos: "Nuevo Plato" + "Aumentar precios"
+   lado a lado en pantallas medianas, apiladas en el celular. */
+.hubAcciones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+@media (min-width: 576px) {
+  .hubAcciones {
+    flex-direction: row;
+  }
+}
+
+/* ============ AUMENTO MASIVO DE PRECIOS ============ */
+
+/* Resumen (etiqueta/valor) de la confirmación y del resultado:
+   mismo estilo que los datos del ExitoModal. */
+.confirmacionDatos,
+.resultadoLista {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-sm);
+  background-color: var(--color-surface-container-low);
+  border-radius: var(--radius-default);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.confirmacionDatos li,
+.resultadoLista li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.confirmacionDatos strong,
+.resultadoLista strong {
+  color: var(--color-on-surface);
+  text-align: right;
+}
+
+/* Detalle plato a plato del ajuste aplicado (scroll si es largo). */
+.resultadoLista {
+  max-height: 14rem;
+  overflow-y: auto;
+  margin-top: var(--space-sm);
+}
+
+.resultadoLista span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultadoAnterior {
+  color: var(--color-on-surface-variant);
+  text-decoration: line-through;
+}
+
 @media (min-width: 576px) {
   .row {
     grid-template-columns: 1fr 1fr;
