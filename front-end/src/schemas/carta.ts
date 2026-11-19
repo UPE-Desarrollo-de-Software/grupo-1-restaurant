@@ -31,6 +31,47 @@ export const platoSchema = z.object({
         ))
 })
 
+// Espejo de las reglas del backend (PlatoService::aumentarPrecios → 422):
+// exactamente uno de "todos" / categoría, aumento mayor a 0 y redondeo
+// opcional a números lindos (50/100). El form maneja el alcance como un
+// único select ('todos' | 'categoria'); acá se transforma al payload que
+// espera POST /platos/aumentar-precios.
+export const aumentoPreciosSchema = z.object({
+    alcance: z.enum(['todos', 'categoria'], {
+        error: "Seleccioná el alcance del aumento",
+    }),
+    categoria_id: z.preprocess(
+        (valor) => (valor === '' || valor === undefined || valor === null ? null : valor),
+        z.coerce.number().positive('Seleccioná una categoría').nullable()
+    ),
+    tipo: z.enum(['porcentaje', 'monto'], {
+        error: "Seleccioná el tipo de aumento",
+    }),
+    valor: z.preprocess(
+        (valor) => (valor === '' || valor === undefined ? undefined : valor),
+        z.coerce.number({ error: "Ingresá un valor" })
+            .positive('El aumento debe ser mayor a 0')
+    ),
+    redondeo: z.preprocess(
+        (valor) => (valor === '' || valor === undefined || valor === null ? null : valor),
+        z.coerce.number()
+            .refine(n => n === 50 || n === 100, { error: "Elegí sin redondeo, 50 o 100" })
+            .nullable()
+    ),
+}).superRefine((datos, ctx) => {
+    if (datos.alcance === 'categoria' && datos.categoria_id === null) {
+        ctx.addIssue({ code: 'custom', path: ['categoria_id'], message: 'Seleccioná una categoría' })
+    }
+}).transform(datos => ({
+    // El backend exige exactamente uno de los dos; el form solo permite
+    // elegirlo, así que la inconsistencia no puede llegar a la API.
+    todos: datos.alcance === 'todos',
+    categoria_id: datos.alcance === 'todos' ? null : datos.categoria_id,
+    tipo: datos.tipo,
+    valor: datos.valor,
+    redondeo: datos.redondeo,
+}))
+
 export const categoriaSchema = z.object({
     nombre: z.string().trim().min(1, "Ingresá un nombre"),
     descripcion: z.string().trim().min(1, "Ingresá una descripción"),

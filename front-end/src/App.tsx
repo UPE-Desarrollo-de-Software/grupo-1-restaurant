@@ -12,6 +12,7 @@ import { LoginPage } from './pages/Login/Login'
 import { RequireAuth } from './components/RequireAuth'
 import { LandingPage } from './pages/Landing/Landing'
 import { CrearPlatoPage } from './pages/Gerente/Carta/Platos/CrearPlato'
+import { AumentarPreciosPage } from './pages/Gerente/Carta/Platos/AumentarPrecios'
 import { DashboardPage } from './pages/Gerente/Dashboard/Dashboard'
 import { CartaHubPage } from './pages/Gerente/Carta/CartaHub'
 import { PromocionesHubPage } from './pages/Gerente/Carta/Promociones/PromocionesHub'
@@ -67,6 +68,7 @@ function App() {
                 <Route path='/gerente/carta' element={<CartaHubPage/>}/>
                 <Route path='/gerente/carta/platos' element={<PlatosHubPage/>}/>
                 <Route path='/gerente/carta/platos/crear' element={<CrearPlatoPage/>}/>
+                <Route path='/gerente/carta/platos/aumentar-precios' element={<AumentarPreciosPage/>}/>
                 <Route path='/gerente/carta/platos/:id/editar' element={<EditarPlatoPage/>}/>
                 <Route path='/gerente/carta/categorias' element={<CategoriasPage/>}/>
                 <Route path='/gerente/carta/categorias/crear' element={<CrearCategoriaPage/>}/>
