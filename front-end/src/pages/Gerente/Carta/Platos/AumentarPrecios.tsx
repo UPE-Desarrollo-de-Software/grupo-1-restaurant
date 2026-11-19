@@ -7,7 +7,7 @@ import { useDatos } from '../../../../hooks/useDatos'
 import type { AumentoPreciosResponse, PlatoListar } from '../../../../types/Menu'
 import { aumentoPreciosSchema } from '../../../../schemas/carta'
 import { aumentarPrecios } from '../../../../api/platos'
-import { ExitoModal } from '../../../../components/Exito/ExitoModal'
+import { ExitoModal } from '../../../../components/Modales/ExitoModal'
 import { formatearPrecio } from '../../../../utils/historial'
 
 const TIPOS = [
