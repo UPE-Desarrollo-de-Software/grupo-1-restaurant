@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\ApiException;
 use App\Models\Mesa;
 use App\UseCases\Pagos\CrearPreferenciaPagoUseCase;
+use App\UseCases\Pagos\ObtenerDetallePagoUseCase;
 use App\UseCases\Pagos\ObtenerPagosMesaUseCase;
 use App\UseCases\Pagos\ProcesarNotificacionPagoUseCase;
 use App\UseCases\Pagos\RegistrarPagoEfectivoUseCase;
@@ -21,6 +22,8 @@ use Illuminate\Http\Request;
  *   POST /cliente/pagos/verificar → reconcilia el retorno del
  *                                  checkout contra MP (polling del
  *                                  front; misma lógica que el webhook)
+ *   GET  /cliente/pagos/{pago}/detalle → JSON crudo de MP del pago
+ *                                  (comisiones fee_details, neto, …)
  *   POST /mesas/{mesa}/pagos     → cobro en EFECTIVO registrado por
  *                                  el mozo al cerrar la visita
  *   POST /webhooks/mercado-pago  → notificación de MP (vía pública,
@@ -35,6 +38,7 @@ class PagoController extends Controller
 {
     public function __construct(
         private ObtenerPagosMesaUseCase $obtenerPagos,
+        private ObtenerDetallePagoUseCase $obtenerDetalle,
         private CrearPreferenciaPagoUseCase $crearPreferencia,
         private ProcesarNotificacionPagoUseCase $procesarNotificacion,
         private VerificarPagoUseCase $verificarPago,
@@ -138,6 +142,28 @@ class PagoController extends Controller
         }
 
         return response()->json($resultado, 200);
+    }
+
+    /**
+     * GET /cliente/pagos/{pago}/detalle — el JSON crudo que Mercado
+     * Pago devolvió para ese pago (fee_details con cada comisión,
+     * transaction_details con el neto acreditado, etc.), guardado al
+     * procesarlo. El pago tiene que ser de esta mesa y de MP.
+     *
+     * 422 si no existe, es de otra mesa o es un cobro en efectivo.
+     */
+    public function detalle(Request $request, string $id)
+    {
+        /** @var Mesa $mesa */
+        $mesa = $request->attributes->get('cliente_mesa');
+
+        try {
+            $detalle = ($this->obtenerDetalle)($mesa, (int) $id);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($detalle, 200);
     }
 
     /**

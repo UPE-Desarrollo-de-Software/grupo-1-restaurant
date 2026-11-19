@@ -60,6 +60,12 @@ return new class extends Migration
             $table->string('mp_preference_id')->nullable();
             $table->string('mp_payment_id')->nullable()->unique();
 
+            // JSON crudo de GET /v1/payments/{id} de Mercado Pago
+            // (fee_details con cada comisión, transaction_details con
+            // el neto acreditado, etc.): se guarda al procesar el pago
+            // y se expone por GET /cliente/pagos/{id}/detalle.
+            $table->json('mp_detalle')->nullable();
+
             $table->dateTime('fecha')->useCurrent();
             $table->timestamps();
         });

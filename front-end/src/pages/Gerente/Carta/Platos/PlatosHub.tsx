@@ -29,7 +29,10 @@ export function PlatosHubPage() {
         valor={busqueda}
         onCambio={setBusqueda}
       />
-      <BotonRedireccion nombre='Nuevo Plato' ruta='/gerente/carta/platos/crear'/>
+      <div className={s.hubAcciones}>
+        <BotonRedireccion nombre='Nuevo Plato' ruta='/gerente/carta/platos/crear'/>
+        <BotonRedireccion nombre='Aumentar precios' ruta='/gerente/carta/platos/aumentar-precios'/>
+      </div>
       <Resumen tipo='plato' items={items} loading={loading} />
       <FiltroCategorias
         platos={platos}

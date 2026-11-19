@@ -61,6 +61,13 @@ services:
       # AWS_URL: ${AWS_URL:-}
       # AWS_ENDPOINT: ${AWS_ENDPOINT:-}
       AWS_USE_PATH_STYLE_ENDPOINT: ${AWS_USE_PATH_STYLE_ENDPOINT:-false}
+
+      MP_ENABLED: ${MP_ENABLED:-true}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_PUBLIC_KEY: ${MP_PUBLIC_KEY:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      MP_RETURN_URL: ${MP_RETURN_URL:-}
+      
     healthcheck:
       # start_period largo: el primer arranque sobre una base vacía corre todas
       # las migraciones y los datos iniciales antes de levantar Apache.

@@ -1,5 +1,5 @@
 import z from "zod";
-import type { categoriaSchema, ingredienteSchema, platoSchema, promocionSchema } from "../schemas/carta";
+import type { aumentoPreciosSchema, categoriaSchema, ingredienteSchema, platoSchema, promocionSchema } from "../schemas/carta";
 
 export type TipoPromocion = 'porcentaje' | 'monto_fijo' | 'precio_fijo' | '2x1'
 
@@ -97,4 +97,23 @@ export type CategoriaInput = z.infer<typeof categoriaSchema>
 export type CategoriaResponse ={
     message: string,
     categoria: Categoria
+}
+
+// POST /platos/aumentar-precios: payload ya transformado por el schema
+// (alcance resuelto a `todos` / `categoria_id`) y la respuesta con el
+// detalle de cada plato afectado (el backend manda los montos como float
+// sin cast: llegan number en JSON, pero se normalizan en la capa API).
+export type AumentoPreciosInput = z.infer<typeof aumentoPreciosSchema>
+
+export interface AumentoPreciosPlato {
+    id: number
+    nombre: string
+    precio_anterior: number
+    precio_nuevo: number
+}
+
+export interface AumentoPreciosResponse {
+    message: string
+    total: number
+    actualizados: AumentoPreciosPlato[]
 }
