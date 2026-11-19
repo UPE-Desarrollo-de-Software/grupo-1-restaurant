@@ -62,11 +62,11 @@ services:
       # AWS_ENDPOINT: ${AWS_ENDPOINT:-}
       AWS_USE_PATH_STYLE_ENDPOINT: ${AWS_USE_PATH_STYLE_ENDPOINT:-false}
 
-      MP_ENABLED: true
-      MP_ACCESS_TOKEN: APP_USR-7318911910800167-111517-4295324b34495c32e7e74086de9c5c1e-3844391013
-      MP_PUBLIC_KEY: APP_USR-465b92ba-cb2a-4ad1-8808-936e975659b0
-      MP_WEBHOOK_SECRET: 58b466ba57b9e5cd9c90d441f2601ba7102f1314a9b303c3e32b9c8f1523f6c6
-      MP_RETURN_URL: https://dev.resto-app.upe-proyectos.online
+      MP_ENABLED: ${MP_ENABLED:-true}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_PUBLIC_KEY: ${MP_PUBLIC_KEY:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      MP_RETURN_URL: ${MP_RETURN_URL:-}
       
     healthcheck:
       # start_period largo: el primer arranque sobre una base vacía corre todas
