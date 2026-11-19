@@ -105,6 +105,8 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
     Route::get('/pagos', [PagoController::class, 'index']);
     Route::post('/pagos', [PagoController::class, 'crear']);
     Route::post('/pagos/verificar', [PagoController::class, 'verificar']);
+    // JSON crudo de MP del pago (comisiones fee_details, neto…).
+    Route::get('/pagos/{id}/detalle', [PagoController::class, 'detalle'])->whereNumber('id');
 
     // "Llamar al mozo": emite el broadcast mesa.atencion (rate limit
     // manual por mesa, 1/min, adentro del controller).
