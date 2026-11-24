@@ -17,7 +17,7 @@ use App\Repositories\PagoRepository;
  *    `en_proceso` (MP con fondos retenidos) NO cuentan;
  *  - "pagar mi parte": cobra el subtotal de la RAÍZ del comensal
  *    menos lo que esa parte ya abonó (pagos `mi_parte` de esa raíz +
- *    cualquier pago `total` de la visita);
+ *    los pagos `total` que la cubrieron; ver `saldo()`);
  *  - el monto nace en 0 con la preferencia creada (`pendiente`) y el
  *    webhook es quien lo aprueba: sin notificación firmada no hay
  *    pago aprobado;
@@ -44,8 +44,17 @@ class PagoService
     // ==================== SALDO ====================
 
     /**
-     * Saldo de la visita + pagado + pendiente por PARTE (para que el
+     * Saldo de la visita + pagado y pendiente por PARTE (para que el
      * comensal vea cuánto le falta y el mozo, el "Pagado por MP").
+     *
+     * El reparto por parte se hace en orden cronológico y en centavos:
+     *  - un pago `mi_parte` sólo cubre la raíz que lo pagó;
+     *  - un pago `total` sólo cubre las partes que ya existían cuando
+     *    se cobró (`parte.fecha <= pago.fecha`), en orden de pedido_id
+     *    y hasta el subtotal de cada una; una parte pedida DESPUÉS del
+     *    pago queda con `pagado = 0`.
+     * El nivel visita (total / pagado / pendiente) sigue siendo la suma
+     * cruda de los pagos aprobados.
      *
      * @param  array<string, mixed>  $cuenta  salida de MesaService::cuenta()
      * @return array{
@@ -61,24 +70,74 @@ class PagoService
         $totalPagado = round((float) $pagados->sum('monto'), 2);
         $total = (float) $cuenta['total'];
 
+        // Reparto en CENTAVOS: evita el drift de los float y garantiza
+        // que la suma por partes sea igual a lo cobrado en la visita.
+        $techo = [];
+        $cubierto = [];
+        $creacion = [];
+        $idsOrdenados = [];
+
+        foreach ($cuenta['partes'] as $parte) {
+            $raizId = (int) $parte['pedido_id'];
+            $techo[$raizId] = (int) round(((float) $parte['subtotal']) * 100);
+            $cubierto[$raizId] = 0;
+            $creacion[$raizId] = (string) ($parte['fecha'] ?? '');
+            $idsOrdenados[] = $raizId;
+        }
+
+        usort($idsOrdenados, fn (int $a, int $b) => $a <=> $b);
+
+        foreach ($pagados as $pago) {
+            $monto = (int) round((float) $pago->monto * 100);
+
+            if ($monto <= 0) {
+                continue;
+            }
+
+            if ($pago->tipo === Pago::TIPO_MI_PARTE) {
+                $raizId = (int) $pago->pedido_id;
+
+                if (array_key_exists($raizId, $cubierto)) {
+                    $cubierto[$raizId] += $monto;
+                }
+
+                continue;
+            }
+
+            // Pago 'total': sólo las partes vigentes al momento del cobro.
+            $momentoPago = (string) $pago->fecha;
+            $elegibles = array_values(array_filter(
+                $idsOrdenados,
+                fn (int $raizId) => $creacion[$raizId] !== '' && $creacion[$raizId] <= $momentoPago,
+            ));
+
+            foreach ($elegibles as $raizId) {
+                if ($monto <= 0) {
+                    break;
+                }
+
+                $aCubrir = min(max($techo[$raizId] - $cubierto[$raizId], 0), $monto);
+                $cubierto[$raizId] += $aCubrir;
+                $monto -= $aCubrir;
+            }
+
+            // Si sobró (pago mayor a lo disponible), queda en la última
+            // parte elegible: la suma por partes iguala lo cobrado.
+            if ($monto > 0 && $elegibles !== []) {
+                $cubierto[$elegibles[count($elegibles) - 1]] += $monto;
+            }
+        }
+
         $partes = [];
 
         foreach ($cuenta['partes'] as $parte) {
             $raizId = (int) $parte['pedido_id'];
-            $subtotal = (float) $parte['subtotal'];
-
-            // Lo que abonó esa parte: sus pagos "mi_parte" + los
-            // pagos "total" (que saldan toda la visita).
-            $pagadoParte = round(
-                $pagados
-                    ->filter(fn (Pago $pago) => (int) $pago->pedido_id === $raizId || $pago->tipo === Pago::TIPO_TOTAL)
-                    ->sum('monto'),
-                2,
-            );
+            $subtotal = round((float) $parte['subtotal'], 2);
+            $pagadoParte = round($cubierto[$raizId] / 100, 2);
 
             $partes[] = [
                 'pedido_id' => $raizId,
-                'subtotal' => round($subtotal, 2),
+                'subtotal' => $subtotal,
                 'pagado' => $pagadoParte,
                 'pendiente' => round(max($subtotal - $pagadoParte, 0), 2),
             ];
@@ -332,6 +391,17 @@ class PagoService
         $pago = $pagoId > 0 ? $this->pagos->porId($pagoId) : null;
 
         if ($pago === null) {
+            return null;
+        }
+
+        // Blindaje contra la reutilización de `external_reference` (son
+        // ids chicos: si la base se recrea, un pago VIEJO de MP puede
+        // traer la misma referencia que esta fila): sólo sirve si viene
+        // de la preferencia de ESTA fila. Si MP no trae la preferencia
+        // no se puede desambiguar y se procesa como siempre.
+        $preferenciaMp = $pagoMp['preference_id'] ?? null;
+
+        if ($preferenciaMp !== null && (string) $preferenciaMp !== (string) $pago->mp_preference_id) {
             return null;
         }
 

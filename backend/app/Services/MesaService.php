@@ -503,10 +503,21 @@ class MesaService
                     'es_preorden' => false,
                     'subtotal' => 0.0,
                     'lineas' => [],
+                    'fecha' => null,
                 ];
             }
 
             $porRaiz[$raizId]['pedido_ids'][] = $pedido->id;
+
+            // La parte nace con el pedido más viejo de su raíz: es el
+            // corte que usa PagoService::saldo() para repartir los pagos
+            // 'total' sólo entre las partes que existían al momento de
+            // cobrar (una parte pedida después queda pendiente).
+            $fecha = (string) $pedido->fecha;
+
+            if ($porRaiz[$raizId]['fecha'] === null || $fecha < $porRaiz[$raizId]['fecha']) {
+                $porRaiz[$raizId]['fecha'] = $fecha;
+            }
             $porRaiz[$raizId]['es_preorden'] = $porRaiz[$raizId]['es_preorden']
                 || $dePreorden->has($pedido->id);
 

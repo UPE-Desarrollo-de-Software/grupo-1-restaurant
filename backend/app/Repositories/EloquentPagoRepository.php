@@ -29,8 +29,12 @@ class EloquentPagoRepository implements PagoRepository
 
     public function aprobadosDeMesa(int $mesaId): Collection
     {
+        // Orden cronológico: PagoService::saldo() reparte los pagos
+        // entre las partes siguiendo ese orden.
         return Pago::where('mesa_id', $mesaId)
             ->where('estado', Pago::ESTADO_APROBADO)
+            ->orderBy('fecha')
+            ->orderBy('id')
             ->get();
     }
 
