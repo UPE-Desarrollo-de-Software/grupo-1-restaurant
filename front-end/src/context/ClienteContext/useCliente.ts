@@ -35,8 +35,10 @@ export interface ContextoCliente {
     aplicarIdentificacion(mesa: ClienteMesa): void
     // Cierra la sesión LOCAL del comensal (mesa, borrador y pedidoIds).
     // No llama al backend: los pedidos enviados siguen en la visita y los
-    // cierra el mozo al cobrar. Es la vía para corregir un código mal
-    // tipeado sin quedar atrapado en otra mesa.
+    // cierra el mozo al cobrar. El estado de la visita (pedidoIds y
+    // borrador) queda guardado y vuelve al reingresar con ese mismo código.
+    // Es la vía para corregir un código mal tipeado sin quedar atrapado en
+    // otra mesa.
     salirDeMesa(): void
     agregarLinea(linea: Omit<LineaBorrador, 'clave'>): void
     editarLinea(clave: string, cambios: CambiosLinea): void

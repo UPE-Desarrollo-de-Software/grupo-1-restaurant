@@ -22,8 +22,9 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   `${origin}/mesa?codigo={codigo_acceso}` — **el QR es la credencial** (decisión
   del equipo): escanearlo lleva a `MesaPage`, que valida el PIN sola
   (`POST /acceso`) y deja al cliente identificado. Si el cliente ya tenía sesión
-  de otra mesa, pide confirmación antes de cambiar (se descarta el borrador sin
-  enviar); el parámetro se limpia de la URL tras procesarse. El PIN muere con la
+  de otra mesa, pide confirmación antes de cambiar (el borrador sin enviar de la
+  mesa anterior queda guardado y vuelve si regresa a esa mesa); el parámetro se
+  limpia de la URL tras procesarse. El PIN muere con la
   visita (borrado lógico al cerrar la mesa). El formulario manual de `/mesa`
   sigue siendo el fallback (PIN tipeado o QR inválido). **El `QrMesaModal`
   (staff) se abre desde el detalle de la mesa** (botón "Ver QR" en `MozoMesa` y
@@ -52,20 +53,29 @@ GastroApp es un sistema de gestión gastronómica. El frontend es la interfaz de
   `ConfirmacionModal` y, al confirmar, `salirDeMesa()` (`useCliente`) +
   `navigate('/carta')`. Salir es **sólo estado local** (`setSesion(null)` +
   `setResumen(null)`; el effect de `ClienteProvider` borra
-  `localStorage['gastro_cliente']`): no hay endpoint de logout de comensal, los
-  pedidos ya enviados siguen en la visita y los cierra el mozo al cobrar, y se
-  descarta el borrador (si `confirmarPendiente`, el modal avisa que esas líneas
-  no llegan a cocina). Es la vía para corregir un código mal tipeado, porque el
-  código de 6 dígitos puede caer en otra mesa viva y una vez identificado no
-  había forma de salir. Al salir se pierden los `pedidoIds`: si reingresa con el
-  mismo código, la vista Cuenta ya no marca "Tu parte". El **código y el QR
+  `localStorage['gastro_cliente']`): no hay endpoint de logout de comensal y los
+  pedidos ya enviados siguen en la visita (los cierra el mozo al cobrar). Es la
+  vía para corregir un código mal tipeado, porque el código de 6 dígitos puede
+  caer en otra mesa viva y una vez identificado no había forma de salir.
+  **Salir no pierde el estado de la visita**: `pedidoIds`, `confirmarPendiente` y
+  `borrador` se espejan en `localStorage['gastro_cliente_visitas']`
+  (`utils/visitasCliente.ts`), una entrada por `mesa.id` (estable por visita,
+  porque cada apertura crea una mesa nueva). Al reingresar con el código de esa
+  misma mesa se recuperan, así la vista Cuenta vuelve a marcar "Tu parte" y el
+  borrador no enviado reaparece (el modal de salida lo avisa). Las entradas se
+  podan solas: vencen a las 24 h y se conservan las 10 más recientes. Un 401/403
+  del backend (código muerto, mesa cerrada) descarta la entrada de esa visita;
+  un código reutilizado por otra visita no hereda nada porque cambia `mesa.id`.
+  Si el cliente reingresa con `confirmarPendiente` puede reintentar el envío sin
+  duplicar líneas. El **código y el QR
   viven en un bloque aparte debajo** (`.pinBox` en `MesaPage.module.css`, misma
   distribución que `EditarMesa`: etiqueta + valor a la izquierda, "Copiar código"
   y "Mostrar QR" a la derecha, reusando `copiarCodigo` y `QrMesaClienteModal`).
   `ClienteProvider` guarda `{mesa, pedidoIds, confirmarPendiente, borrador}` en
-  localStorage con la clave `gastro_cliente`. Al recargar se revalida con
-  `GET /cliente/pedidos`: 401/403 (código muerto) limpia la sesión; un fallo de
-  red la conserva.
+  localStorage con la clave `gastro_cliente`, y el estado sin la mesa por visita
+  en `gastro_cliente_visitas` (ver arriba). Al recargar se revalida con
+  `GET /cliente/pedidos`: 401/403 (código muerto) limpia la sesión y descarta la
+  entrada de la visita; un fallo de red la conserva.
 - **Estado compartido del cliente**: `src/context/ClienteContext/` —
   `ClienteProvider.tsx` (solo el Provider) + `useCliente.ts` (contexto y hook).
   Lo consumen `MesaPage`, `BotonAgregarPlato`, `PersonalizarPlatoModal` y

@@ -22,7 +22,9 @@ type ResultadoQr =
 // código de 6 dígitos que reparte el mozo. Es de un solo uso por
 // visita: al validar, la página queda en la tarjeta "Mesa identificada".
 // "Salir de mesa" cierra la sesión LOCAL del comensal (no hay logout en
-// el backend) para poder corregir un código mal tipeado.
+// el backend) para poder corregir un código mal tipeado. El estado de la
+// visita (pedidoIds + borrador) queda guardado y vuelve al reingresar
+// con el código de esa misma mesa.
 export function MesaPage() {
     const {
         mesa, borrador, confirmarPendiente,
@@ -127,7 +129,8 @@ export function MesaPage() {
     }
 
     // Salir = estado local, sin backend: el código deja de viajar y el
-    // cliente vuelve a la carta sin vínculo con la mesa.
+    // cliente vuelve a la carta sin vínculo con la mesa. El estado de la
+    // visita queda guardado y se recupera al reingresar con el mismo código.
     function confirmarSalida() {
         setSalirAbierto(false)
         salirDeMesa()
@@ -205,7 +208,7 @@ export function MesaPage() {
                         </p>
                         <p className='text-body-sm mb-0'>
                             {borrador.length > 0
-                                ? 'Si cambiás, se descarta el pedido sin enviar de esta mesa.'
+                                ? 'Si cambiás, el pedido que no enviaste queda guardado: vuelve si regresás a esta mesa.'
                                 : 'Si cambiás, pasás a pedir en la mesa nueva.'}
                         </p>
                     </Modal.Body>
@@ -238,17 +241,16 @@ export function MesaPage() {
                     <p className='text-body-sm mb-2'>
                         Los pedidos que ya enviaste siguen en la mesa: no se cancelan ni se borran.
                     </p>
-                    <p className='text-body-sm mb-2'>
-                        Si entras de nuevo, no vas a ver tus pedidos.
-                    </p>
                     {confirmarPendiente ? (
                         <p className='text-body-sm mb-0'>
-                            Quedó un envío sin confirmar: si salís ahora, esas líneas no llegan a
-                            la cocina.
+                            Quedó un envío sin confirmar: hasta que lo reintentes, esas líneas
+                            no llegan a la cocina. Al volver con el mismo código podés
+                            reintentarlo.
                         </p>
                     ) : borrador.length > 0 && (
                         <p className='text-body-sm mb-0'>
-                            Se descarta el pedido que armaste y no llegaste a enviar.
+                            El pedido que armaste y no enviaste queda guardado: vuelve si
+                            reingresás con el mismo código.
                         </p>
                     )}
                 </ConfirmacionModal>

@@ -48,3 +48,15 @@ export interface SesionCliente {
     confirmarPendiente: boolean
     borrador: LineaBorrador[]
 }
+
+// Estado del comensal SIN la mesa: se guarda por visita (clave `mesa.id`,
+// estable por visita porque cada apertura crea una mesa nueva) para
+// recuperarlo al volver a entrar con el mismo código. No incluye la mesa a
+// propósito: un código de 6 dígitos puede reutilizarse en otra visita.
+export type VisitaCliente = Omit<SesionCliente, 'mesa'>
+
+// Entrada persistida en localStorage bajo `gastro_cliente_visitas`.
+// `actualizado` (epoch ms) sirve para vencer y podar entradas viejas.
+export interface EntradaVisita extends VisitaCliente {
+    actualizado: number
+}
