@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Button } from 'react-bootstrap'
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react'
 import logo from '../../../../assets/logo/gastroapp-logo-256x256.png'
+import { cargarImagen, descargarImagen, dibujarAficheQr } from '../../../../utils/descargas'
 import s from './QrMesas.module.css'
 
 // QR general del local: escanearlo abre la landing ("/"), que es la
@@ -12,24 +13,28 @@ export function QrMesasPage() {
     const destino = `${window.location.origin}/carta`
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
-    function handlerDescargar() {
-        const lienzo = canvasRef.current?.toDataURL('image/png')
+    // El PNG no es el QR "pelado": es el afiche de la app (tarjeta con
+    // sombra, logo, título, QR enmarcado y URL), todo con los tokens de
+    // GastroApp (ver utils/descargas.ts).
+    async function handlerDescargar() {
+        const lienzo = canvasRef.current
         if (!lienzo) return
-        const enlace = document.createElement('a')
-        enlace.href = lienzo
-        enlace.download = 'qr-carta-gastroapp.png'
-        enlace.click()
+
+        const afiche = await dibujarAficheQr({
+            logo: await cargarImagen(logo),
+            qr: lienzo,
+            titulo: 'Escaneá para ver la carta',
+            subtitulo: 'GastroApp · pedí desde tu celular',
+            pie: 'Personalizá tu plato, pedí y consultá tu cuenta sin esperar al mozo.',
+        })
+        descargarImagen(afiche, 'qr-carta-gastroapp.png')
     }
 
     return (
         <div className={s.page}>
-            <div className={s.afiche}>
-                <img src={logo} alt='GastroApp' className={s.logo} />
-                <h1 className={`text-headline-md ${s.titulo}`}>Escaneá para ver la carta</h1>
-                <QRCodeSVG value={destino} size={280} level='M' className={s.qr} />
-                <p className={`text-body-md ${s.url}`}>{destino}</p>
-            </div>
-
+            {/* Acciones arriba y pegajosas: Imprimir/Descargar quedan a
+                mano sin scrollear el preview. El QR sigue en el DOM, así
+                que window.print() imprime el afiche igual que antes. */}
             <div className={`${s.acciones} no-print`}>
                 <Button
                     variant='primary'
@@ -49,6 +54,13 @@ export function QrMesasPage() {
                     <i className='bi bi-download me-1' aria-hidden='true' />
                     Descargar PNG
                 </Button>
+            </div>
+
+            <div className={s.afiche}>
+                <img src={logo} alt='GastroApp' className={s.logo} />
+                <h1 className={`text-headline-md ${s.titulo}`}>Escaneá para ver la carta</h1>
+                <QRCodeSVG value={destino} size={180} level='M' className={s.qr} />
+                <p className={`text-body-md ${s.url}`}>{destino}</p>
             </div>
 
             {/* Lienzo fuera de pantalla para exportar el PNG en alta. */}

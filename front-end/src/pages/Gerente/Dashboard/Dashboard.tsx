@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Alert, Spinner } from 'react-bootstrap'
+import { Alert } from 'react-bootstrap'
 import { useRol } from '../../../context/RolesContext/useRol'
 import { getDashboard } from '../../../api/dashboard'
 import type { DashboardDatos } from '../../../types/Dashboard'
+import GastroLoader from '../../../components/GastroLoader/GastroLoader'
 import s from '../gerente.module.css'
 
 const formatearPrecio = (precio: number): string =>
@@ -27,8 +28,8 @@ const ESTADOS: Record<string, string> = {
 }
 
 const ACCESOS = [
-    { to: '/gerente/carta', icon: 'bi-journal-text', title: 'Carta', desc: 'Platos, disponibilidad y promociones' },
-    { to: '/gerente/mesas', icon: 'bi-grid-3x3-gap', title: 'Mesas', desc: 'Gestión de mesas, QR y comandas' },
+    { to: '/gerente/carta/platos', icon: 'bi-journal-text', title: 'Carta', desc: 'Platos, disponibilidad y promociones' },
+    { to: '/gerente/mesas/gestion', icon: 'bi-grid-3x3-gap', title: 'Mesas', desc: 'Gestión de mesas, QR y comandas' },
     { to: '/gerente/reservas', icon: 'bi-calendar-check', title: 'Reservas', desc: 'Gestioná las reservas del local' },
     { to: '/gerente/usuarios', icon: 'bi-people', title: 'Usuarios', desc: 'Usuarios y permisos del equipo' },
     ]
@@ -73,8 +74,7 @@ export function DashboardPage() {
 
                 {cargando && (
                     <div className={s.empty}>
-                        <Spinner animation='border' />
-                        <p className='text-body-sm'>Cargando estadísticas...</p>
+                        <GastroLoader messages={['Cargando estadísticas…']} />
                     </div>
                 )}
 

@@ -206,8 +206,9 @@ class PedidoService
         $descuento = $promo ? $this->promociones->descuento($promo, (float) $plato->precio, $cantidad) : 0.0;
 
         // Agregados: solo ingredientes marcados como opcionales,
-        // cobran su precio de catálogo por unidad. Los que ya vienen
-        // por defecto no se pueden "agregar" de nuevo.
+        // cobran su recargo efectivo del plato (override del pivot o
+        // catálogo) por unidad. Los que ya vienen por defecto no se
+        // pueden "agregar" de nuevo.
         foreach (array_unique($agregados) as $ingredienteId) {
             $ingrediente = $ingredientesPlato->firstWhere('id', $ingredienteId);
 
@@ -223,7 +224,7 @@ class PedidoService
                 throw new \Exception('El ingrediente seleccionado ya viene por defecto en el plato.');
             }
 
-            $precioUnitario += (float) $ingrediente->precioAdicional;
+            $precioUnitario += $ingrediente->precioAdicionalParaPlato();
         }
 
         // Excluidos: solo ingredientes modificables (opcional) que
@@ -262,7 +263,7 @@ class PedidoService
             $this->detalles->crearPersonalizacion($detalle, [
                 'ingrediente_id' => $ingredienteId,
                 'tipo' => 'agregado',
-                'precio_adicional' => $ingrediente->precioAdicional,
+                'precio_adicional' => $ingrediente->precioAdicionalParaPlato(),
             ]);
         }
 

@@ -5,18 +5,19 @@ import { MesaPage } from './pages/Cliente/MesaPage'
 import { DetallePlatoPage } from './pages/Cliente/DetallePlatoPage'
 import { PedidoPage } from './pages/Cliente/PedidoPage'
 import { ReservasClientePage } from './pages/Cliente/ReservasClientePage'
+import { PreordenClientePage } from './pages/Cliente/PreordenClientePage'
 import { MainLayout } from './layouts/MainLayout'
+import { CocinaLayout } from './layouts/CocinaLayout'
 import { AuthLayout } from './layouts/AuthLayout'
 import { LoginPage } from './pages/Login/Login'
 import { RequireAuth } from './components/RequireAuth'
 import { LandingPage } from './pages/Landing/Landing'
 import { CrearPlatoPage } from './pages/Gerente/Carta/Platos/CrearPlato'
+import { AumentarPreciosPage } from './pages/Gerente/Carta/Platos/AumentarPrecios'
 import { DashboardPage } from './pages/Gerente/Dashboard/Dashboard'
-import { CartaHubPage } from './pages/Gerente/Carta/CartaHub'
 import { PromocionesHubPage } from './pages/Gerente/Carta/Promociones/PromocionesHub'
 import { CrearPromocionPage } from './pages/Gerente/Carta/Promociones/CrearPromocion'
 import { EditarPromocionPage } from './pages/Gerente/Carta/Promociones/EditarPromocion'
-import { MesasHubPage } from './pages/Gerente/Mesas/MesasHub'
 import { GestionMesasPage } from './pages/Gerente/Mesas/GestionMesas'
 import { ConfiguracionMesaPage } from './pages/Gerente/Mesas/ConfiguracionMesa'
 import { CrearMesaPage } from './pages/Gerente/Mesas/CrearMesa'
@@ -58,13 +59,17 @@ function App() {
               <Route path='/plato/:id' element={<DetallePlatoPage/>}/>
               <Route path='/pedido' element={<PedidoPage/>}/>
               <Route path='/reservas' element={<ReservasClientePage/>}/>
+              <Route path='/preorden' element={<PreordenClientePage/>}/>
               <Route path='/mesa' element={<MesaPage/>}/>
 
               <Route element={<RequireAuth rolesPermitidos={['Gerente']}><Outlet/></RequireAuth>}>
                 <Route path='/gerente' element={<DashboardPage/>}/>
-                <Route path='/gerente/carta' element={<CartaHubPage/>}/>
+                {/* Los viejos hubs se eliminaron: sus rutas quedan como redirect
+                    al primer tab de la sección para no dejar links en blanco. */}
+                <Route path='/gerente/carta' element={<Navigate to='/gerente/carta/platos' replace/>}/>
                 <Route path='/gerente/carta/platos' element={<PlatosHubPage/>}/>
                 <Route path='/gerente/carta/platos/crear' element={<CrearPlatoPage/>}/>
+                <Route path='/gerente/carta/platos/aumentar-precios' element={<AumentarPreciosPage/>}/>
                 <Route path='/gerente/carta/platos/:id/editar' element={<EditarPlatoPage/>}/>
                 <Route path='/gerente/carta/categorias' element={<CategoriasPage/>}/>
                 <Route path='/gerente/carta/categorias/crear' element={<CrearCategoriaPage/>}/>
@@ -75,7 +80,7 @@ function App() {
                 <Route path='/gerente/carta/promociones' element={<PromocionesHubPage/>}/>
                 <Route path='/gerente/carta/promociones/crear' element={<CrearPromocionPage/>}/>
                 <Route path='/gerente/carta/promociones/:id/editar' element={<EditarPromocionPage/>}/>
-                <Route path='/gerente/mesas' element={<MesasHubPage/>}/>
+                <Route path='/gerente/mesas' element={<Navigate to='/gerente/mesas/gestion' replace/>}/>
                 <Route path='/gerente/mesas/gestion' element={<GestionMesasPage/>}/>
                 <Route path='/gerente/mesas/gestion/crear' element={<CrearMesaPage/>}/>
                 <Route path='/gerente/mesas/gestion/:id/editar' element={<EditarMesaPage/>}/>
@@ -91,13 +96,6 @@ function App() {
               </Route>
 
 
-              <Route element={<RequireAuth rolesPermitidos={['Cocina']}><Outlet/></RequireAuth>}>
-                <Route path='/cocina' element={<Navigate to='/cocina/comandas' replace/>}/>
-                <Route path='/cocina/comandas' element={<ComandasCocinaPage/>}/>
-                <Route path='/cocina/comandas/:id' element={<ComandaDetallePage/>}/>
-                <Route path='/cocina/historial' element={<HistorialCocinaPage/>}/>
-              </Route>
-
               <Route element={<RequireAuth rolesPermitidos={['Mozo']}><Outlet/></RequireAuth>}>
                 <Route path='/mozo' element={<MozoPage/>}/>
                 <Route path='/mozo/mesas/crear' element={<CrearMesaPage baseVuelta='/mozo' soloSesion/>}/>
@@ -109,6 +107,18 @@ function App() {
 
 
             </Route>
+
+            {/* Cocina: layout propio con Side Navbar en escritorio (en móvil
+                conserva la navegación actual). Mismas rutas y permisos. */}
+            <Route element={<RequireAuth rolesPermitidos={['Cocina']}><Outlet/></RequireAuth>}>
+              <Route element={<CocinaLayout/>}>
+                <Route path='/cocina' element={<Navigate to='/cocina/comandas' replace/>}/>
+                <Route path='/cocina/comandas' element={<ComandasCocinaPage/>}/>
+                <Route path='/cocina/comandas/:id' element={<ComandaDetallePage/>}/>
+                <Route path='/cocina/historial' element={<HistorialCocinaPage/>}/>
+              </Route>
+            </Route>
+
             <Route element={<AuthLayout/>}>
 
               <Route path='/login' element={<LoginPage/>}/>

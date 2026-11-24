@@ -21,6 +21,14 @@
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
+        <!-- Mercado Pago: los tests NUNCA salen a la red ni dependen
+             del .env local: el módulo arranca apagado y cada test que
+             lo necesita setea la config a mano (pagoHabilitar). -->
+        <env name="MP_ENABLED" value=""/>
+        <env name="MP_ACCESS_TOKEN" value=""/>
+        <env name="MP_PUBLIC_KEY" value=""/>
+        <env name="MP_WEBHOOK_SECRET" value=""/>
+        <env name="MP_RETURN_URL" value=""/>
         <!-- REVERB_* fija valores de prueba: los tests que autentican
              canales cambian el default a 'reverb' (firma HMAC local,
              sin red). El default sigue siendo null para que los jobs

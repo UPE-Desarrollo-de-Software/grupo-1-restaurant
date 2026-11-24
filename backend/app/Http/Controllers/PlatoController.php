@@ -74,12 +74,14 @@ class PlatoController extends Controller
             'precio' => 'required|numeric|min:0',
             'disponible' => 'required|boolean',
 
-            // Ingredientes del plato con los flags opcional/por_defecto.
+            // Ingredientes del plato con los flags opcional/por_defecto y el
+            // recargo propio del plato (precio_adicional, null = catálogo).
             'ingredientes' => 'nullable|array',
             'ingredientes.*' => 'array',
             'ingredientes.*.ingrediente_id' => 'required|integer|exists:ingredientes,id',
             'ingredientes.*.opcional' => 'nullable|boolean',
             'ingredientes.*.por_defecto' => 'nullable|boolean',
+            'ingredientes.*.precio_adicional' => 'nullable|numeric|min:0',
         ]);
 
         $plato = ($this->crear)($datos);
@@ -104,6 +106,7 @@ class PlatoController extends Controller
             'ingredientes.*.ingrediente_id' => 'required|integer|exists:ingredientes,id',
             'ingredientes.*.opcional' => 'nullable|boolean',
             'ingredientes.*.por_defecto' => 'nullable|boolean',
+            'ingredientes.*.precio_adicional' => 'nullable|numeric|min:0',
         ]);
 
         $plato = ($this->actualizar)($id, $datos);

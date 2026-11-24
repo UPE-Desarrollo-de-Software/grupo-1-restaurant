@@ -32,7 +32,7 @@ beforeEach(function () {
  */
 
 /**
- * Mesa viva con su codigo_acceso de 4 dígitos (lo reparte el mozo).
+ * Mesa viva con su codigo_acceso de 6 dígitos (lo reparte el mozo).
  */
 function mesaVisita(): Mesa
 {
@@ -104,7 +104,7 @@ test('el acceso valida el codigo y devuelve la mesa', function () {
         ->assertJsonPath('mesa.codigo_acceso', $mesa->codigo_acceso);
 
     // Código que no corresponde a ninguna mesa.
-    $this->postJson('/api/acceso', ['codigo' => '0000'])->assertStatus(401);
+    $this->postJson('/api/acceso', ['codigo' => '000000'])->assertStatus(401);
 
     // Destruída la mesa, su código deja de valer.
     $mesa->destruir();
@@ -411,8 +411,10 @@ test('la cuenta corta por created_at de la visita y sigue tras destruir la mesa'
     // visita no terminó hasta que el cliente pague.
     comensal($this, $codigo)->getJson('/api/cliente/pedidos')->assertOk();
 
-    // Pagó: el mozo cierra la visita y recién ahí la mesa queda
-    // DESTRUIDA (borrado lógico); los pedidos siguen existiendo.
+    // Pagó: el mozo registra el cobro en efectivo y recién ahí cierra
+    // la visita (exige cuenta saldada); la mesa queda DESTRUIDA
+    // (borrado lógico); los pedidos siguen existiendo.
+    conMozo($this, $mzo)->postJson("/api/mesas/{$mesa->id}/pagos", ['monto' => 800])->assertStatus(201);
     conMozo($this, $mzo)->postJson("/api/mesas/{$mesa->id}/cerrar")->assertOk();
 
     expect(Mesa::find($mesa->id))->toBeNull();

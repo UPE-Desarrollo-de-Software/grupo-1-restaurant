@@ -1,11 +1,12 @@
 import { API_BASE_URL } from "../config/env"
 import type { ClienteMesa } from "../types/Cliente"
 import type { CuentaMesa, ResumenMesa } from "../types/Mesa"
-import type { DisponibilidadDiaReservaWeb, Reserva, ReservaResponse, ReservaWebAlta } from "../types/Reserva"
+import type { PagosCliente, PreferenciaPago, TipoPago, VerificacionPago } from "../types/Pago"
+import type { DisponibilidadDiaReservaWeb, LineaPreorden, Reserva, ReservaResponse, ReservaWebAlta } from "../types/Reserva"
 import type { AltaPedidosMesa } from "./pedidos"
 
 // Auto-pedido del comensal: NO usa Sanctum. La credencial es el
-// codigo_acceso de la mesa (4 dígitos) y viaja como Bearer en /cliente/*.
+// codigo_acceso de la mesa (6 dígitos) y viaja como Bearer en /cliente/*.
 // El 401 en este flujo no es "sesión expirada": es código inválido o
 // mesa destruida, así que se traduce a un mensaje accionable propio.
 
@@ -125,6 +126,72 @@ export async function getCuentaCliente(codigo: string, signal?: AbortSignal): Pr
     return data as CuentaMesa
 }
 
+// GET /cliente/pagos — saldo de la visita (total/pagado/pendiente por
+// parte), historial de pagos y feature flag `habilitado` (sin
+// MP_ACCESS_TOKEN el back lo manda en false y el front oculta los
+// botones). 401 → código de mesa inválido.
+export async function getPagosCliente(codigo: string, signal?: AbortSignal): Promise<PagosCliente> {
+    const response = await fetch(`${API_BASE_URL}/cliente/pagos`, {
+        method: 'GET',
+        headers: cabecera(codigo),
+        signal,
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(mensajeCliente(response.status, data, `Error ${response.status} al consultar los pagos de la mesa`), response.status)
+    }
+    return data as PagosCliente
+}
+
+// POST /cliente/pagos — inicia un pago Checkout Pro. El monto lo
+// calcula el backend (el `monto` del body se ignora); responde 201
+// con `init_point` (URL de pago) para navegar. 503 → módulo apagado,
+// 422 → cuenta/parté ya saldada.
+export async function crearPagoCliente(
+    codigo: string,
+    datos: { tipo: TipoPago; pedido_id?: number },
+): Promise<PreferenciaPago> {
+    const response = await fetch(`${API_BASE_URL}/cliente/pagos`, {
+        method: 'POST',
+        headers: {
+            ...cabecera(codigo),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(datos),
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(mensajeCliente(response.status, data, `Error ${response.status} al iniciar el pago`), response.status)
+    }
+    return data as PreferenciaPago
+}
+
+// POST /cliente/pagos/verificar — al volver del checkout: el back
+// consulta el pago REAL en Mercado Pago (la URL de retorno no es
+// fuente de verdad) y devuelve el estado + saldo refrescado en una
+// sola request. 422 → sin referencia o pago de otra mesa; 502 → MP
+// sin responder (el front reintenta).
+export async function verificarPagoCliente(
+    codigo: string,
+    datos: { payment_id?: string; preference_id?: string },
+    signal?: AbortSignal,
+): Promise<VerificacionPago> {
+    const response = await fetch(`${API_BASE_URL}/cliente/pagos/verificar`, {
+        method: 'POST',
+        headers: {
+            ...cabecera(codigo),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(datos),
+        signal,
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(mensajeCliente(response.status, data, `Error ${response.status} al verificar el pago`), response.status)
+    }
+    return data as VerificacionPago
+}
+
 // POST /cliente/llamar — "llamar al mozo": sin body. Rate limit del
 // backend de 1/min por mesa → 429 "Ya pediste atención: el mozo ya fue
 // avisado." (message en español). El aviso al mozo (websocket
@@ -146,8 +213,10 @@ export async function llamarMozo(codigo: string): Promise<{ mensaje: string }> {
 }
 
 // GET /cliente/reservas/disponibilidad-dia?fecha= — (PÚBLICO con
-// throttle) grilla fija de turnos (12:00–23:00 cada 30 min) con el
-// aforo que queda libre en cada uno. Una sola request por fecha.
+// throttle) grilla de turnos que define el backend (ventana +
+// intervalo configurables) con el aforo que queda libre en cada uno,
+// más el resumen de la ventana vigente (`horarios`). Una sola request
+// por fecha.
 export async function disponibilidadDiaReservaWeb(
     fecha: string,
     signal?: AbortSignal,
@@ -199,4 +268,74 @@ export async function solicitarReservaWeb(datos: ReservaWebAlta): Promise<Reserv
         fecha: (creada.fecha ?? '').slice(0, 10),
         hora: (creada.hora ?? '').slice(0, 5),
     }
+}
+
+// ==== PRE-ORDEN DE LA RESERVA (PÚBLICO con throttle, clave = PIN) ====
+// Mismo criterio que /acceso: PIN mal formado → 422, PIN que no
+// corresponde a ninguna reserva → 401. La reserva deja de aceptar
+// cambios cuando ya no está pendiente (422 con {message}).
+
+function mensajePreorden(status: number, data: { message?: string } | null, porDefecto: string): string {
+    if (status === 401) return 'El PIN de reserva no es válido o expiró. Revísalo en tu comprobante.'
+    return data?.message ?? porDefecto
+}
+
+// GET /cliente/reservas/{codigo}/preordenes — las líneas guardadas
+// (`[{plato_id, cantidad}]`; vacío = sin pre-orden).
+export async function getPreordenCliente(codigo: string, signal?: AbortSignal): Promise<LineaPreorden[]> {
+    const response = await fetch(`${API_BASE_URL}/cliente/reservas/${codigo}/preordenes`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal,
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(
+            mensajePreorden(response.status, data, `Error ${response.status} al consultar la pre-orden`),
+            response.status,
+        )
+    }
+    return Array.isArray(data) ? (data as LineaPreorden[]) : []
+}
+
+// PUT /cliente/reservas/{codigo}/preordenes — reemplaza las cantidades
+// de las líneas que manda (merge por plato_id del lado del back: NO
+// borra las ausentes; para reemplazar el carrito entero va
+// DELETE + PUT, ver la página de pre-orden). Respuesta:
+// { mensaje, preorden }.
+export async function guardarPreordenCliente(codigo: string, lineas: LineaPreorden[]): Promise<LineaPreorden[]> {
+    const response = await fetch(`${API_BASE_URL}/cliente/reservas/${codigo}/preordenes`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({ preorden: lineas }),
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(
+            mensajePreorden(response.status, data, `Error ${response.status} al guardar la pre-orden`),
+            response.status,
+        )
+    }
+    const preorden = (data as { preorden?: LineaPreorden[] } | null)?.preorden
+    return Array.isArray(preorden) ? preorden : []
+}
+
+// DELETE /cliente/reservas/{codigo}/preordenes — vacía la pre-orden
+// (única forma de borrar líneas: el PUT solo suma/actualiza).
+export async function eliminarPreordenCliente(codigo: string): Promise<{ mensaje: string }> {
+    const response = await fetch(`${API_BASE_URL}/cliente/reservas/${codigo}/preordenes`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' },
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+        throw new ErrorCliente(
+            mensajePreorden(response.status, data, `Error ${response.status} al vaciar la pre-orden`),
+            response.status,
+        )
+    }
+    return { mensaje: String((data as { mensaje?: string } | null)?.mensaje ?? 'Pre-orden vaciada.') }
 }

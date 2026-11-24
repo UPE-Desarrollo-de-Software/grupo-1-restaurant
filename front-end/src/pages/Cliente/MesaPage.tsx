@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { acceder } from '../../api/cliente'
-import { QrMesaModal } from '../../components/Mesas/QrMesaModal'
+import { ConfirmacionModal } from '../../components/Cliente/ConfirmacionModal'
+import { QrMesaClienteModal } from '../../components/Cliente/QrMesaClienteModal'
 import { useCliente } from '../../context/ClienteContext/useCliente'
 import { codigoMesaSchema } from '../../schemas/cliente'
 import type { ClienteMesa } from '../../types/Cliente'
@@ -17,11 +18,19 @@ type ResultadoQr =
     | { codigo: string; tipo: 'error'; error: string }
 
 // Identificación de la mesa: con el QR de la visita (URL
-// /mesa?codigo=XXXX) valida sola vía POST /acceso; si no, con el código
-// de 4 dígitos que reparte el mozo. Es de un solo uso por visita: al
-// validar, la página queda en la tarjeta "Mesa identificada".
+// /mesa?codigo=XXXXXX) valida sola vía POST /acceso; si no, con el
+// código de 6 dígitos que reparte el mozo. Es de un solo uso por
+// visita: al validar, la página queda en la tarjeta "Mesa identificada".
+// "Salir de mesa" cierra la sesión LOCAL del comensal (no hay logout en
+// el backend) para poder corregir un código mal tipeado. El estado de la
+// visita (pedidoIds + borrador) queda guardado y vuelve al reingresar
+// con el código de esa misma mesa.
 export function MesaPage() {
-    const { mesa, borrador, aplicarIdentificacion } = useCliente()
+    const {
+        mesa, borrador, confirmarPendiente,
+        aplicarIdentificacion, salirDeMesa,
+    } = useCliente()
+    const navigate = useNavigate()
 
     const [codigo, setCodigo] = useState('')
     const [errorCampo, setErrorCampo] = useState<string | null>(null)
@@ -29,12 +38,13 @@ export function MesaPage() {
     const [validando, setValidando] = useState(false)
     const [copiado, setCopiado] = useState(false)
     const [qrAbierto, setQrAbierto] = useState(false)
+    const [salirAbierto, setSalirAbierto] = useState(false)
 
-    // QR en la URL (?codigo=XXXX): se procesa una sola vez (al terminar
+    // QR en la URL (?codigo=XXXXXX): se procesa una sola vez (al terminar
     // se limpia el parámetro con replace, así un refresh no reintenta).
     const [parametros, setParametros] = useSearchParams()
     const codigoQr = parametros.get('codigo') ?? ''
-    const codigoQrValido = /^\d{4}$/.test(codigoQr) ? codigoQr : null
+    const codigoQrValido = /^\d{6}$/.test(codigoQr) ? codigoQr : null
     const [rtaQr, setRtaQr] = useState<ResultadoQr | null>(null)
     const entrandoQr = codigoQrValido !== null && (rtaQr === null || rtaQr.codigo !== codigoQrValido)
 
@@ -118,6 +128,15 @@ export function MesaPage() {
         }
     }
 
+    // Salir = estado local, sin backend: el código deja de viajar y el
+    // cliente vuelve a la carta sin vínculo con la mesa. El estado de la
+    // visita queda guardado y se recupera al reingresar con el mismo código.
+    function confirmarSalida() {
+        setSalirAbierto(false)
+        salirDeMesa()
+        navigate('/carta')
+    }
+
     if (mesa) {
         return (
             <div className={s.pagina}>
@@ -135,14 +154,32 @@ export function MesaPage() {
                         <p className={`text-body-sm ${s.textoIdentificada}`}>
                             Ya podés armar tu pedido.
                         </p>
-                        <p className={`text-body-sm ${s.textoIdentificada}`}>
-                            Código de la mesa: <strong>{mesa.codigo_acceso}</strong>
-                        </p>
                     </div>
                     <div className={s.accionesIdentificada}>
                         <Link to='/carta' className='btn btn-primary text-label-md'>Ir a la Carta</Link>
-                        <Link to='/pedido' className='btn btn-outline-primary text-label-md'>Mi pedido</Link>
-                        <Button variant='outline-primary' className='text-label-md' type='button' onClick={copiarCodigo}>
+                        <Button
+                            variant='outline-primary'
+                            className='text-label-md'
+                            type='button'
+                            onClick={() => setSalirAbierto(true)}
+                        >
+                            Salir de mesa
+                        </Button>
+                    </div>
+                </section>
+
+                {/* Acciones de la mesa (mismo bloque que EditarMesa): el
+                    código y el QR se comparten con el resto de la mesa. */}
+                <section className={s.pinBox} aria-label='Código y QR de la mesa'>
+                    <div>
+                        <p className={`text-label-sm ${s.pinEtiqueta}`}>Código de la mesa</p>
+                        <p className={`text-headline-md ${s.pinValor}`}>{mesa.codigo_acceso}</p>
+                        <p className={`text-body-sm ${s.pinAyuda}`}>
+                            Pasáselo a otro comensal para que pida desde su celular.
+                        </p>
+                    </div>
+                    <div className={s.pinAcciones}>
+                        <Button variant='outline-secondary' className='text-label-md' type='button' onClick={copiarCodigo}>
                             <i className={`bi ${copiado ? 'bi-check2' : 'bi-clipboard'} me-1`} aria-hidden='true' />
                             {copiado ? 'Copiado' : 'Copiar código'}
                         </Button>
@@ -171,7 +208,7 @@ export function MesaPage() {
                         </p>
                         <p className='text-body-sm mb-0'>
                             {borrador.length > 0
-                                ? 'Si cambiás, se descarta el pedido sin enviar de esta mesa.'
+                                ? 'Si cambiás, el pedido que no enviaste queda guardado: vuelve si regresás a esta mesa.'
                                 : 'Si cambiás, pasás a pedir en la mesa nueva.'}
                         </p>
                     </Modal.Body>
@@ -185,10 +222,38 @@ export function MesaPage() {
                     </Modal.Footer>
                 </Modal>
 
-                <QrMesaModal
+                <QrMesaClienteModal
                     mesa={qrAbierto ? { id: mesa.id, codigo_acceso: mesa.codigo_acceso } : null}
                     onCerrar={() => setQrAbierto(false)}
                 />
+
+                <ConfirmacionModal
+                    show={salirAbierto}
+                    titulo='Salir de mesa'
+                    textoConfirmar='Salir de la mesa'
+                    textoCancelar='Quedarme'
+                    onConfirmar={confirmarSalida}
+                    onCancelar={() => setSalirAbierto(false)}
+                >
+                    <p className='text-body-md mb-2'>
+                        Vas a salir de la mesa.
+                    </p>
+                    <p className='text-body-sm mb-2'>
+                        Los pedidos que ya enviaste siguen en la mesa: no se cancelan ni se borran.
+                    </p>
+                    {confirmarPendiente ? (
+                        <p className='text-body-sm mb-0'>
+                            Quedó un envío sin confirmar: hasta que lo reintentes, esas líneas
+                            no llegan a la cocina. Al volver con el mismo código podés
+                            reintentarlo.
+                        </p>
+                    ) : borrador.length > 0 && (
+                        <p className='text-body-sm mb-0'>
+                            El pedido que armaste y no enviaste queda guardado: vuelve si
+                            reingresás con el mismo código.
+                        </p>
+                    )}
+                </ConfirmacionModal>
             </div>
         )
     }
@@ -229,13 +294,13 @@ export function MesaPage() {
                             type='text'
                             inputMode='numeric'
                             autoComplete='off'
-                            maxLength={4}
-                            placeholder='1234'
+                            maxLength={6}
+                            placeholder='123456'
                             className={`text-headline-md ${s.codigoInput}`}
                             value={codigo}
                             isInvalid={errorCampo !== null}
                             aria-describedby='codigo-ayuda'
-                            onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                            onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         />
                         <Form.Control.Feedback type='invalid' className='text-body-sm'>
                             {errorCampo}

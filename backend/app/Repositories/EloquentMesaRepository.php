@@ -47,22 +47,15 @@ class EloquentMesaRepository implements MesaRepository
         return (int) Mesa::sum('capacidad');
     }
 
-    public function codigoExiste(string $codigo): bool
-    {
-        // withTrashed: un código de una mesa destruida no debe volver a
-        // emitirse (el unique de la BD lo impediría igual).
-        return Mesa::withTrashed()
-            ->where('codigo_acceso', $codigo)
-            ->exists();
-    }
-
+    /**
+     * Candidato de 6 dígitos (1.000.000 de combinaciones). La unicidad
+     * la garantiza el UNIQUE de la BD: `MesaService::crearMesa` inserta
+     * y regenera ante una colisión, así dos altas simultáneas no
+     * compiten por el mismo chequeo previo.
+     */
     public function nuevoCodigoAcceso(): string
     {
-        do {
-            $codigo = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-        } while ($this->codigoExiste($codigo));
-
-        return $codigo;
+        return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     }
 
     public function porGrupo(int $grupoCodigo, array $excluirIds = []): Collection

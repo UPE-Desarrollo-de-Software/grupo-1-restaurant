@@ -5,6 +5,7 @@ import { agregarLineasCliente, confirmarLineasCliente, ErrorCliente, getPedidosC
 import type { AltaPedidosMesa, LineaPedidoAlta } from '../../api/pedidos'
 import type { ClienteMesa, LineaBorrador, SesionCliente } from '../../types/Cliente'
 import { importeLinea } from '../../utils/borrador'
+import { datosVisita, descartarVisita, guardarVisita, leerVisita } from '../../utils/visitasCliente'
 
 const CLAVE_STORAGE = 'gastro_cliente'
 
@@ -40,8 +41,9 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     const [revalidando, setRevalidando] = useState(sesionInicial !== null)
 
     // Al recargar: si había un código guardado, se revalida contra el
-    // backend. Solo un 401/403 (código muerto) limpia la sesión local;
-    // un fallo de red conserva el borrador para no perder el pedido.
+    // backend. Solo un 401/403 (código muerto) limpia la sesión local y
+    // descarta el estado de la visita; un fallo de red conserva el
+    // borrador para no perder el pedido.
     useEffect(() => {
         if (!sesionInicial) return
         let cancelado = false
@@ -49,6 +51,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
             .catch((error: unknown) => {
                 if (cancelado) return
                 if (error instanceof ErrorCliente && (error.status === 401 || error.status === 403)) {
+                    descartarVisita(sesionInicial.mesa.id)
                     setSesion(null)
                     setResumen(null)
                 }
@@ -61,11 +64,15 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         }
     }, [sesionInicial])
 
+    // Dos espejos: `gastro_cliente` es la sesión activa (se borra al salir)
+    // y `gastro_cliente_visitas` guarda el estado por visita, que sobrevive
+    // a "Salir de mesa" y vuelve al reingresar con el mismo código.
     useEffect(() => {
-        if (sesion) {
-            localStorage.setItem(CLAVE_STORAGE, JSON.stringify(sesion))
-        } else {
+        if (!sesion) {
             localStorage.removeItem(CLAVE_STORAGE)
+        } else {
+            localStorage.setItem(CLAVE_STORAGE, JSON.stringify(sesion))
+            guardarVisita(sesion.mesa.id, datosVisita(sesion))
         }
     }, [sesion])
 
@@ -76,9 +83,17 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
                 // solo se refresca el estado/código de la mesa.
                 return { ...prev, mesa }
             }
-            // Mesa nueva (o primera): arranca limpio. La página ya
-            // confirmó con el usuario el descarte del borrador anterior.
-            return { mesa, pedidoIds: [], confirmarPendiente: false, borrador: [] }
+            // Mesa nueva (o primera): si esta visita ya tuvo actividad se
+            // recupera (pedidoIds + borrador sin enviar); si no, arranca
+            // limpio. Un código reutilizado en otra visita tiene otro
+            // `mesa.id`, así que no hereda nada.
+            const guardada = leerVisita(mesa.id)
+            return {
+                mesa,
+                pedidoIds: guardada?.pedidoIds ?? [],
+                confirmarPendiente: guardada?.confirmarPendiente ?? false,
+                borrador: guardada?.borrador ?? [],
+            }
         })
         setResumen(null)
     }, [])
@@ -124,6 +139,16 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     const cancelarBorrador = useCallback(() => {
         setSesion(prev => prev ? { ...prev, borrador: [] } : prev)
     }, [])
+
+    // Salida de la visita: solo estado local (no hay endpoint de logout
+    // de comensal). Los pedidos ya enviados siguen viviendo en la mesa y
+    // se cierra `gastro_cliente`, pero el estado por visita se guarda
+    // antes para recuperarlo al reingresar con el mismo código.
+    const salirDeMesa = useCallback(() => {
+        if (sesion) guardarVisita(sesion.mesa.id, datosVisita(sesion))
+        setSesion(null)
+        setResumen(null)
+    }, [sesion])
 
     const enviar = useCallback(async () => {
         if (!sesion) {
@@ -178,6 +203,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
             setResumen(nuevo)
         } catch (error) {
             if (error instanceof ErrorCliente && (error.status === 401 || error.status === 403)) {
+                descartarVisita(sesion.mesa.id)
                 setSesion(null)
                 setResumen(null)
             }
@@ -193,6 +219,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         cantidadBorrador: borrador.reduce((acum, linea) => acum + linea.cantidad, 0),
         totalBorrador: borrador.reduce((acum, linea) => acum + importeLinea(linea), 0),
         pedidoIds: sesion?.pedidoIds ?? [],
+        confirmarPendiente: sesion?.confirmarPendiente ?? false,
         resumen,
         revalidando,
         aplicarIdentificacion,
@@ -200,12 +227,13 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         editarLinea,
         eliminarLinea,
         cancelarBorrador,
+        salirDeMesa,
         enviar,
         recargarResumen,
     }), [
         sesion, borrador, resumen, revalidando,
         aplicarIdentificacion, agregarLinea, editarLinea, eliminarLinea,
-        cancelarBorrador, enviar, recargarResumen,
+        cancelarBorrador, salirDeMesa, enviar, recargarResumen,
     ])
 
     return <ContextoCliente.Provider value={valor}>{children}</ContextoCliente.Provider>

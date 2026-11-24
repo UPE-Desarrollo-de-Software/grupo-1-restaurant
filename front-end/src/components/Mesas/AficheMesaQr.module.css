@@ -41,22 +41,13 @@
   margin: 0;
 }
 
-.url {
-  color: var(--color-on-surface-variant);
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  margin: 0;
-  user-select: all;
-  word-break: break-all;
-}
-
 .nota {
   color: var(--color-on-surface-variant);
   margin: 0;
 }
 
 @media print {
-  /* El modal se imprime como afiche de mesa, sin chrome de la UI. */
+  /* El modal que muestra el afiche se imprime sin chrome de la UI. */
   :global(.modal) {
     position: static;
     background: none;

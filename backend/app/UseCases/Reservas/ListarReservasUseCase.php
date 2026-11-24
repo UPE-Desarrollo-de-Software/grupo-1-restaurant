@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 /**
  * CASO DE USO: listar reservas con filtros opcionales
  * (GET /api/reservas?estado=&fecha=&mesa_id=&codigo=, permiso
- * gestionar_reservas). `codigo` es el PIN de 4 dígitos del cliente.
+ * gestionar_reservas). `codigo` es el PIN de 6 dígitos del cliente.
  */
 class ListarReservasUseCase
 {

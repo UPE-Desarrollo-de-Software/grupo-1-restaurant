@@ -66,15 +66,10 @@ interface MesaRepository
     public function capacidadOcupada(): int;
 
     /**
-     * ¿Ya existe una mesa viva (o destruida) con ese código? (el
-     * unique de la BD es la última línea de defensa; esto evita la
-     * QueryException generando códigos).
-     */
-    public function codigoExiste(string $codigo): bool;
-
-    /**
-     * Código de acceso libre: 4 dígitos, generado al crear la mesa y
-     * único entre todas las filas.
+     * Candidato de código de acceso: 6 dígitos. La unicidad no se
+     * consulta acá: el service inserta y reintenta si el UNIQUE de
+     * `codigo_acceso` choca (una consulta previa no cubre la carrera
+     * entre dos altas simultáneas).
      */
     public function nuevoCodigoAcceso(): string;
 

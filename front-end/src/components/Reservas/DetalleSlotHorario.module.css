@@ -1,0 +1,11 @@
+.detalleSlot {
+    margin-top: var(--space-2xs);
+    padding: var(--space-xs) var(--space-sm);
+    background-color: var(--color-surface-container-low);
+    border-radius: var(--radius-default);
+    color: var(--color-on-surface-variant);
+}
+
+.detalleSlot strong {
+    color: var(--color-on-surface);
+}

@@ -1,4 +1,6 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL;
+// Default local: sin VITE_API_URL (p. ej. entorno recién clonado) la API
+// sigue apuntando al backend de desarrollo en vez de quedar en undefined.
+export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api';
 
 const numero = (valor: string | undefined, porDefecto: number): number => {
     const parseado = Number(valor)

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Alert, Button, ButtonGroup, Form, Spinner } from 'react-bootstrap'
 import { DetalleComandaHistorial } from '../../components/Cocina/DetalleComandaHistorial'
 import { EstadoComanda } from '../../components/Cocina/EstadoComanda'
+import GastroLoader from '../../components/GastroLoader/GastroLoader'
 import { useBusquedaComandaHistorial } from '../../hooks/useBusquedaComandaHistorial'
 import { useHistorialComandas } from '../../hooks/useHistorialComandas'
 import type { ComandaHistorial } from '../../types/Historial'
@@ -46,7 +47,6 @@ export function HistorialCocinaPage() {
         pagina,
         error,
         cargando,
-        recargar,
         reintentar,
     } = useHistorialComandas({
         desde: rango.desde,
@@ -137,15 +137,6 @@ export function HistorialCocinaPage() {
         void buscar(idBuscado)
     }
 
-    async function actualizar() {
-        setActualizando(true)
-        try {
-            await recargar()
-        } finally {
-            setActualizando(false)
-        }
-    }
-
     async function reintentarLista() {
         setActualizando(true)
         try {
@@ -169,19 +160,6 @@ export function HistorialCocinaPage() {
                         Comandas finalizadas por día o mes. También podés buscar una comanda por número.
                     </p>
                 </div>
-                <Button
-                    size='sm'
-                    variant='outline-primary'
-                    className='text-label-md'
-                    type='button'
-                    disabled={ocupado || enBusqueda}
-                    onClick={() => { void actualizar() }}
-                >
-                    {actualizando
-                        ? <Spinner size='sm' animation='border' className='me-1' />
-                        : <i className='bi bi-arrow-clockwise me-1' aria-hidden='true' />}
-                    Actualizar
-                </Button>
             </header>
 
             <section className={s.filtros} aria-label='Filtros del historial'>
@@ -307,9 +285,7 @@ export function HistorialCocinaPage() {
                     {enBusqueda ? (
                         buscando ? (
                             <div className={s.centro}>
-                                <Spinner animation='border' role='status'>
-                                    <span className='visually-hidden'>Buscando comanda…</span>
-                                </Spinner>
+                                <GastroLoader messages={['Buscando comanda…']} size={80} />
                             </div>
                         ) : errorBusqueda ? (
                             <Alert variant='danger' className='text-body-sm mb-0'>
@@ -336,9 +312,7 @@ export function HistorialCocinaPage() {
                         )
                     ) : cargando ? (
                         <div className={s.centro}>
-                            <Spinner animation='border' role='status'>
-                                <span className='visually-hidden'>Cargando historial…</span>
-                            </Spinner>
+                            <GastroLoader messages={['Cargando historial…']} size={80} />
                         </div>
                     ) : error ? (
                         <Alert variant='danger' className='text-body-sm mb-0'>
@@ -488,9 +462,7 @@ function PanelVacio({
     return (
         <div className={s.panelVacio}>
             {cargando ? (
-                <Spinner animation='border' role='status'>
-                    <span className='visually-hidden'>Cargando…</span>
-                </Spinner>
+                <GastroLoader messages={[]} size={72} />
             ) : (
                 <i className={`bi ${icono}`} aria-hidden='true' />
             )}

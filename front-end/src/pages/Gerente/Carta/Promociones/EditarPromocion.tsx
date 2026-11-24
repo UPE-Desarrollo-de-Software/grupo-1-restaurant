@@ -5,6 +5,7 @@ import s from './Promociones.module.css'
 import { promocionSchema } from '../../../../schemas/carta'
 import { deletePromocion, getPromocion, updatePromocion } from '../../../../api/promociones'
 import { ZonaPeligro } from '../../../../components/ZonaPeligro/ZonaPeligro'
+import GastroLoader from '../../../../components/GastroLoader/GastroLoader'
 import type { TipoPromocion } from '../../../../types/Menu'
 
 const TIPOS: { value: TipoPromocion; label: string }[] = [
@@ -113,7 +114,7 @@ export function EditarPromocionPage() {
             <div className={s.page}>
                 <Card className={s.card}>
                     <div className='d-flex justify-content-center py-4'>
-                        <Spinner animation='border' />
+                        <GastroLoader messages={['Cargando promoción…']} size={96} />
                     </div>
                 </Card>
             </div>

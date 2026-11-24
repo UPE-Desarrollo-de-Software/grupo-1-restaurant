@@ -5,6 +5,7 @@
 
 import z from "zod";
 import type { mesaSchema } from "../schemas/mesas";
+import type { PagoResumen, SaldoPagos } from "./Pago";
 
 export type MesaInput = z.infer<typeof mesaSchema>
 
@@ -15,7 +16,7 @@ export interface Mesa {
     usuario_id?: number | null
     grupo_codigo?: number | null
     ocupada_desde?: string | null
-    // PIN de 4 dígitos (string, preserva ceros a la izquierda). Opcional
+    // PIN de 6 dígitos (string, preserva ceros a la izquierda). Opcional
     // porque no todas las respuestas lo traen (ej. relaciones anidadas).
     codigo_acceso?: string | null
 }
@@ -50,6 +51,10 @@ export interface LineaCuenta {
 export interface ParteCuenta {
     pedido_id: number
     pedido_ids: number[]
+    // true si la parte nació de la pre-orden de la reserva: el
+    // comensal la adopta como "Tu parte" aunque no la haya pedido
+    // desde este dispositivo.
+    es_preorden: boolean
     subtotal: number
     lineas: LineaCuenta[]
 }
@@ -61,6 +66,11 @@ export interface CuentaMesa {
     partes: ParteCuenta[]
     total: number
     grupo?: CuentaMesa[]
+    // Pagos de la visita (DER v3.2 — Mercado Pago): lo que ya se
+    // acreditó y lo que falta, por si el mozo consulta la cuenta.
+    // Las mesas del grupo traen lo mismo (misma forma).
+    saldo?: SaldoPagos
+    pagos?: PagoResumen[]
 }
 
 export interface LineaPedidoResumen {
@@ -92,6 +102,10 @@ export interface PedidoResumen {
     id: number
     pedido_padre_id: number | null
     estado: string
+    // true si el pedido nació de la pre-orden de la reserva
+    // (detalle_preorden convertido): el comensal lo adopta como propio
+    // aunque el navegador no tenga sus pedidoIds.
+    es_preorden: boolean
     total: number
     fecha: string
     lineas: LineaPedidoResumen[]

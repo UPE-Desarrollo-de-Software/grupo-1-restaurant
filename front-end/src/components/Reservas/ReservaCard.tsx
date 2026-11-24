@@ -2,6 +2,7 @@ import { Card } from 'react-bootstrap'
 import { Link, useLocation } from 'react-router-dom'
 import { baseReservas } from '../../navigation/rutas'
 import type { EstadoReserva, Reserva } from '../../types/Reserva'
+import t from '../Tarjeta/Tarjeta.module.css'
 import s from './ReservaCard.module.css'
 
 // No se exportan: react-refresh/only-export-components.
@@ -25,7 +26,7 @@ const formatearFecha = (fecha: string): string => {
   return `${dia}/${mes}/${anio}`
 }
 
-// PIN que el cliente presenta al llegar: el `codigo` de 4 dígitos del
+// PIN que el cliente presenta al llegar: el `codigo` de 6 dígitos del
 // backend (string, conserva los ceros a la izquierda). Fallback al id por
 // respuestas viejas.
 const pinReserva = (reserva: Reserva): string =>
@@ -40,15 +41,15 @@ export function ReservaCard({ reserva }: ReservaCardProps) {
   // La misma card se sirve en /gerente/reservas y /mozo/reservas.
   const base = baseReservas(useLocation().pathname)
   return (
-    <Card className={s.card}>
-      <Card.Body className={s.body}>
-        <div className={s.fila}>
-          <span className={`text-label-sm ${s.indice}`} title='Código de reserva'>
+    <Card className={t.card}>
+      <Card.Body className={t.body}>
+        <div className={t.fila}>
+          <span className={`text-label-sm ${t.indice}`} title='Código de reserva'>
             {pinReserva(reserva)}
           </span>
 
-          <div className={s.info}>
-            <div className={s.badges}>
+          <div className={t.info}>
+            <div className={t.badges}>
               <span className={`text-label-sm ${s[CLASES_ESTADO[reserva.estado]]}`}>
                 {ESTADOS[reserva.estado]}
               </span>
@@ -60,9 +61,9 @@ export function ReservaCard({ reserva }: ReservaCardProps) {
           </div>
         </div>
 
-        <div className={s.footer}>
+        <div className={`${t.footer} ${t.footerDerecha}`}>
           <Link className={`btn btn-outline-primary btn-sm text-label-md ${s.botonGestionar}`} to={`${base}/${reserva.id}/editar`}>
-            <i className={`bi bi-pencil ${s.iconoEditar}`} aria-hidden="true" />
+            <i className={`bi bi-pencil ${t.iconoAccion}`} aria-hidden="true" />
             {esPendiente ? 'Gestionar' : 'Visualizar'}
           </Link>
         </div>

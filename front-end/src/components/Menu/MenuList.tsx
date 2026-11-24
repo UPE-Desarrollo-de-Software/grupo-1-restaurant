@@ -1,6 +1,7 @@
 import type { PlatoListar } from '../../types/Menu'
 import s from './MenuList.module.css'
 import { PlatoCard } from './PlatoCard'
+import GastroLoader from '../GastroLoader/GastroLoader'
 
 interface MenuListProps {
   platos: PlatoListar[]
@@ -14,7 +15,11 @@ interface MenuListProps {
 // controles viven en la página) y sólo se ocupa del estado y las tarjetas.
 export function MenuList({ platos, loading, error, busqueda }: MenuListProps) {
   if (loading) {
-    return <p className='text-body-md text-center'>Cargando platos...</p>
+    return (
+      <div className='d-flex justify-content-center py-5'>
+        <GastroLoader />
+      </div>
+    )
   }
 
   if (error) {

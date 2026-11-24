@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-// Código de acceso de la mesa (4 dígitos string, contrato de
-// POST /acceso con `size:4`; el backend preserva ceros a la izquierda).
+// Código de acceso de la mesa (6 dígitos string; el backend preserva
+// ceros a la izquierda).
 export const codigoMesaSchema = z.object({
     codigo: z.string()
-        .regex(/^\d{4}$/, "El código debe tener exactamente 4 dígitos"),
+        .regex(/^\d{6}$/, "El código de la mesa tiene 6 dígitos"),
 })
 
 export type CodigoMesaInput = z.infer<typeof codigoMesaSchema>

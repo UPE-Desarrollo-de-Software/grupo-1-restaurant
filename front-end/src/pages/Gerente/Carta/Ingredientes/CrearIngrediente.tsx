@@ -4,7 +4,7 @@ import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Platos.module.css'
 import { ingredienteSchema } from '../../../../schemas/carta'
 import { createIngrediente } from '../../../../api/ingredientes'
-import { ExitoModal } from '../../../../components/Exito/ExitoModal'
+import { ExitoModal } from '../../../../components/Modales/ExitoModal'
 import { formatearPrecio } from '../../../../utils/historial'
 
 export function CrearIngredientePage() {

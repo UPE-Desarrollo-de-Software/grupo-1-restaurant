@@ -169,9 +169,9 @@ test('editar la preorden con el PIN correcto devuelve 200 y guarda la linea', fu
 test('editar la preorden con un PIN inexistente responde igual que /acceso', function () {
     $plato = preordenPlato();
 
-    $esperado = $this->postJson('/api/acceso', ['codigo' => '0000'])->getStatusCode();
+    $esperado = $this->postJson('/api/acceso', ['codigo' => '000000'])->getStatusCode();
 
-    $this->putJson('/api/cliente/reservas/0000/preordenes', [
+    $this->putJson('/api/cliente/reservas/000000/preordenes', [
         'preorden' => preordenLineas($plato),
     ])->assertStatus($esperado);
 });
@@ -182,7 +182,7 @@ test('editar la preorden con un PIN mal formado devuelve 422', function (string 
     $this->putJson("/api/cliente/reservas/{$pin}/preordenes", [
         'preorden' => preordenLineas($plato),
     ])->assertStatus(422);
-})->with(['muy corto' => '12', 'letras' => 'abcd', 'muy largo' => '12345']);
+})->with(['muy corto' => '12', 'cinco digitos' => '12345', 'letras' => 'abcd', 'muy largo' => '1234567']);
 
 test('editar la preorden de una reserva no pendiente devuelve 422', function (string $estado) {
     $reserva = preordenReservaWeb(preordenLineas(preordenPlato()));
@@ -312,6 +312,47 @@ test('cocina ve el pedido recien convertido', function () {
     $this->getJson('/api/cocina/pedidos')
         ->assertOk()
         ->assertJsonFragment(['id' => $pedido->id]);
+});
+
+test('el resumen marca es_preorden en el pedido convertido y false en uno normal', function () {
+    $reserva = preordenReservaWeb(preordenLineas(preordenPlato()));
+    preordenGerente();
+    preordenFinalizar($reserva)->assertOk();
+    preordenCrearMesa($reserva->id)->assertSuccessful();
+    $mesa = Mesa::latest('id')->firstOrFail();
+
+    // Un pedido normal en la MISMA mesa (alta de empleado), para
+    // contrastar que el flag distingue el origen.
+    $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [['plato_id' => preordenPlato()->id, 'cantidad' => 1]],
+    ])->assertCreated();
+
+    $convertidoId = Pedido::min('id');
+    $normalId = Pedido::max('id');
+    expect($convertidoId)->not->toBe($normalId);
+
+    $porId = collect($this->getJson("/api/mesas/{$mesa->id}/pedidos")
+        ->assertOk()
+        ->json('pedidos'))->keyBy('id');
+
+    expect($porId[$convertidoId]['es_preorden'])->toBeTrue()
+        ->and($porId[$normalId]['es_preorden'])->toBeFalse();
+
+    // La cuenta también marca la parte nacida de la pre-orden (badge
+    // "Tu parte" en el front). Se pide con el token del empleado.
+    $partes = $this->getJson("/api/mesas/{$mesa->id}/cuenta")->assertOk()->json('partes');
+
+    expect(collect($partes)->firstWhere('pedido_id', $convertidoId)['es_preorden'])->toBeTrue()
+        ->and(collect($partes)->firstWhere('pedido_id', $normalId)['es_preorden'])->toBeFalse();
+
+    // El comensal ve lo mismo con su PIN: el pedido de la pre-orden es
+    // "suyo" aunque el navegador no tenga sus pedidoIds.
+    $cliente = $this->withHeader('Authorization', 'Bearer '.$mesa->codigo_acceso)
+        ->getJson('/api/cliente/pedidos')
+        ->assertOk()
+        ->json('pedidos');
+
+    expect(collect($cliente)->keyBy('id')[$convertidoId]['es_preorden'])->toBeTrue();
 });
 
 test('la agenda de reservas incluye la preorden', function () {

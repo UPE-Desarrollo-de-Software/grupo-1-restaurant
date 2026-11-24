@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\ReservaCancelada;
 use App\Exceptions\ApiException;
 use App\Models\DetallePedido;
+use App\Models\DetallePreOrden;
 use App\Models\Mesa;
 use App\Models\Pedido;
 use App\Models\Reserva;
@@ -15,6 +16,7 @@ use App\Repositories\PedidoRepository;
 use App\Repositories\ReservaRepository;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -55,6 +57,7 @@ class MesaService
         private ConfigMesaRepository $configMesas,
         private ReservaRepository $reservas,
         private PreordenService $preordenes,
+        private PagoService $pagos,
     ) {}
 
     // ==================== CRUD Y CICLO DE VIDA ====================
@@ -85,7 +88,7 @@ class MesaService
      * [hora − 60, hora + 30); el salón no puede superar
      * aforo − reservas) y el TOPE de mesas (ambos derivados de
      * CONFIG_MESA) y genera el único código de acceso de la mesa
-     * (4 dígitos) ANTES de crearla.
+     * (6 dígitos) ANTES de crearla.
      *
      * `reserva_id` (opcional): si viene, la mesa se arma PARA esa
      * reserva (pendiente o finalizada). La PRIMERA de la reserva
@@ -93,10 +96,10 @@ class MesaService
      * HEREDA el PIN de la reserva como `codigo_acceso`, así el
      * cliente usa el mismo código desde la reserva hasta el último
      * pedido (POST /acceso). Como `codigo_acceso` es UNIQUE para
-     * siempre (incluso mesas destruidas, `codigoExiste` es
-     * withTrashed) y el PIN de reserva se recicla, si el candidato
-     * ya está tomado se hace fallback a un código generado. El
-     * `codigo_acceso` NUNCA viene del request.
+     * siempre (incluso mesas destruidas) y el PIN de reserva se
+     * recicla, si el candidato ya está tomado el INSERT falla y se
+     * reintenta con un código generado. El `codigo_acceso` NUNCA
+     * viene del request.
      *
      * @param  array<string, mixed>  $datos  {capacidad, estado?, usuario_id?, reserva_id?}
      *
@@ -149,18 +152,16 @@ class MesaService
         // `reserva_id`, la mesa principal hereda el PIN de la reserva
         // (continuidad: el mismo código de la reserva hasta el último
         // pedido); si ya está tomado por una mesa (viva o destruida)
-        // → fallback a un código generado.
+        // el INSERT choca y se reintenta con un código generado.
         $hereda = $reserva !== null && $reserva->mesa_id === null;
 
-        if ($hereda && ! $this->mesas->codigoExiste($reserva->codigo)) {
-            $datos['codigo_acceso'] = $reserva->codigo;
-        } else {
-            $datos['codigo_acceso'] = $this->mesas->nuevoCodigoAcceso();
-        }
+        $datos['codigo_acceso'] = $hereda
+            ? $reserva->codigo
+            : $this->mesas->nuevoCodigoAcceso();
 
         $datos['estado'] = $datos['estado'] ?? 'libre';
 
-        $mesa = $this->mesas->crear($datos);
+        $mesa = $this->crearConCodigoLibre($datos);
 
         // La reserva queda vinculada a SU mesa principal: a partir de
         // acá las mesas siguientes de la misma reserva generan código
@@ -180,6 +181,38 @@ class MesaService
         }
 
         return $mesa;
+    }
+
+    /**
+     * Inserta la mesa reintentando si el UNIQUE de `codigo_acceso`
+     * choca (carrera entre dos altas o PIN heredado ya usado). Un
+     * UNIQUE de otra columna se relanza tal cual: el reintento es
+     * sólo para el código.
+     *
+     * `nuevoCodigoAcceso()` es un candidato puro (no consulta la BD),
+     * así que la colisión se detecta recién en el INSERT.
+     *
+     * @param  array<string, mixed>  $datos
+     *
+     * @throws \RuntimeException si se agotan los reintentos
+     */
+    private function crearConCodigoLibre(array $datos): Mesa
+    {
+        for ($intento = 0; $intento < 10; $intento++) {
+            try {
+                return $this->mesas->crear($datos);
+            } catch (UniqueConstraintViolationException $e) {
+                if (! str_contains($e->getMessage(), 'codigo_acceso')) {
+                    throw $e;
+                }
+
+                $datos['codigo_acceso'] = $this->mesas->nuevoCodigoAcceso();
+            }
+        }
+
+        throw new \RuntimeException(
+            'No se pudo generar un código de acceso único para la mesa. Volvé a intentar.'
+        );
     }
 
     /**
@@ -285,11 +318,14 @@ class MesaService
      * de valer y se cancelan reservas pendientes legadas), pero con
      * la validación previa y accesible para el mozo.
      *
+     * La visita sólo termina CON EL PAGO: además de cero pedidos
+     * activos, exige la cuenta SALDADA (422 si queda saldo por
+     * cobrar — efectivo registrado o pago acreditado en MP).
      *
      * @return int cantidad de reservas canceladas
      *
      * @throws ModelNotFoundException si la mesa no existe o ya se cerró
-     * @throws \Exception si quedan pedidos activos
+     * @throws \Exception si quedan pedidos activos o saldo pendiente
      */
     public function cerrarVisita(int $id): int
     {
@@ -299,6 +335,16 @@ class MesaService
             throw new \Exception(
                 'No se puede cerrar la mesa: quedan pedidos activos. '
                     .'Cobrá la cuenta y entregá (o cancelá) todos los pedidos primero.'
+            );
+        }
+
+        $saldo = $this->pagos->saldo($this->cuenta($mesa->id));
+
+        if ($saldo['pendiente'] > 0.01) {
+            throw new \Exception(
+                'No se puede cerrar la mesa: la cuenta tiene un saldo pendiente de $'
+                    .number_format($saldo['pendiente'], 2, ',', '.')
+                    .'. Cobralo (efectivo o Mercado Pago) antes de cerrar la visita.'
             );
         }
 
@@ -438,6 +484,13 @@ class MesaService
 
         $pedidos = $this->pedidos->pedidosDeVisita($mesaId, $mesa->created_at?->toDateTimeString());
 
+        // Pedidos nacidos de la pre-orden: su parte se marca para que el
+        // comensal la adopte como propia ("Tu parte") en la cuenta.
+        $dePreorden = DetallePreOrden::whereIn(
+            'pedido_id',
+            $pedidos->pluck('id')->all()
+        )->pluck('pedido_id')->flip();
+
         $porRaiz = [];
 
         foreach ($pedidos as $pedido) {
@@ -447,12 +500,15 @@ class MesaService
                 $porRaiz[$raizId] = [
                     'pedido_id' => $raizId,
                     'pedido_ids' => [],
+                    'es_preorden' => false,
                     'subtotal' => 0.0,
                     'lineas' => [],
                 ];
             }
 
             $porRaiz[$raizId]['pedido_ids'][] = $pedido->id;
+            $porRaiz[$raizId]['es_preorden'] = $porRaiz[$raizId]['es_preorden']
+                || $dePreorden->has($pedido->id);
 
             foreach ($pedido->detalles as $detalle) {
                 $porRaiz[$raizId]['lineas'][] = [
@@ -507,12 +563,20 @@ class MesaService
 
         $pedidos = $this->pedidos->todosDeVisita($mesaId, $mesa->created_at?->toDateTimeString());
 
+        // Pedidos nacidos de la pre-orden de la reserva (detalle_preorden
+        // estampado). El front los adopta como propios del comensal aunque
+        // no estén en sus pedidoIds (el dispositivo no guardó el alta).
+        $dePreorden = DetallePreOrden::whereIn(
+            'pedido_id',
+            $pedidos->pluck('id')->all()
+        )->pluck('pedido_id')->flip();
+
         $resumen = [
             'mesa_id' => $mesa->id,
             'codigo_acceso' => $mesa->codigo_acceso,
             'encontrada' => true,
             'pedidos' => $pedidos
-                ->map(fn (Pedido $pedido) => $this->pedidoAArray($pedido))
+                ->map(fn (Pedido $pedido) => $this->pedidoAArray($pedido, $dePreorden->has($pedido->id)))
                 ->values()
                 ->all(),
         ];
@@ -534,15 +598,18 @@ class MesaService
      * Vista de un pedido para el resumen: cabecera + sus líneas con el
      * `confirmado` de cada una y el gate agregado por pedido.
      *
+     * @param  bool  $esPreorden  true si el pedido nació de la pre-orden
+     *                            de la reserva (detalle_preorden).
      * @return array<string, mixed>
      */
-    private function pedidoAArray(Pedido $pedido): array
+    private function pedidoAArray(Pedido $pedido, bool $esPreorden = false): array
     {
 
         return [
             'id' => $pedido->id,
             'pedido_padre_id' => $pedido->pedido_padre_id,
             'estado' => $pedido->estado,
+            'es_preorden' => $esPreorden,
             'total' => (float) $pedido->total,
             'fecha' => $pedido->fecha,
             'lineas' => $pedido->detalles->map(fn (DetallePedido $detalle) => [

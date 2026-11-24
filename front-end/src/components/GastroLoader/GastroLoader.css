@@ -1,0 +1,124 @@
+.gl {
+  /* Tokens reales de src/styles/tokens.css */
+  --gl-card: var(--color-primary);
+  --gl-cream: var(--color-on-primary);
+  --gl-bg: var(--color-background);
+  --gl-text: var(--color-on-surface-variant);
+  --gl-duration: 2.4s;
+
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.gl--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  justify-content: center;
+  background: var(--gl-bg);
+}
+
+/* ---------- SVG ---------- */
+.gl__card {
+  fill: var(--gl-card);
+}
+.gl__cream {
+  fill: var(--gl-cream);
+}
+.gl__shine {
+  fill: none;
+  stroke: var(--gl-card);
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+.gl__steam-line {
+  fill: none;
+  stroke: var(--gl-cream);
+  stroke-width: 5;
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+/* ---------- Animaciones ---------- */
+.gl__lid {
+  animation: gl-lid var(--gl-duration) cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+.gl__steam-line {
+  animation: gl-steam var(--gl-duration) ease-in-out infinite;
+}
+.gl__steam-line--1 {
+  animation-delay: 0s;
+}
+.gl__steam-line--2 {
+  animation-delay: 0.18s;
+}
+.gl__steam-line--3 {
+  animation-delay: 0.36s;
+}
+
+@keyframes gl-lid {
+  0%,
+  12% {
+    transform: translateY(0);
+  }
+  35%,
+  68% {
+    transform: translateY(-10px);
+  }
+  90%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes gl-steam {
+  0%,
+  22% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  45% {
+    opacity: 1;
+  }
+  78%,
+  100% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+/* ---------- Texto ---------- */
+.gl__text {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--gl-text);
+  animation: gl-text-in 0.5s ease both;
+}
+
+@keyframes gl-text-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Accesibilidad ---------- */
+/* @media (prefers-reduced-motion: reduce) {
+  .gl__lid,
+  .gl__steam-line,
+  .gl__text {
+    animation: none;
+  }
+  .gl__steam-line {
+    opacity: 0.9;
+  }
+} */

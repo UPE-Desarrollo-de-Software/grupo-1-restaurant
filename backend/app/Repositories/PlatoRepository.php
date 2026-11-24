@@ -22,8 +22,9 @@ interface PlatoRepository
     public function disponiblesConCategoria(): Collection;
 
     /**
-     * Plato con sus ingredientes (flags opcional/por_defecto en el
-     * pivot); lanza ModelNotFoundException (404) si no existe.
+     * Plato con sus ingredientes (flags opcional/por_defecto y recargo
+     * propio precio_adicional en el pivot); lanza
+     * ModelNotFoundException (404) si no existe.
      */
     public function conIngredientesOrFail(int $id): Plato;
 
@@ -43,7 +44,7 @@ interface PlatoRepository
      * Sincroniza los ingredientes del plato en el pivot
      * plato_ingrediente.
      *
-     * @param  array<int, array{opcional: bool, por_defecto: bool}>  $ingredientes
+     * @param  array<int, array{opcional: bool, por_defecto: bool, precio_adicional: float|null}>  $ingredientes
      */
     public function sincronizarIngredientes(Plato $plato, array $ingredientes): void;
 

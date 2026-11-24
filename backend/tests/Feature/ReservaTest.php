@@ -5,6 +5,7 @@ use App\Models\Mesa;
 use App\Models\Reserva;
 use App\Models\Rol;
 use App\Models\Usuario;
+use App\Repositories\EloquentReservaRepository;
 use App\Repositories\ReservaRepository;
 use Database\Seeders\PermisoSeeder;
 use Database\Seeders\RolSeeder;
@@ -375,7 +376,7 @@ test('listar reservas filtra por estado y fecha', function () {
         ->assertJsonCount(1);
 });
 
-test('el alta responde el codigo PIN de 4 digitos y mesa_id sigue null', function () {
+test('el alta responde el codigo PIN de 6 digitos y mesa_id sigue null', function () {
     // Alta pública (cliente web).
     $publica = $this->postJson('/api/cliente/reservas', [
         'contacto_solicitante' => '9999-8888',
@@ -385,7 +386,7 @@ test('el alta responde el codigo PIN de 4 digitos y mesa_id sigue null', functio
     ])->assertStatus(201);
 
     $pinPublico = $publica->json('reserva.codigo');
-    expect($pinPublico)->toMatch('/^\d{4}$/')
+    expect($pinPublico)->toMatch('/^\d{6}$/')
         ->and($publica->json('reserva.mesa_id'))->toBeNull();
 
     // Alta del empleado.
@@ -400,7 +401,7 @@ test('el alta responde el codigo PIN de 4 digitos y mesa_id sigue null', functio
     // El PIN se guarda como string: los ceros a la izquierda importan
     // (igual que el codigo_acceso de las mesas).
     $pinEmpleado = $empleado->json('reserva.codigo');
-    expect($pinEmpleado)->toMatch('/^\d{4}$/')
+    expect($pinEmpleado)->toMatch('/^\d{6}$/')
         ->and($empleado->json('reserva.mesa_id'))->toBeNull();
 
     $guardada = Reserva::findOrFail($empleado->json('reserva.id'));
@@ -428,42 +429,56 @@ test('dos reservas pendientes no comparten codigo y al finalizar se recicla', fu
     expect($primera)->not->toBe($segunda);
 
     // Una reserva creada por factory con ese PIN ocupa el lugar…
-    $ocupada = Reserva::factory()->create(['codigo' => '7777']);
-    expect(app(ReservaRepository::class)->codigoExiste('7777'))->toBeTrue();
+    $ocupada = Reserva::factory()->create(['codigo' => '777777']);
+    expect(app(ReservaRepository::class)->codigoExiste('777777'))->toBeTrue();
 
     // …y al dejar de estar pendiente lo libera (reciclaje: sin esto
     // los 10.000 códigos se agotarían y el generador quedaría en
     // loop infinito).
     $ocupada->update(['estado' => 'finalizada']);
-    expect(app(ReservaRepository::class)->codigoExiste('7777'))->toBeFalse();
+    expect(app(ReservaRepository::class)->codigoExiste('777777'))->toBeFalse();
+});
+
+test('el generador de PIN de reserva corta a los 50 intentos', function () {
+    $repositorio = new class extends EloquentReservaRepository
+    {
+        public function codigoExiste(string $codigo): bool
+        {
+            return true;
+        }
+    };
+
+    expect(fn () => $repositorio->nuevoCodigoAcceso())
+        ->toThrow(RuntimeException::class, 'No hay PINs de reserva disponibles');
 });
 
 test('la agenda se filtra por codigo PIN', function () {
-    $conPin = Reserva::factory()->create(['codigo' => '0421']);
-    Reserva::factory()->create(['codigo' => '9999']);
+    $conPin = Reserva::factory()->create(['codigo' => '042199']);
+    Reserva::factory()->create(['codigo' => '999999']);
 
     $mzo = empleadoReserva($this, tokenReserva('Mozo'));
 
     // Búsqueda exacta: encuentra solo la del PIN (y respeta los
     // ceros a la izquierda).
-    $mzo->getJson('/api/reservas?codigo=0421')
+    $mzo->getJson('/api/reservas?codigo=042199')
         ->assertOk()
         ->assertJsonCount(1)
         ->assertJsonPath('0.id', $conPin->id)
-        ->assertJsonPath('0.codigo', '0421');
+        ->assertJsonPath('0.codigo', '042199');
 
     // PIN inexistente → respuesta vacía (200 con message, como el
     // resto de los filtros).
-    $mzo->getJson('/api/reservas?codigo=0000')
+    $mzo->getJson('/api/reservas?codigo=000000')
         ->assertOk()
         ->assertJsonPath('message', 'No se encontraron reservas');
 
-    // Formato distinto de 4 dígitos → 422.
+    // Formato distinto de 6 dígitos → 422 (incluido un PIN viejo de 5).
     $mzo->getJson('/api/reservas?codigo=421')->assertStatus(422);
+    $mzo->getJson('/api/reservas?codigo=04219')->assertStatus(422);
     $mzo->getJson('/api/reservas?codigo=04ab')->assertStatus(422);
 
     // Combinable con los demás filtros.
-    $mzo->getJson('/api/reservas?codigo=0421&estado=pendiente')
+    $mzo->getJson('/api/reservas?codigo=042199&estado=pendiente')
         ->assertOk()
         ->assertJsonCount(1);
 });
@@ -549,6 +564,10 @@ test('la disponibilidad publica muestra las capacidades libres y no expone crede
 });
 
 test('la grilla publica devuelve los turnos fijos del dia con su aforo', function () {
+    // Aísla el test del archivo de runtime local (el gerente puede haber
+    // dejado otra ventana guardada en el servidor de desarrollo).
+    config(['disponibilidad_reservas.archivo' => storage_path('framework/testing/disponibilidad_reservas_reserva_test.json')]);
+
     salonReserva([
         ['cantidad' => 2, 'capacidad' => 4],
         ['cantidad' => 1, 'capacidad' => 2],
@@ -560,14 +579,19 @@ test('la grilla publica devuelve los turnos fijos del dia con su aforo', functio
 
     $slots = $response->json('slots');
 
+    // Ventana por defecto del backend: 09:00 a 23:00 cada 30 min (29 turnos).
     expect($response->json('fecha'))->toBe($fecha)
-        ->and($slots)->toHaveCount(23)
-        ->and($slots[0]['hora'])->toBe('12:00')
-        ->and($slots[0]['inicio'])->toBe('12:00')
-        ->and($slots[0]['fin'])->toBe('12:30')
+        ->and($slots)->toHaveCount(29)
+        ->and($response->json('horarios.inicio'))->toBe('09:00')
+        ->and($response->json('horarios.fin'))->toBe('23:00')
+        ->and($response->json('horarios.intervalo_minutos'))->toBe(30)
+        ->and($response->json('horarios.anticipacion_horas'))->toBe(2)
+        ->and($slots[0]['hora'])->toBe('09:00')
+        ->and($slots[0]['inicio'])->toBe('09:00')
+        ->and($slots[0]['fin'])->toBe('09:30')
         ->and($slots[0]['aforo_disponible'])->toBe(10)
-        ->and($slots[22]['hora'])->toBe('23:00')
-        ->and($slots[22]['fin'])->toBe('23:30');
+        ->and($slots[28]['hora'])->toBe('23:00')
+        ->and($slots[28]['fin'])->toBe('23:30');
 
     expect(collect($slots[0]['disponible'])->firstWhere('capacidad', 4)['cantidad'])->toBe(2)
         ->and(collect($slots[0]['disponible'])->firstWhere('capacidad', 2)['cantidad'])->toBe(1);

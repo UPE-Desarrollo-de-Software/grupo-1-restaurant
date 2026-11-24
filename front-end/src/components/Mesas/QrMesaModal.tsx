@@ -1,15 +1,17 @@
 import { useRef } from 'react'
 import { Button, Modal } from 'react-bootstrap'
-import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react'
+import { QRCodeCanvas } from 'qrcode.react'
 import logo from '../../assets/logo/gastroapp-logo-256x256.png'
+import { cargarImagen, descargarImagen, dibujarAficheQr } from '../../utils/descargas'
+import { destinoQrMesa, tituloMesa } from '../../utils/qrMesa'
+import { AficheMesaQr } from './AficheMesaQr'
 import type { MesaConCodigo } from '../../types/Mesa'
-import s from './QrMesaModal.module.css'
 
 interface QrMesaModalProps {
   // Mesa a mostrar (null = modal oculto). Sólo se usan id y código, así
-  // lo pueden pasar el alta, los detalles de mozo/gerente y el cliente.
+  // lo pueden pasar el alta y los detalles de mozo/gerente.
   mesa: Pick<MesaConCodigo, 'id' | 'codigo_acceso'> | null
-  // Cierre simple (vistas de detalle y cliente): sin botones de alta.
+  // Cierre simple (vistas de detalle): sin botones de alta.
   onCerrar?: () => void
   // "Listo": cierra el modal y vuelve a la lista de mesas (alta).
   onListo?: () => void
@@ -17,25 +19,31 @@ interface QrMesaModalProps {
   onCrearMas?: () => void
 }
 
-// QR de la visita: codifica `${origin}/mesa?codigo={codigo_acceso}`, así
-// el cliente escanea y queda identificado sin tipear el PIN. El código
-// es la credencial: muere con la mesa (borrado lógico al cerrar visita).
+// QR de la visita (staff): codifica `${origin}/mesa?codigo={codigo_acceso}`
+// y se exporta como afiche PNG. El afiche visible es `AficheMesaQr`, el
+// mismo que usa el modal del comensal (QrMesaClienteModal).
 export function QrMesaModal({ mesa, onCerrar, onListo, onCrearMas }: QrMesaModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const cerrar = onListo ?? onCerrar ?? (() => undefined)
-  const destino = mesa
-    ? `${window.location.origin}/mesa?codigo=${mesa.codigo_acceso}`
-    : ''
+  const destino = mesa ? destinoQrMesa(mesa.codigo_acceso) : ''
 
-  // function handlerDescargar() {
-  //   const lienzo = canvasRef.current?.toDataURL('image/png')
-  //   if (!lienzo) return
-  //   const enlace = document.createElement('a')
-  //   enlace.href = lienzo
-  //   enlace.download = `qr-mesa-${mesa?.id ?? 'mesa'}.png`
-  //   enlace.click()
-  // }
+  // El PNG baja como afiche de la app (logo, QR enmarcado y el PIN en
+  // bloque punteado) en vez del QR pelado — ver utils/descargas.ts.
+  async function handlerDescargar() {
+    const lienzo = canvasRef.current
+    if (!lienzo || !mesa) return
+
+    const afiche = await dibujarAficheQr({
+      logo: await cargarImagen(logo),
+      qr: lienzo,
+      titulo: tituloMesa(mesa.id),
+      subtitulo: 'Escaneá para entrar a tu mesa',
+      codigo: { etiqueta: 'Código de tu mesa', valor: mesa.codigo_acceso },
+      pie: 'Válido hasta cerrar la visita. También podés tipear el código en la app.',
+    })
+    descargarImagen(afiche, `qr-mesa-${mesa.id}.png`)
+  }
 
   return (
     <Modal show={mesa !== null} onHide={cerrar} centered aria-labelledby='qr-mesa-titulo'>
@@ -46,46 +54,25 @@ export function QrMesaModal({ mesa, onCerrar, onListo, onCrearMas }: QrMesaModal
       </Modal.Header>
 
       <Modal.Body>
-        {mesa && (
-          <div className={s.afiche}>
-            <img src={logo} alt='GastroApp' className={s.logo} />
-            <h3 className={`text-headline-sm ${s.titulo}`}>
-              Mesa #{String(mesa.id).padStart(2, '0')}
-            </h3>
-            <p className={`text-body-sm ${s.subtitulo}`}>
-              Escaneá para entrar a tu mesa
-            </p>
-            <QRCodeSVG value={destino} size={220} level='M' className={s.qr} />
-            <p className={`text-body-sm ${s.ayuda}`}>
-              O ingresá el código de 4 dígitos en la app.
-            </p>
-            <p className={`text-headline-md ${s.codigo}`}>{mesa.codigo_acceso}</p>
-
-            <p className={`text-body-sm ${s.nota}`}>
-              <i className='bi bi-info-circle me-1' aria-hidden='true' />
-              Válido hasta cerrar la visita.
-            </p>
-          </div>
-        )}
+        {mesa && <AficheMesaQr mesa={mesa} />}
       </Modal.Body>
 
       <Modal.Footer className='no-print'>
-        {/* <Button variant='outline-primary' className='text-label-md' type='button' onClick={() => window.print()}>
-          <i className='bi bi-printer me-1' aria-hidden='true' />
-          Imprimir
-        </Button>
-        <Button variant='outline-primary' className='text-label-md' type='button' onClick={handlerDescargar}>
+        <Button
+          variant='outline-primary'
+          className='text-label-md'
+          type='button'
+          onClick={handlerDescargar}
+        >
           <i className='bi bi-download me-1' aria-hidden='true' />
           Descargar PNG
-        </Button> */}
-        {onCrearMas && (
-          <Button variant='outline-primary' className='text-label-md' type='button' onClick={onCrearMas}>
-            <i className='bi bi-plus-circle me-1' aria-hidden='true' />
-            Crear más
-          </Button>
-        )}
-        <Button variant='primary' className='text-label-md' type='button' onClick={cerrar}>
-          {onCrearMas ? 'Listo' : 'Cerrar'}
+        </Button>
+        <Button variant='outline-primary' className='text-label-md' type='button' onClick={onCrearMas}>
+          <i className='bi bi-plus-circle me-1' aria-hidden='true' />
+          Crear más
+        </Button>
+        <Button variant='primary' className='text-label-md' type='button' onClick={onListo}>
+          Listo
         </Button>
       </Modal.Footer>
 

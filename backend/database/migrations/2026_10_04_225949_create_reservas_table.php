@@ -24,7 +24,7 @@ return new class extends Migration
      * reserva CAPACIDADES del inventario (`reserva_inventario`); se
      * llena solo si en el futuro vuelve a necesitarla.
      *
-     * `codigo`: PIN de 4 dígitos que recibe el cliente al hacer la
+     * `codigo`: PIN de 6 dígitos que recibe el cliente al hacer la
      * reserva y presenta al llegar. Lo genera ReservaService en el
      * alta; es único solo entre las PENDIENTES (se recicla al
      * finalizar/cancelar: 10.000 combinaciones no alcanzarían para

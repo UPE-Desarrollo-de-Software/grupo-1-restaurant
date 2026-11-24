@@ -24,12 +24,22 @@ export interface ContextoCliente {
     // El descuento de promos lo calcula el backend al enviar.
     totalBorrador: number
     pedidoIds: number[]
+    // Hay líneas creadas en el server cuya confirmación quedó pendiente
+    // (el auto-envío en lote no sale hasta reintentarla).
+    confirmarPendiente: boolean
     resumen: ResumenMesa | null
     // true mientras se revalida el código guardado contra el backend.
     revalidando: boolean
     // Identifica la mesa (o refresca la misma); si es otra, la página
     // debe haber confirmado antes el descarte del borrador.
     aplicarIdentificacion(mesa: ClienteMesa): void
+    // Cierra la sesión LOCAL del comensal (mesa, borrador y pedidoIds).
+    // No llama al backend: los pedidos enviados siguen en la visita y los
+    // cierra el mozo al cobrar. El estado de la visita (pedidoIds y
+    // borrador) queda guardado y vuelve al reingresar con ese mismo código.
+    // Es la vía para corregir un código mal tipeado sin quedar atrapado en
+    // otra mesa.
+    salirDeMesa(): void
     agregarLinea(linea: Omit<LineaBorrador, 'clave'>): void
     editarLinea(clave: string, cambios: CambiosLinea): void
     eliminarLinea(clave: string): void

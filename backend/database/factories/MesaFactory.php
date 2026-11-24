@@ -17,8 +17,8 @@ class MesaFactory extends Factory
     {
         return [
             'usuario_id' => null,
-            // Único código de la mesa (4 dígitos STRING, nace con ella).
-            'codigo_acceso' => str_pad((string) fake()->unique()->numberBetween(0, 9999), 4, '0', STR_PAD_LEFT),
+            // Único código de la mesa (6 dígitos STRING, nace con ella).
+            'codigo_acceso' => str_pad((string) fake()->unique()->numberBetween(0, 999999), 6, '0', STR_PAD_LEFT),
             'capacidad' => 4,
             'estado' => 'libre',
         ];

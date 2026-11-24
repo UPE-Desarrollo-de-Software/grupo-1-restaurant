@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Ingrediente;
 use App\Models\Plato;
 use App\Repositories\PlatoRepository;
 use Illuminate\Http\UploadedFile;
@@ -30,7 +31,9 @@ class PlatoService
 
     public function obtenerConIngredientes(int $id): Plato
     {
-        return $this->conPromoVigente($this->platos->conIngredientesOrFail((int) $id));
+        return $this->conPreciosEfectivos(
+            $this->conPromoVigente($this->platos->conIngredientesOrFail((int) $id))
+        );
     }
 
     /** Listado completo (activos e inactivos) para el panel del encargado. */
@@ -65,7 +68,7 @@ class PlatoService
             throw $e;
         }
 
-        return $plato->load('ingredientes:id,nombre,precioAdicional');
+        return $this->conPreciosEfectivos($plato->load('ingredientes:id,nombre,precioAdicional'));
     }
 
     /**
@@ -107,7 +110,7 @@ class PlatoService
             $this->borrarArchivo($anterior);
         }
 
-        return $plato->load('ingredientes:id,nombre,precioAdicional');
+        return $this->conPreciosEfectivos($plato->load('ingredientes:id,nombre,precioAdicional'));
     }
 
     public function eliminar(int $id): void
@@ -237,8 +240,11 @@ class PlatoService
      * Sin flags, los defaults del pivot son opcional=true y
      * por_defecto=true.
      *
+     * `precio_adicional` es el override del plato: ausente o `null`
+     * hereda el recargo de catálogo; `0` es un override válido.
+     *
      * @param  array<mixed>  $ingredientes
-     * @return array<int, array{opcional: bool, por_defecto: bool}>
+     * @return array<int, array{opcional: bool, por_defecto: bool, precio_adicional: float|null}>
      */
     private function normalizarIngredientes(array $ingredientes): array
     {
@@ -249,6 +255,7 @@ class PlatoService
                 $filas[(int) $item['ingrediente_id']] = [
                     'opcional' => (bool) ($item['opcional'] ?? true),
                     'por_defecto' => (bool) ($item['por_defecto'] ?? true),
+                    'precio_adicional' => $this->normalizarPrecioAdicional($item['precio_adicional'] ?? null),
                 ];
 
                 continue;
@@ -257,10 +264,35 @@ class PlatoService
             $filas[(int) $item] = [
                 'opcional' => true,
                 'por_defecto' => true,
+                'precio_adicional' => null,
             ];
         }
 
         return $filas;
+    }
+
+    private function normalizarPrecioAdicional(mixed $precio): ?float
+    {
+        if ($precio === null || $precio === '') {
+            return null;
+        }
+
+        return round((float) $precio, 2);
+    }
+
+    /**
+     * El JSON expone en `ingredientes[].precioAdicional` el recargo
+     * EFECTIVO del plato (override del pivot o catálogo), para que la
+     * carta, el mozo y el comensal no resuelvan la herencia. El valor
+     * crudo sigue disponible en `ingredientes[].pivot.precio_adicional`.
+     */
+    private function conPreciosEfectivos(Plato $plato): Plato
+    {
+        $plato->ingredientes->each(function (Ingrediente $ingrediente) {
+            $ingrediente->setAttribute('precioAdicional', $ingrediente->precioAdicionalParaPlato());
+        });
+
+        return $plato;
     }
 
     /** La carta solo muestra ofertas vigentes: el resto, promocion = null. */

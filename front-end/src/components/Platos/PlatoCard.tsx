@@ -3,6 +3,7 @@ import { Card, Form, Spinner } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
 import type { PlatoListar } from '../../types/Menu'
 import { cambiarDisponibilidad } from '../../api/platos'
+import t from '../Tarjeta/Tarjeta.module.css'
 import s from './PlatoCard.module.css'
 
 const formatearPrecio = (precio: number): string =>
@@ -49,11 +50,11 @@ export function PlatoCard({ plato, onCambio }: PlatoCardProps) {
   }
 
   return (
-    <Card className={s.card}>
-      <Card.Body className={s.body}>
+    <Card className={t.card}>
+      <Card.Body className={t.body}>
         <div className={s.fila}>
           <div className={s.media}>
-            <span className={`text-label-sm ${s.indice}`}>#{String(plato.id).padStart(2, '0')}</span>
+            <span className={`text-label-sm ${t.indice} ${s.indice}`}>#{String(plato.id).padStart(2, '0')}</span>
             <img
               className={s.imagen}
               src={plato.imagen_url ?? undefined}
@@ -62,8 +63,8 @@ export function PlatoCard({ plato, onCambio }: PlatoCardProps) {
             />
           </div>
 
-          <div className={s.info}>
-            <div className={s.badges}>
+          <div className={t.info}>
+            <div className={t.badges}>
               <span className={`text-label-sm ${s.badgeCategoria}`}>{plato.categoria_nombre}</span>
               {plato.promocion && (
                 <span className={`text-label-sm ${s.badgePromo}`}>
@@ -81,9 +82,9 @@ export function PlatoCard({ plato, onCambio }: PlatoCardProps) {
           </div>
         </div>
 
-        <div className={s.footer}>
-          <Link className={`btn btn-outline-primary btn-sm text-label-md ${s.botonEditar}`} to={`/gerente/carta/platos/${plato.id}/editar`}>
-            <i className={`bi bi-pencil ${s.iconoEditar}`} aria-hidden="true" />
+        <div className={`${t.footer} ${t.footerEspaciada}`}>
+          <Link className={`btn btn-outline-primary btn-sm text-label-md ${t.botonAccion}`} to={`/gerente/carta/platos/${plato.id}/editar`}>
+            <i className={`bi bi-pencil ${t.iconoAccion}`} aria-hidden="true" />
             Editar
           </Link>
 

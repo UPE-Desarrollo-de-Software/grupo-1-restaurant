@@ -99,10 +99,19 @@ class EloquentReservaRepository implements ReservaRepository
 
     public function nuevoCodigoAcceso(): string
     {
-        do {
-            $codigo = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-        } while ($this->codigoExiste($codigo));
+        // 6 dígitos (1.000.000 de combinaciones). El tope de 50
+        // intentos evita un do/while infinito si el pool de pendientes
+        // se agota: el controller catchea \Exception → 422.
+        for ($intento = 0; $intento < 50; $intento++) {
+            $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        return $codigo;
+            if (! $this->codigoExiste($codigo)) {
+                return $codigo;
+            }
+        }
+
+        throw new \RuntimeException(
+            'No hay PINs de reserva disponibles. Cerrá el local y avisá al administrador.'
+        );
     }
 }

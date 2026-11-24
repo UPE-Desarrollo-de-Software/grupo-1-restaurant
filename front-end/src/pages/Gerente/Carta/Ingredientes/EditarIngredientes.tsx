@@ -5,6 +5,7 @@ import s from './Platos.module.css'
 import { ingredienteSchema } from '../../../../schemas/carta'
 import { deleteIngrediente, getIngrediente, updateIngrediente } from '../../../../api/ingredientes'
 import { ZonaPeligro } from '../../../../components/ZonaPeligro/ZonaPeligro'
+import GastroLoader from '../../../../components/GastroLoader/GastroLoader'
 
 export function EditarIngredientePage() {
     const { id } = useParams()
@@ -87,7 +88,7 @@ export function EditarIngredientePage() {
             <div className={s.page}>
                 <Card className={s.card}>
                     <div className='d-flex justify-content-center py-4'>
-                        <Spinner animation='border' />
+                        <GastroLoader messages={['Cargando ingrediente…']} size={96} />
                     </div>
                 </Card>
             </div>

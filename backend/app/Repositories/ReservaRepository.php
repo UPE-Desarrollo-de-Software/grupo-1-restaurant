@@ -21,7 +21,7 @@ interface ReservaRepository
     public function porIdOrFail(int $id): Reserva;
 
     /**
-     * Reserva por su PIN de 4 dígitos (edición pública de la
+     * Reserva por su PIN de 6 dígitos (edición pública de la
      * pre-orden). Prefiere la PENDIENTE (los códigos se reciclan al
      * finalizar/cancelar); null si no hay ninguna con ese PIN.
      */
@@ -86,7 +86,7 @@ interface ReservaRepository
     public function codigoExiste(string $codigo): bool;
 
     /**
-     * Código PIN libre: 4 dígitos (con ceros a la izquierda),
+     * Código PIN libre: 6 dígitos (con ceros a la izquierda),
      * generado en el alta de la reserva y único entre las pendientes.
      */
     public function nuevoCodigoAcceso(): string;

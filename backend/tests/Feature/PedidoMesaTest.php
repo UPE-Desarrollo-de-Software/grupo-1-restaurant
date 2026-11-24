@@ -154,6 +154,46 @@ test('respeta los flags opcional y por_defecto al personalizar ingredientes', fu
     expect((float) $response->json('pedido.total'))->toBe(2500.0);
 });
 
+test('el pedido cobra el recargo del plato y lo congela en el snapshot', function () {
+    autenticarMozo();
+
+    $mesa = Mesa::factory()->create();
+    $extra = Ingrediente::factory()->create(['precioAdicional' => 900]);
+
+    // Mismo ingrediente de catálogo, distinto recargo por plato.
+    $conOverride = Plato::factory()->create(['precio' => 1000]);
+    $conOverride->ingredientes()->attach($extra->id, [
+        'opcional' => true,
+        'por_defecto' => false,
+        'precio_adicional' => 1200,
+    ]);
+
+    $heredado = Plato::factory()->create(['precio' => 1000]);
+    $heredado->ingredientes()->attach($extra->id, [
+        'opcional' => true,
+        'por_defecto' => false,
+    ]);
+
+    $response = $this->postJson("/api/mesas/{$mesa->id}/pedidos", [
+        'platos' => [
+            ['plato_id' => $conOverride->id, 'cantidad' => 1, 'ingredientes' => [$extra->id]],
+            ['plato_id' => $heredado->id, 'cantidad' => 1, 'ingredientes' => [$extra->id]],
+        ],
+    ])->assertStatus(201);
+
+    // (1000 + 1200) + (1000 + 900 de catálogo).
+    expect((float) $response->json('pedido.total'))->toBe(4100.0);
+
+    $snapshot = DB::table('detalle_pedido_ingrediente')
+        ->where('tipo', 'agregado')
+        ->orderBy('precio_adicional')
+        ->pluck('precio_adicional')
+        ->map(fn ($precio) => (float) $precio)
+        ->all();
+
+    expect($snapshot)->toBe([900.0, 1200.0]);
+});
+
 test('la visita termina cuando el mozo cierra la mesa tras el pago', function () {
     autenticarMozo();
 
@@ -192,6 +232,13 @@ test('la visita termina cuando el mozo cierra la mesa tras el pago', function ()
     // Un pedido finalizado no admite cambios.
     $this->putJson("/api/pedidos/{$pedido->id}/estado", ['estado' => 'en_preparacion'])
         ->assertStatus(422);
+
+    // El mozo cobra en efectivo (saldo pendiente) y con el pago
+    // registrado puede cerrar la visita.
+    $total = $this->getJson("/api/mesas/{$mesa->id}/cuenta")->assertOk()->json('total');
+    $this->postJson("/api/mesas/{$mesa->id}/pagos", ['monto' => $total])
+        ->assertStatus(201)
+        ->assertJsonPath('saldo.pendiente', 0);
 
     // El mozo cierra la visita (cliente pagó): la mesa queda DESTRUIDA
     // (borrado lógico), para la app dejó de existir.

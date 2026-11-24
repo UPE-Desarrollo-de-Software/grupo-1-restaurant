@@ -7,6 +7,7 @@ use App\Models\Mesa;
 use App\Services\MesaService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -47,9 +48,22 @@ class ClienteMiddleware
             ], 403);
         }
 
+        // Adivinar el código con el Bearer: 10 fallos por minuto e IP.
+        // Corta ANTES de consultar la base y sólo cuentan los fallos:
+        // un cliente con el código correcto nunca gasta cupo.
+        $llave = 'cliente-fallo:'.$request->ip();
+
+        if (RateLimiter::tooManyAttempts($llave, 10)) {
+            return response()->json([
+                'message' => 'Demasiados intentos: esperá un momento y volvé a intentar.',
+            ], 429)->header('Retry-After', RateLimiter::availableIn($llave));
+        }
+
         try {
             $mesa = $this->mesas->accederConCodigo($codigo);
         } catch (ApiException $e) {
+            RateLimiter::hit($llave, 60);
+
             // Código inválido o mesa destruida.
             return response()->json(['message' => $e->getMessage()], 401);
         }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ApiException;
 use App\Models\Mesa;
 use App\UseCases\Clientes\AccederMesaUseCase;
 use App\UseCases\Clientes\AgregarLineasClienteUseCase;
@@ -44,26 +45,38 @@ class ClienteController extends Controller
     ) {}
 
     /**
-     * POST /api/acceso — público, con throttle. Body: { codigo }.
+     * POST /api/acceso — público. Body: { codigo }.
      * Devuelve la mesa para que el front guarde el código.
+     *
+     * Freno anti-adivinanza: 10 fallos por minuto e IP. Sólo cuentan
+     * los fallos, así que un cliente con el código correcto nunca
+     * gasta cupo.
      */
     public function acceder(Request $request)
     {
         $datos = $request->validate([
-            'codigo' => 'required|string|size:4',
+            'codigo' => 'required|string|digits:6',
+        ], [
+            'codigo.digits' => 'El código de la mesa tiene 6 dígitos.',
         ]);
 
-        // Throttle por IP: evita adivinar los 4 dígitos del código.
-        $llave = 'acceso:'.ip2long($request->ip());
+        // Sin ip2long(): sirve igual para IPv4 e IPv6.
+        $llave = 'acceso:'.$request->ip();
+
         if (RateLimiter::tooManyAttempts($llave, 10)) {
             return response()->json([
-                'message' => 'Demasiados intentos: espera un momento y volvé a intentar.',
-            ], 429);
+                'message' => 'Demasiados intentos: esperá un momento y volvé a intentar.',
+            ], 429)->header('Retry-After', RateLimiter::availableIn($llave));
         }
-        RateLimiter::hit($llave, 60);
 
-        // ApiException 401 si el código no corresponde a una mesa viva.
-        $mesa = ($this->accederMesa)($datos['codigo']);
+        try {
+            // ApiException 401 si el código no corresponde a una mesa viva.
+            $mesa = ($this->accederMesa)($datos['codigo']);
+        } catch (ApiException $e) {
+            RateLimiter::hit($llave, 60);
+
+            throw $e;
+        }
 
         return response()->json([
             'message' => 'Bienvenido a la mesa',

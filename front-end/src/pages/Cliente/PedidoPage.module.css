@@ -389,6 +389,20 @@
     color: var(--color-on-surface);
 }
 
+/* ==== Pagos (Mercado Pago — Checkout Pro) ==== */
+.saldoFila {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    color: var(--color-on-surface-variant);
+}
+
+.partePagar {
+    align-self: flex-start;
+    margin-top: var(--space-xs);
+}
+
 @media (max-width: 576px) {
     .enviarFila {
         flex-direction: column-reverse;

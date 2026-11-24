@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Alert, Spinner } from 'react-bootstrap'
+import { Alert } from 'react-bootstrap'
 import { Link, useParams } from 'react-router-dom'
 import { getPlato } from '../../api/platos'
 import { useCategorias } from '../../hooks/useCategorias'
-import type { PlatoObtener } from '../../types/Menu'
+import type { PlatoListar, PlatoObtener } from '../../types/Menu'
+import { BotonAgregarPlato } from '../../components/Cliente/BotonAgregarPlato'
+import GastroLoader from '../../components/GastroLoader/GastroLoader'
 import s from './DetallePlatoPage.module.css'
 
 const formatearPrecio = (precio: number): string =>
@@ -13,10 +15,27 @@ const formatearPrecio = (precio: number): string =>
         minimumFractionDigits: 0,
     }).format(precio)
 
+// El detalle (PlatoObtener) no trae `categoria_nombre`: se arma el shape que
+// consume BotonAgregarPlato con el nombre resuelto desde el listado.
+const aPlatoListar = (plato: PlatoObtener, categoriaNombre: string): PlatoListar => ({
+    id: plato.id,
+    categoria_id: plato.categoria_id,
+    categoria_nombre: categoriaNombre,
+    promocion_id: plato.promocion_id,
+    promocion: plato.promocion ?? null,
+    nombre: plato.nombre,
+    descripcion: plato.descripcion,
+    precio: plato.precio,
+    imagen: plato.imagen,
+    imagen_url: plato.imagen_url,
+    disponible: plato.disponible,
+})
+
 // Detalle de un plato de la carta (GET /platos/{id}, público): nombre,
 // imagen, descripción, precio, categoría, ingredientes con sus flags del
-// pivot y promoción vigente. Se llega desde "Ver detalles" en la tarjeta
-// y se vuelve a la Carta conservando la navegación (Link, no redirect).
+// pivot y promoción vigente. Se llega desde "Ver detalles" en la tarjeta y
+// se vuelve a la Carta conservando la navegación (Link, no redirect).
+// Incluye el mismo botón de agregar de la tarjeta.
 export function DetallePlatoPage() {
     const { id } = useParams()
     const platoId = Number(id)
@@ -45,6 +64,11 @@ export function DetallePlatoPage() {
         return () => controller.abort()
     }, [platoId, idInvalido])
 
+    // Nombre de la categoría para el botón de agregar (el detalle trae el id).
+    const categoriaNombre = plato
+        ? categorias.find(categoria => categoria.id === plato.categoria_id)?.nombre ?? ''
+        : ''
+
     const volver = (
         <Link to='/carta' className={`text-body-md ${s.volver}`}>
             <i className='bi bi-arrow-left me-1' aria-hidden='true' />
@@ -69,8 +93,7 @@ export function DetallePlatoPage() {
 
             {cargando && (
                 <div className={s.cargando}>
-                    <Spinner animation='border' size='sm' />
-                    <span className='text-body-md'>Cargando plato…</span>
+                    <GastroLoader messages={['Cargando plato…']} size={80} />
                 </div>
             )}
 
@@ -118,6 +141,13 @@ export function DetallePlatoPage() {
                             <p className={`text-body-md ${s.descripcion}`}>{plato.descripcion}</p>
                         )}
 
+                        <div className={s.acciones}>
+                            <BotonAgregarPlato
+                                plato={aPlatoListar(plato, categoriaNombre)}
+                                detalleCargado={plato}
+                            />
+                        </div>
+
                         <section className={s.ingredientes} aria-labelledby='ingredientes-title'>
                             <h2 id='ingredientes-title' className={`text-headline-sm ${s.subtitulo}`}>
                                 Ingredientes
@@ -148,8 +178,7 @@ export function DetallePlatoPage() {
                             )}
                             <p className={`text-body-sm ${s.notaPersonalizacion}`}>
                                 <i className='bi bi-sliders me-1' aria-hidden='true' />
-                                Podés personalizar este plato al agregarlo a tu pedido desde la Carta
-                                (con tu mesa identificada).
+                                ¡Elegí y personaliza el plato!
                             </p>
                         </section>
                     </div>

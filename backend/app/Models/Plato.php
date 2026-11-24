@@ -48,8 +48,9 @@ class Plato extends Model
     }
 
     /**
-     * Ingredientes del plato con los flags `opcional` / `por_defecto`
-     * (tabla pivot `plato_ingrediente`).
+     * Ingredientes del plato con los flags `opcional` / `por_defecto` y el
+     * recargo propio del plato `precio_adicional` (tabla pivot
+     * `plato_ingrediente`).
      */
     public function ingredientes(): BelongsToMany
     {
@@ -58,7 +59,7 @@ class Plato extends Model
             'plato_ingrediente',
             'plato_id',
             'ingrediente_id'
-        )->withPivot(['opcional', 'por_defecto']);
+        )->withPivot(['opcional', 'por_defecto', 'precio_adicional']);
     }
 
     public function detalles(): HasMany

@@ -29,6 +29,19 @@ class Ingrediente extends Model
             'plato_ingrediente',
             'ingrediente_id',
             'plato_id'
-        )->withPivot(['opcional', 'por_defecto']);
+        )->withPivot(['opcional', 'por_defecto', 'precio_adicional']);
+    }
+
+    /**
+     * Recargo efectivo de este ingrediente en el plato desde el que se
+     * cargó la relación: el override del pivot si existe, si no el
+     * recargo de catálogo. `0` es un override válido, por eso se compara
+     * contra `null` y no por truthiness.
+     */
+    public function precioAdicionalParaPlato(): float
+    {
+        $delPlato = $this->pivot?->precio_adicional;
+
+        return (float) ($delPlato ?? $this->precioAdicional);
     }
 }

@@ -8,6 +8,7 @@ import { getConfiguracion } from '../../../api/configuracion'
 import { getUsuarios } from '../../../api/usuarios'
 import { CerrarMesaModal } from '../../../components/Mesas/CerrarMesaModal'
 import { QrMesaModal } from '../../../components/Mesas/QrMesaModal'
+import GastroLoader from '../../../components/GastroLoader/GastroLoader'
 import type { Usuario } from '../../../types/Auth'
 
 export function EditarMesaPage() {
@@ -124,8 +125,11 @@ export function EditarMesaPage() {
         }
     }
 
+    // Sólo mozos (mismo criterio que el alta, CrearMesa): el selector es
+    // para el mozo responsable. El asignado se mantiene seleccionado
+    // aunque esté inactivo.
     const opcionesUsuarios = usuarios.filter(
-        user => user.activo || String(user.id) === usuarioId
+        user => user.rol?.nombre === 'Mozo' && (user.activo || String(user.id) === usuarioId)
     )
 
     if (cargando) {
@@ -133,7 +137,7 @@ export function EditarMesaPage() {
             <div className={s.page}>
                 <Card className={s.card}>
                     <div className='d-flex justify-content-center py-4'>
-                        <Spinner animation='border' />
+                        <GastroLoader messages={['Cargando mesa…']} size={96} />
                     </div>
                 </Card>
             </div>
@@ -234,7 +238,7 @@ export function EditarMesaPage() {
                         <Button className={s.button} variant='primary' type='submit' disabled={enviando}>
                             {enviando
                                 ? <><Spinner size='sm' animation='border' className='me-2' />Guardando...</>
-                                : 'Guardar cambios'}
+                                : 'Guardar'}
                         </Button>
                         <Button
                             className={s.button}
@@ -243,7 +247,7 @@ export function EditarMesaPage() {
                             disabled={enviando}
                             onClick={() => navigate('/gerente/mesas/gestion')}
                         >
-                            Cancelar edición
+                            Cancelar
                         </Button>
                     </div>
                 </Form>
@@ -260,8 +264,7 @@ export function EditarMesaPage() {
                     Cerrar visita
                 </Button>
                 <p className={`text-body-sm ${s.subtitle} mb-0`}>
-                    Si el cliente ya pagó, cerrá la visita: la mesa se elimina del sistema, su
-                    código deja de valer y se cancelan sus reservas pendientes.
+                    Si el cliente ya pagó, cerrá la visita y la mesa se elimina del sistema.
                 </p>
             </div>
 

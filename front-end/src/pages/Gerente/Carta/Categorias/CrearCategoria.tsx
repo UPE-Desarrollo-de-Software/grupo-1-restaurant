@@ -4,7 +4,7 @@ import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
 import s from './Platos.module.css'
 import { categoriaSchema } from '../../../../schemas/carta'
 import { createCategoria } from '../../../../api/categorias'
-import { ExitoModal } from '../../../../components/Exito/ExitoModal'
+import { ExitoModal } from '../../../../components/Modales/ExitoModal'
 
 export function CrearCategoriaPage() {
     const navigate = useNavigate()

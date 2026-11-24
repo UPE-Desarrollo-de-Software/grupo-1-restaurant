@@ -1,0 +1,134 @@
+/* ============================================================
+   SIDE NAVBAR (escritorio)
+   El layout que lo usa decide cuándo mostrarlo: este componente
+   siempre se dibuja completo. Las opciones llegan por props para
+   que sirva a cualquier módulo.
+   ============================================================ */
+
+.lateral {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  /* 15rem (240px). El layout define --side-nav-width en su shell. */
+  width: var(--side-nav-width, 15rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-md);
+  background-color: var(--color-surface-container-low);
+  border-right: 1px solid var(--color-outline-variant);
+  box-shadow: var(--shadow-level-1);
+  overflow-y: auto;
+  z-index: 1030;
+}
+
+/* ============ IDENTIDAD ============ */
+
+.marca {
+  flex-shrink: 0;
+}
+
+.marcaLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: inherit;
+  text-decoration: none;
+}
+
+.marcaLink:hover,
+.marcaLink:focus-visible {
+  color: inherit;
+  text-decoration: none;
+}
+
+.logo {
+  flex-shrink: 0;
+}
+
+.nombreApp {
+  margin: 0;
+  color: var(--color-on-surface);
+  transition: color 0.15s ease;
+}
+
+.marcaLink:hover .nombreApp,
+.marcaLink:focus-visible .nombreApp {
+  color: var(--color-primary);
+}
+
+/* ============ OPCIONES ============ */
+
+.opciones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex-shrink: 0;
+}
+
+.link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  color: var(--color-on-surface-variant);
+  text-decoration: none;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.link:hover,
+.link:focus-visible {
+  color: var(--color-primary);
+  background-color: var(--color-surface-container);
+  text-decoration: none;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Activo: color primario + fondo + barra indicadora (mismo lenguaje que
+   la cola de comandas). */
+.activo {
+  color: var(--color-primary);
+  background-color: var(--color-surface-container-high);
+}
+
+.activo::before {
+  content: '';
+  position: absolute;
+  left: var(--space-2xs);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary);
+}
+
+.icono {
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+/* ============ ESPACIO FLEXIBLE + USUARIO ============ */
+
+.espacio {
+  flex: 1 1 auto;
+  min-height: var(--space-lg);
+}
+
+.usuario {
+  flex-shrink: 0;
+  /* Margen inferior propio: el usuario queda cerca del final, sin tocar
+     el borde. */
+  margin-bottom: var(--space-xs);
+}

@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HistorialComandaController;
 use App\Http\Controllers\IngredienteController;
 use App\Http\Controllers\MesaController;
+use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PlatoController;
 use App\Http\Controllers\PromocionController;
@@ -64,17 +65,27 @@ Route::get('/ingredientes/{id}', [IngredienteController::class, 'show']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
-// ACCESO DEL COMENSAL (auto-pedido): público y con throttle. Body:
-// { codigo } → devuelve la mesa; el front guarda el código y lo manda
-// como Authorization: Bearer <codigo> en /cliente/*. No hay token.
-Route::post('/acceso', [ClienteController::class, 'acceder'])
-    ->middleware('throttle:60,1');
+// ACCESO DEL COMENSAL (auto-pedido): público. Body: { codigo } →
+// devuelve la mesa; el front guarda el código y lo manda como
+// Authorization: Bearer <codigo> en /cliente/*. No hay token. El
+// freno anti-adivinanza (10 fallos/min por IP) vive en el controller:
+// sólo cuentan los intentos fallidos.
+Route::post('/acceso', [ClienteController::class, 'acceder']);
+
+// WEBHOOK DE MERCADO PAGO (vía pública: lo llama MP, no el
+// comensal). Valida la firma HMAC x-signature (401 si falla) y
+// procesa el pago contra la API de MP (fuente de verdad). Throttle
+// suave: MP reintenta si no recibe 200.
+Route::match(['post', 'get'], '/webhooks/mercado-pago', [PagoController::class, 'notificacion'])
+    ->middleware('throttle:120,1');
 
 // ==================== COMENSAL (auto-pedido) ====================
 // Sin auth:sanctum: el middleware 'cliente' resuelve la mesa desde el
 // Bearer codigo_acceso (401 si falta o si la mesa fue destruida).
+// `throttle:comensal` (AppServiceProvider): 60/min por visita +
+// 600/min por IP, con mensaje en español.
 
-Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(function () {
+Route::middleware(['cliente', 'throttle:comensal'])->prefix('cliente')->group(function () {
 
     // Resumen de lectura: todos los pedidos de la visita (activos y
     // finalizados, cada uno con su estado).
@@ -90,6 +101,15 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
 
     // Cuenta dividida en partes por pedido raíz.
     Route::get('/cuenta', [ClienteController::class, 'cuenta']);
+
+    // Pagos con Mercado Pago (Checkout Pro): saldo + historial, y
+    // alta de preferencia (el monto lo calcula el backend). El
+    // verificar reconcilia el retorno del checkout contra MP.
+    Route::get('/pagos', [PagoController::class, 'index']);
+    Route::post('/pagos', [PagoController::class, 'crear']);
+    Route::post('/pagos/verificar', [PagoController::class, 'verificar']);
+    // JSON crudo de MP del pago (comisiones fee_details, neto…).
+    Route::get('/pagos/{id}/detalle', [PagoController::class, 'detalle'])->whereNumber('id');
 
     // "Llamar al mozo": emite el broadcast mesa.atencion (rate limit
     // manual por mesa, 1/min, adentro del controller).
@@ -107,8 +127,8 @@ Route::middleware(['cliente', 'throttle:60,1'])->prefix('cliente')->group(functi
 //    solapadas); no hay mesa que elegir ni "mozo virtual";
 //  - disponibilidad: qué capacidades quedan libres para ese intervalo
 //    (reemplaza al antiguo mapa de elección de mesas);
-//  - disponibilidad-dia: grilla fija de turnos (12:00–23:00 cada 30
-//    min) con el aforo libre de cada uno (una sola request por fecha).
+//  - disponibilidad-dia: grilla de turnos configurada (DisponibilidadReservaService)
+//    con el aforo libre de cada uno (una sola request por fecha).
 Route::post('/cliente/reservas', [ReservaController::class, 'solicitarWeb'])
     ->middleware('throttle:60,1');
 
@@ -146,6 +166,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Aforo del lugar y composición CONFIG_MESA.
     Route::get('/configuracion', [ConfiguracionController::class, 'show']);
+
+    // Disponibilidad horaria de reservas (ventana + intervalo de turnos).
+    // No vive en la DB: ver DisponibilidadReservaService.
+    Route::get('/configuracion/disponibilidad', [ConfiguracionController::class, 'showDisponibilidad']);
 });
 
 // ==================== TOMA DE PEDIDOS (mozo / gerente) ====================
@@ -170,8 +194,14 @@ Route::middleware(['auth:sanctum', 'permiso:tomar_pedidos'])->group(function () 
     Route::post('/mesas/{mesa}/ocupar', [MesaController::class, 'ocupar']);
 
     // Fin de la VISITA: el cliente PAGÓ la cuenta y el mozo cierra la
-    // mesa (borrado lógico). Exige cero pedidos activos (422 si quedan).
+    // mesa (borrado lógico). Exige cero pedidos activos (422 si quedan)
+    // y cuenta SALDADA (422 si queda saldo por cobrar).
     Route::post('/mesas/{mesa}/cerrar', [MesaController::class, 'cerrar']);
+
+    // Cobro en EFECTIVO: el mozo registra lo que cobró al cerrar la
+    // visita (monto = saldo pendiente precargado y editable, validado
+    // server-side). El pago nace aprobado con medio_pago=efectivo.
+    Route::post('/mesas/{mesa}/pagos', [PagoController::class, 'cobrarEfectivo']);
 
     // Agrupación de lectura de varias mesas (no fusiona pedidos; los
     // códigos tampoco cambian).
@@ -285,6 +315,10 @@ Route::middleware(['auth:sanctum', 'permiso:gestionar_mesas'])->group(function (
 
     // Aforo del lugar y composición CONFIG_MESA (replace-all).
     Route::put('/configuracion', [ConfiguracionController::class, 'update']);
+
+    // Ventana de turnos de reservas (el resto de los módulos la consume
+    // por GET /configuracion/disponibilidad y disponibilidad-dia).
+    Route::put('/configuracion/disponibilidad', [ConfiguracionController::class, 'updateDisponibilidad']);
 });
 
 Route::middleware(['auth:sanctum', 'permiso:gestionar_promociones'])->group(function () {
