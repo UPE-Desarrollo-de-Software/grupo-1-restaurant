@@ -30,6 +30,12 @@ use Illuminate\Support\Facades\DB;
  * Idempotente: si la base ya tiene pedidos/reservas/mesas NO hace
  * nada, así nunca pisa datos reales. Sólo tiene sentido sobre una
  * base recién seedeada (necesita los platos de PlatoSeeder).
+ *
+ * Sin Faker ni otras dependencias de dev: la aleatoriedad sale sólo
+ * del stdlib (random_int/shuffle). En el deploy se instala con
+ * `composer --no-dev`, donde `fakerphp/faker` no está y el helper
+ * `fake()` ni siquiera está definido (helpers.php lo declara sólo si
+ * existe Faker\Factory).
  */
 class EstadisticasSeeder extends Seeder
 {
@@ -49,6 +55,14 @@ class EstadisticasSeeder extends Seeder
      * enviado, en_preparacion y listo).
      */
     private const ACTIVOS = 4;
+
+    /**
+     * Códigos de 6 dígitos ya emitidos (mesas y reservas) para no
+     * repetirlos, sin depender de `fake()->unique()`.
+     *
+     * @var array<string, true>
+     */
+    private array $codigosUsados = [];
 
     public function run(): void
     {
@@ -100,9 +114,10 @@ class EstadisticasSeeder extends Seeder
             $mesa = $this->crearMesa('ocupada');
 
             // Hora creíble de servicio: almuerzo o cena.
+            $horas = [12, 13, 14, 20, 21];
             $base = now()->subDays($diasAtras)->setTime(
-                fake()->randomElement([12, 13, 14, 20, 21]),
-                fake()->numberBetween(0, 59),
+                $horas[array_rand($horas)],
+                random_int(0, 59),
             );
 
             // La 2da comanda de las últimas 3 visitas queda cancelada:
@@ -112,7 +127,7 @@ class EstadisticasSeeder extends Seeder
 
             for ($n = 0; $n < 2; $n++) {
                 $estado = $n === 1 && $cancelaSegundo ? 'cancelado' : 'entregado';
-                $fecha = $base->copy()->addMinutes($n === 0 ? 0 : fake()->numberBetween(45, 90));
+                $fecha = $base->copy()->addMinutes($n === 0 ? 0 : random_int(45, 90));
                 $pedido = $this->crearPedido($mesa, $estado, $platos, $fecha, true);
 
                 // Lo cancelado no se cobra (la cuenta de la visita
@@ -169,8 +184,8 @@ class EstadisticasSeeder extends Seeder
         foreach ($datos as $fila) {
             Reserva::create([
                 'mesa_id' => null,
-                'codigo' => str_pad((string) fake()->unique()->numberBetween(0, 999999), 6, '0', STR_PAD_LEFT),
-                'contacto_solicitante' => fake()->phoneNumber(),
+                'codigo' => $this->codigoSeisDigitos(),
+                'contacto_solicitante' => $this->telefono(),
                 'fecha' => now()->addDays($fila['dias'])->toDateString(),
                 'hora' => $fila['hora'],
                 'cantPersonas' => $fila['personas'],
@@ -187,7 +202,7 @@ class EstadisticasSeeder extends Seeder
     {
         return Mesa::create([
             'usuario_id' => null,
-            'codigo_acceso' => str_pad((string) fake()->unique()->numberBetween(0, 999999), 6, '0', STR_PAD_LEFT),
+            'codigo_acceso' => $this->codigoSeisDigitos(),
             'capacidad' => 4,
             'estado' => $estado,
         ]);
@@ -209,10 +224,10 @@ class EstadisticasSeeder extends Seeder
         $lineas = [];
         $total = 0.0;
 
-        $cantidadLineas = fake()->numberBetween(1, min(3, $platos->count()));
+        $cantidadLineas = random_int(1, min(3, $platos->count()));
 
-        foreach (fake()->randomElements($platos->all(), $cantidadLineas) as $plato) {
-            $cantidad = fake()->numberBetween(1, 2);
+        foreach ($this->muestrear($platos, $cantidadLineas) as $plato) {
+            $cantidad = random_int(1, 2);
             $subtotal = round($cantidad * (float) $plato->precio, 2);
 
             $lineas[] = [
@@ -275,5 +290,45 @@ class EstadisticasSeeder extends Seeder
         $momento = now()->subMinutes($minutos);
 
         return $momento->isSameDay(now()) ? $momento : now()->startOfDay()->addHours(12);
+    }
+
+    /**
+     * Código de 6 dígitos sin repetir (mismo criterio que
+     * MesaFactory/ReservaFactory: string, los ceros importan).
+     */
+    private function codigoSeisDigitos(): string
+    {
+        do {
+            $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        } while (isset($this->codigosUsados[$codigo]));
+
+        $this->codigosUsados[$codigo] = true;
+
+        return $codigo;
+    }
+
+    /**
+     * Teléfono de contacto generado a mano (misma pinta que el de
+     * ReservaFactory, sin Faker).
+     */
+    private function telefono(): string
+    {
+        return sprintf('+54 11 %04d-%04d', random_int(0, 9999), random_int(0, 9999));
+    }
+
+    /**
+     * Muestra de `cantidad` platos SIN repetir: el equivalente a
+     * `fake()->randomElements()` sólo con stdlib (shuffle baraja una
+     * copia y array_slice toma los primeros).
+     *
+     * @param  Collection<int, Plato>  $platos
+     * @return list<Plato>
+     */
+    private function muestrear(Collection $platos, int $cantidad): array
+    {
+        $barajado = $platos->all();
+        shuffle($barajado);
+
+        return array_slice($barajado, 0, $cantidad);
     }
 }
