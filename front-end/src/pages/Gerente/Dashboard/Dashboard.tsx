@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Alert } from 'react-bootstrap'
-import { useRol } from '../../../context/RolesContext/useRol'
 import { getDashboard } from '../../../api/dashboard'
 import { getReservas } from '../../../api/reservas'
 import type { DashboardDatos } from '../../../types/Dashboard'
@@ -32,7 +31,6 @@ type CargaDashboard =
     | { estado: 'error'; periodo: PeriodoId; mensaje: string }
 
 export function DashboardPage() {
-    const { nombreRol } = useRol()
     const [periodo, setPeriodo] = useState<PeriodoId>('7d')
     const [carga, setCarga] = useState<CargaDashboard | null>(null)
     const [reservas, setReservas] = useState<Reserva[] | null>(null)
@@ -101,10 +99,6 @@ export function DashboardPage() {
                         Rendimiento económico y flujo comercial del local.
                     </p>
                 </div>
-                <span className={`text-label-md ${s.chipRol}`}>
-                    <i className='bi bi-person-badge' aria-hidden='true' />
-                    {nombreRol ?? 'Gerente'}
-                </span>
             </header>
 
             <FiltroPeriodo valor={periodo} onChange={setPeriodo} />

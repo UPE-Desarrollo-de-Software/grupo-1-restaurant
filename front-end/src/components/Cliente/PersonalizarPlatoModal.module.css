@@ -1,64 +1,296 @@
-.nombrePlato {
-    margin: 0 0 var(--space-sm);
+/* Panel inferior (bottom sheet) del personalizador. La estructura
+   deslizante la aporta Bootstrap Offcanvas; acá viven el panel flotante,
+   el fondo desenfocado y la distribución interna. Solo tokens. */
+
+/* ---------------------------------------------------------------- panel */
+
+/* Selector compuesto para pisar .offcanvas-bottom sin !important. */
+.panel.panel:global(.offcanvas) {
+    left: 50%;
+    right: auto;
+    width: min(calc(100% - 1rem), 40rem);
+    height: auto;
+    max-height: min(85vh, 44rem);
+    max-height: min(85dvh, 44rem);
+    margin-bottom: 0.5rem;
+    /* Se compone con el transform que anima Bootstrap (translateY). */
+    translate: -50% 0;
+    overflow: hidden;
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-xl);
+    background-color: var(--color-surface-container-lowest);
+    box-shadow: var(--shadow-level-2);
+}
+
+.backdrop.backdrop {
+    background-color: rgba(27, 27, 29, 0.55);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+.backdrop:global(.show) {
+    opacity: 1;
+}
+
+/* --------------------------------------------------------------- cabecera */
+
+.grabber {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 0.25rem;
+    margin: var(--space-xs) auto 0;
+    border-radius: var(--radius-full);
+    background-color: var(--color-outline-variant);
+}
+
+.cabecera {
+    flex-shrink: 0;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--color-outline-variant);
+}
+
+.titulo {
+    min-width: 0;
+    margin: 0;
     color: var(--color-on-surface);
+    overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------- cuerpo */
+
+.form {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.cuerpo {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--space-lg);
+    min-height: 0;
+    padding: var(--space-md);
+    overscroll-behavior: contain;
 }
 
 .cargando {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
-    padding: var(--space-md) 0;
+    padding: var(--space-lg) 0;
     color: var(--color-on-surface-variant);
 }
 
-.cantidadGrupo {
-    max-width: 8rem;
-    margin-bottom: var(--space-md);
+.seccion {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
 }
 
-.cantidadInput {
-    text-align: center;
-    font-variant-numeric: tabular-nums;
+.seccionTitulo {
+    margin: 0;
+    color: var(--color-on-surface);
 }
+
+/* -------------------------------------------------------------- cantidad */
+
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-2xs);
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface-container-low);
+}
+
+.stepperBoton {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.stepperBoton:hover:not(:disabled) {
+    background-color: var(--color-primary-container);
+}
+
+.stepperBoton:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.stepperBoton:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* Input sin caja propia: el contenedor ya dibuja la píldora. Se usa
+   1rem de fuente para que iOS no haga zoom al enfocar. */
+.cantidadInput.cantidadInput {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    background-color: transparent;
+    box-shadow: none;
+    color: var(--color-on-surface);
+    font-size: 1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    appearance: textfield;
+}
+
+.cantidadInput.cantidadInput:focus {
+    border: 0;
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.cantidadInput::-webkit-outer-spin-button,
+.cantidadInput::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+/* ----------------------------------------------------------- ingredientes */
 
 .ingredientes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.fila {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-width: 0;
+    margin: 0;
+    padding: var(--space-sm);
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface-container-lowest);
+}
+
+/* El wrapper de Form.Check trae padding-left de Bootstrap: la fila ya
+   tiene su propio padding. */
+.fila:global(.form-check) {
+    padding-left: var(--space-sm);
+}
+
+.fila :global(.form-check-input) {
+    flex-shrink: 0;
+    float: none;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+}
+
+.fila :global(.form-check-label) {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xs);
+    min-width: 0;
+    cursor: pointer;
+}
+
+.filaFija i {
+    flex-shrink: 0;
+    color: var(--color-secondary);
+    font-size: 1rem;
+}
+
+.nombreIngrediente {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--color-on-surface);
+    overflow-wrap: anywhere;
+}
+
+.chip {
+    flex-shrink: 0;
+    padding: var(--space-2xs) var(--space-xs);
+    border-radius: var(--radius-full);
+    background-color: var(--color-secondary-container);
+    color: var(--color-on-secondary-container);
+}
+
+.chipPrecio {
+    background-color: var(--color-surface-container);
+    color: var(--color-primary);
+}
+
+.sinIngredientes {
+    margin: 0;
+    color: var(--color-on-surface-variant);
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.pie {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    padding-bottom: calc(var(--space-sm) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--color-outline-variant);
+    background-color: var(--color-surface-container-lowest);
+}
+
+.total {
     display: flex;
     flex-direction: column;
     gap: var(--space-2xs);
 }
 
-.ingredientesTitulo {
+.totalEtiqueta {
     color: var(--color-on-surface-variant);
-    margin-bottom: var(--space-2xs);
+    text-transform: uppercase;
 }
 
-.ingredienteCheck {
-    margin-bottom: var(--space-2xs);
-}
-
-.ingredienteCheck :global(.form-check-input) {
-    cursor: pointer;
-}
-
-.adicional {
-    margin-left: var(--space-xs);
-    font-size: var(--text-label-sm-size);
-    font-weight: var(--text-label-sm-weight);
-    color: var(--color-primary);
-}
-
-.ingredienteFijo {
-    display: inline-flex;
+.acciones {
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2xs);
-    color: var(--color-on-surface-variant);
+    justify-content: flex-end;
+    gap: var(--space-xs);
 }
 
-.ingredienteFijo i {
-    color: var(--color-secondary);
+.botonCancelar,
+.botonAgregar {
+    white-space: nowrap;
 }
 
-.sinIngredientes {
-    color: var(--color-on-surface-variant);
-    margin: 0;
+/* En pantallas muy angostas el total pasa arriba y las acciones ocupan
+   todo el ancho. */
+@media (max-width: 380px) {
+    .pie {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .acciones {
+        width: 100%;
+    }
+
+    .acciones :global(.btn) {
+        flex: 1 1 0;
+    }
 }

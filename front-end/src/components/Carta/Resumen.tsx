@@ -2,11 +2,18 @@ import type { ItemLista, Tipo } from '../../hooks/useDatos'
 import type { Categoria, PlatoListar, Promocion } from '../../types/Menu'
 import type { Reserva } from '../../types/Reserva'
 import type { Usuario } from '../../types/Auth'
+import type { EstadoVisitaMesa, Mesa } from '../../types/Mesa'
+import {
+  ETIQUETAS_ESTADO_VISITA_PLURAL,
+  ORDEN_ESTADOS_VISITA,
+  contarMesasPorEstado,
+} from '../../utils/mesas'
 import s from './Resumen.module.css'
 
 // Los ingredientes no tienen estado (el modelo del backend solo tiene
 // nombre y precioAdicional), por eso solo muestran el conteo de totales.
-// Las mesas tampoco muestran estados en la UI: solo el total.
+// Las mesas usan el estado de la VISITA (derivado de sus pedidos), que
+// no es el `estado` de la mesa: se cuenta en `calcularStats`.
 const ETIQUETAS: Record<Tipo, { activos?: string; pausados?: string }> = {
   plato: { activos: 'Disponibles', pausados: 'Pausados' },
   categoria: { activos: 'Activas', pausados: 'Inactivas' },
@@ -17,6 +24,14 @@ const ETIQUETAS: Record<Tipo, { activos?: string; pausados?: string }> = {
   // (cancelada, finalizada o no asistió).
   reserva: { activos: 'Pendientes', pausados: 'Resueltas' },
   mesa: {},
+}
+
+// Punto de color por estado de la visita (clases de este módulo).
+const PUNTO_ESTADO_VISITA: Record<EstadoVisitaMesa, string> = {
+  eligiendo: 'puntoEligiendo',
+  en_cocina: 'puntoEnCocina',
+  listo: 'puntoListo',
+  servido: 'puntoServido',
 }
 
 // El backend manda `disponible` en platos, `activo` en categorías,
@@ -34,6 +49,18 @@ function contarActivos(items: ItemLista[], tipo: Tipo): number {
 
 // No se exporta: react-refresh/only-export-components.
 function calcularStats(items: ItemLista[], tipo: Tipo) {
+  // Mesas: 3 indicadores excluyentes por visita (En cocina / Listos /
+  // Servidos). Cada mesa cae en uno solo; las que todavía no tienen
+  // pedidos en el circuito (`eligiendo`) no se cuentan.
+  if (tipo === 'mesa') {
+    const conteo = contarMesasPorEstado(items as Mesa[])
+    return ORDEN_ESTADOS_VISITA.map(estado => ({
+      label: ETIQUETAS_ESTADO_VISITA_PLURAL[estado],
+      valor: conteo[estado],
+      punto: PUNTO_ESTADO_VISITA[estado],
+    }))
+  }
+
   const stats = [
     { label: 'Totales', valor: items.length, punto: 'puntoTotales' },
   ]

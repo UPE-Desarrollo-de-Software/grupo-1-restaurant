@@ -74,6 +74,17 @@ interface PedidoRepository
     public function todosDeVisita(int $mesaId, ?string $desde): Collection;
 
     /**
+     * RESUMEN POR MESA (Diseño 2.0): unidades y total por estado de los
+     * pedidos de cada mesa, en UNA sola consulta agrupada (sin N+1).
+     * Incluye los cancelados; el service decide excluirlos del total.
+     * El total sale de los `subtotal` de línea, igual que la cuenta.
+     *
+     * @param  list<int>  $mesaIds
+     * @return Collection<int, object{mesa_id: int, estado: string, unidades: int, total: float}>
+     */
+    public function resumenesPorMesa(array $mesaIds): Collection;
+
+    /**
      * Ventas de un período (dashboard): cantidad y suma de `total`
      * de los pedidos en los estados indicados (ESTADOS_VENTA).
      *

@@ -1,26 +1,126 @@
-/* Particularidades de la card de mesa. La estructura común vive en
-   ../Tarjeta/Tarjeta.module.css. */
+/* Particularidades de la card de mesa (Diseño 2.0). La estructura común
+   vive en ../Tarjeta/Tarjeta.module.css.
 
-.badgeGrupo {
-  background-color: var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  border-radius: var(--radius-full);
-  padding: var(--space-2xs) var(--space-xs);
-  white-space: nowrap;
+   El borde lateral y el badge identifican el estado de la VISITA, que el
+   backend deriva de los pedidos de la mesa (en_cocina > listo >
+   eligiendo > servido). Los colores salen de los tokens. */
+
+.card.estadoEligiendo {
+  border-left: 4px solid var(--color-tertiary);
 }
 
-.titulo {
-  color: var(--color-on-surface);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.card.estadoEnCocina {
+  border-left: 4px solid var(--color-primary);
+}
+
+.card.estadoListo {
+  border-left: 4px solid var(--color-secondary);
+}
+
+.card.estadoServido {
+  border-left: 4px solid var(--color-outline);
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.identidad {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.capacidad {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--color-on-surface-variant);
+}
+
+.capacidad i {
+  font-size: 0.9rem;
+}
+
+.badgeEstado {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-full);
   white-space: nowrap;
+  background-color: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+}
+
+.estadoEligiendo .badgeEstado {
+  background-color: var(--color-tertiary);
+  color: var(--color-on-tertiary);
+}
+
+.estadoEnCocina .badgeEstado {
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.estadoListo .badgeEstado {
+  background-color: var(--color-secondary);
+  color: var(--color-on-secondary);
+}
+
+.estadoServido .badgeEstado {
+  background-color: var(--color-outline);
+  color: var(--color-inverse-on-surface);
+}
+
+.puntoEstado {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  background-color: currentColor;
+  flex-shrink: 0;
+}
+
+.codigoFila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
 }
 
 .detalle {
   color: var(--color-on-surface-variant);
   margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.codigoValor {
+  color: var(--color-on-surface);
+  letter-spacing: 0.08em;
+}
+
+.botonCopiar {
+  display: inline-flex;
+  align-items: center;
+}
+
+.pedido {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin: var(--space-xs) 0 0;
+  color: var(--color-on-surface);
+}
+
+.separador {
+  color: var(--color-outline);
+}
+
+.sinPedido {
+  color: var(--color-on-surface-variant);
 }

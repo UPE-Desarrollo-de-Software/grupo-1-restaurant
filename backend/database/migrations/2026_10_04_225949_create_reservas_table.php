@@ -27,10 +27,14 @@ return new class extends Migration
      * `codigo`: PIN de 6 dígitos que recibe el cliente al hacer la
      * reserva y presenta al llegar. Lo genera ReservaService en el
      * alta; es único solo entre las PENDIENTES (se recicla al
-     * finalizar/cancelar: 10.000 combinaciones no alcanzarían para
-     * todas las reservas de la historia), por eso NO lleva unique en
-     * la BD (MySQL no admite índices parciales) y el chequeo de
+     * finalizar/cancelar: 1.000.000 de combinaciones no alcanzarían
+     * para todas las reservas de la historia), por eso NO lleva unique
+     * en la BD (MySQL no admite índices parciales) y el chequeo de
      * unicidad es en la aplicación.
+     *
+     * La columna es `varchar(6)`: el PIN es de 6 dígitos (con ceros a
+     * la izquierda). Con menos longitud MySQL rechaza el alta con 1406
+     * ("Data too long"), aunque los tests en SQLite no lo detecten.
      */
     public function up(): void
     {
@@ -46,7 +50,7 @@ return new class extends Migration
             $table->date('fecha');
             $table->time('hora');
             $table->unsignedInteger('cantPersonas');
-            $table->string('codigo', 4)->index();
+            $table->string('codigo', 6)->index();
             $table->enum('estado', ['pendiente', 'cancelada', 'finalizada', 'no_asistio'])
                 ->default('pendiente');
 

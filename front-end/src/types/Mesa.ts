@@ -19,6 +19,21 @@ export interface Mesa {
     // PIN de 6 dígitos (string, preserva ceros a la izquierda). Opcional
     // porque no todas las respuestas lo traen (ej. relaciones anidadas).
     codigo_acceso?: string | null
+    // Resumen de la visita que agrega GET /mesas por lote (Diseño 2.0).
+    // En otras respuestas (show, alta) no viaja.
+    resumen?: ResumenVisita
+}
+
+// Estado VISIBLE de la visita, derivado en el backend de los estados de
+// sus pedidos (precedencia: en_cocina > listo > eligiendo > servido).
+export type EstadoVisitaMesa = 'eligiendo' | 'en_cocina' | 'listo' | 'servido'
+
+// Resumen por mesa de GET /mesas: unidades y total de los pedidos de la
+// visita (sin cancelados) + su estado visible.
+export interface ResumenVisita {
+    estado_pedido: EstadoVisitaMesa
+    platos: number
+    total: number
 }
 
 // Variante con el PIN obligatorio: GET /mesas/{id} y la respuesta de

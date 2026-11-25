@@ -8,7 +8,8 @@ use Illuminate\Support\Collection;
 
 /**
  * CASO DE USO: listar todas las mesas vivas (GET /api/mesas; las
- * destruidas quedan afuera gracias al SoftDeletes).
+ * destruidas quedan afuera gracias al SoftDeletes). Cada mesa viaja con
+ * su `resumen` de visita (estado/platos/total) calculado por lote.
  */
 class ListarMesasUseCase
 {
@@ -19,6 +20,6 @@ class ListarMesasUseCase
      */
     public function __invoke(): Collection
     {
-        return $this->mesas->obtenerMesas();
+        return $this->mesas->listarConResumen();
     }
 }

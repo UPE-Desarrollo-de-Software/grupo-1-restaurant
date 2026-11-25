@@ -84,6 +84,24 @@ class EloquentPedidoRepository implements PedidoRepository
             ->get();
     }
 
+    public function resumenesPorMesa(array $mesaIds): Collection
+    {
+        if ($mesaIds === []) {
+            return collect();
+        }
+
+        // Una mesa es una VISITA (se crea al sentarse y se destruye al
+        // cerrarla): todos sus pedidos son de la misma visita, sin corte
+        // por fecha. Se agrupa por (mesa, estado) para plegar en el
+        // service sin N+1.
+        return DetallePedido::query()
+            ->join('pedidos', 'pedidos.id', '=', 'detalle_pedidos.pedido_id')
+            ->whereIn('pedidos.mesa_id', $mesaIds)
+            ->groupBy('pedidos.mesa_id', 'pedidos.estado')
+            ->selectRaw('pedidos.mesa_id as mesa_id, pedidos.estado as estado, sum(detalle_pedidos.cantidad) as unidades, sum(detalle_pedidos.subtotal) as total')
+            ->get();
+    }
+
     public function ventasEntre(string $desde, string $hasta, array $estados): array
     {
         $fila = Pedido::query()

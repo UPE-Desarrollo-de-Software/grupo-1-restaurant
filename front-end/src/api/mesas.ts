@@ -1,4 +1,4 @@
-import type { Mesa, MesaConCodigo, MesaInput, CuentaMesa, ResumenMesa } from "../types/Mesa";
+import type { Mesa, MesaConCodigo, MesaInput, CuentaMesa, ResumenMesa, ResumenVisita, EstadoVisitaMesa } from "../types/Mesa";
 import { API_BASE_URL } from "../config/env";
 import { getToken } from "./auth";
 import { mensajeErrorApi } from "./error";
@@ -7,6 +7,16 @@ import { mensajeErrorApi } from "./error";
 // ids y montos sueltos; el front trabaja con números.
 // `codigo_acceso` viene en la lista (GET /mesas) y se expone como string
 // para preservar los ceros a la izquierda.
+function normalizarResumen(r: unknown): ResumenVisita | undefined {
+    if (r == null || typeof r !== 'object') return undefined
+    const datos = r as Record<string, unknown>
+    return {
+        estado_pedido: String(datos.estado_pedido) as EstadoVisitaMesa,
+        platos: Number(datos.platos ?? 0),
+        total: Number(datos.total ?? 0),
+    }
+}
+
 function normalizarMesa(m: Record<string, unknown>): Mesa {
     return {
         id: Number(m.id),
@@ -16,6 +26,7 @@ function normalizarMesa(m: Record<string, unknown>): Mesa {
         grupo_codigo: m.grupo_codigo == null ? null : Number(m.grupo_codigo),
         ocupada_desde: m.ocupada_desde == null ? null : String(m.ocupada_desde),
         codigo_acceso: m.codigo_acceso == null ? null : String(m.codigo_acceso),
+        resumen: normalizarResumen(m.resumen),
     }
 }
 

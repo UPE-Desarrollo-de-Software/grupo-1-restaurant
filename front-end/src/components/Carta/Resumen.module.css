@@ -102,3 +102,20 @@
 .puntoReservadas {
   background-color: var(--color-tertiary);
 }
+
+/* Estados de la visita de una mesa (mismo código de color que la card). */
+.puntoEligiendo {
+  background-color: var(--color-tertiary);
+}
+
+.puntoEnCocina {
+  background-color: var(--color-primary);
+}
+
+.puntoListo {
+  background-color: var(--color-secondary);
+}
+
+.puntoServido {
+  background-color: var(--color-outline);
+}

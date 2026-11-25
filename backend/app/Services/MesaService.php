@@ -74,6 +74,92 @@ class MesaService
     }
 
     /**
+     * Listado de mesas vivas para el panel (GET /mesas): cada mesa viaja
+     * con su `resumen` de visita (estado del pedido, unidades y total),
+     * calculado EN LOTE sin N+1 (una consulta agrupada por mesa/estado).
+     * `obtenerMesas()` sigue devolviendo las mesas peladas.
+     *
+     * @return Collection<int, Mesa>
+     */
+    public function listarConResumen(): Collection
+    {
+        $mesas = $this->mesas->todas();
+
+        if ($mesas->isEmpty()) {
+            return $mesas;
+        }
+
+        $resumenes = $this->pedidos->resumenesPorMesa($mesas->pluck('id')->all())
+            ->groupBy(fn ($fila) => (int) $fila->mesa_id);
+
+        return $mesas->each(
+            fn (Mesa $mesa) => $mesa->setAttribute(
+                'resumen',
+                $this->resumenDeVisita($resumenes->get($mesa->id, collect()))
+            )
+        );
+    }
+
+    /**
+     * Pliega los pedidos de una visita en el resumen visible del panel:
+     * `en_cocina` gana sobre `listo`, `listo` sobre `eligiendo` y
+     * `servido` queda último. Los cancelados no cuentan ni para el
+     * estado ni para las unidades/total.
+     *
+     * @param  Collection<int, object{estado: string, unidades: int, total: float}>  $filas
+     * @return array{estado_pedido: string, platos: int, total: float}
+     */
+    private function resumenDeVisita(Collection $filas): array
+    {
+        $estados = $filas->pluck('estado')->all();
+
+        $platos = 0;
+        $total = 0.0;
+
+        foreach ($filas as $fila) {
+            if ($fila->estado === 'cancelado') {
+                continue;
+            }
+
+            $platos += (int) $fila->unidades;
+            $total += (float) $fila->total;
+        }
+
+        return [
+            'estado_pedido' => $this->estadoDeVisita($estados),
+            'platos' => $platos,
+            'total' => round($total, 2),
+        ];
+    }
+
+    /**
+     * Estado VISIBLE de la visita derivado de los estados de sus
+     * pedidos (precedencia: en cocina > listo > eligiendo > servido).
+     *
+     * @param  list<string>  $estados
+     */
+    private function estadoDeVisita(array $estados): string
+    {
+        if (array_intersect($estados, ['enviado', 'en_preparacion']) !== []) {
+            return 'en_cocina';
+        }
+
+        if (in_array('listo', $estados, true)) {
+            return 'listo';
+        }
+
+        if (array_intersect($estados, ['en_curso', 'confirmado']) !== []) {
+            return 'eligiendo';
+        }
+
+        if (in_array('entregado', $estados, true)) {
+            return 'servido';
+        }
+
+        return 'eligiendo';
+    }
+
+    /**
      * Mesa viva por id; lanza ModelNotFoundException (404) si no existe
      * (o fue destruida).
      */
