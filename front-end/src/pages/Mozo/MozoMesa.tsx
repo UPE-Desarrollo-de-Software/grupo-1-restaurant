@@ -32,9 +32,9 @@ const formatearFecha = (fecha: string): string => {
 }
 
 // No se exporta: react-refresh/only-export-components.
-// Cómo se cobró lo aprobado: por pedido si se pasa `pedidoId` (los
-// pagos "total" saldan cualquier parte), si no de toda la visita.
-// null = todavía no hay pagos aprobados.
+// Cómo se cobró la parte: "Cobrado …" sólo cuando quedó SALDADA; con
+// un cobro parcial (o de otra parte) se muestra el importe para no
+// leerla como pagada. null = todavía no hay pagos aprobados.
 function prefijoPago(pagos: PagoResumen[] | undefined, pedidoId?: number): string | null {
     const aplicables = (pagos ?? []).filter(pago =>
         pago.estado === 'aprobado'
@@ -49,14 +49,22 @@ function prefijoPago(pagos: PagoResumen[] | undefined, pedidoId?: number): strin
 
 // No se exporta: react-refresh/only-export-components.
 function BloqueParte({ parte, indice, saldo, pagos }: { parte: ParteCuenta; indice: number; saldo?: { pagado: number; pendiente: number }; pagos?: PagoResumen[] }) {
-    const medio = (saldo?.pagado ?? 0) > 0 ? (prefijoPago(pagos, parte.pedido_id) ?? 'Pagado') : null
+    const pagado = saldo?.pagado ?? 0
+    const pendiente = saldo?.pendiente ?? 0
+    const saldada = pagado > 0 && pendiente <= 0
+    const parcial = pagado > 0 && pendiente > 0
+    const medio = saldada
+        ? (prefijoPago(pagos, parte.pedido_id) ?? 'Pagado')
+        : parcial
+            ? `Pago parcial ${formatearPrecio(pagado)}`
+            : null
     return (
         <Card className={s.parteCard}>
             <div className={s.pedidoHeader}>
                 <span className={`text-headline-sm ${s.pedidoTitulo}`}>Parte {indice + 1}</span>
                 <span>
                     {medio && (
-                        <span className={`text-label-sm ${s.badgeOk} me-1`}>{medio}</span>
+                        <span className={`text-label-sm ${parcial ? s.badgeEstado : s.badgeOk} me-1`}>{medio}</span>
                     )}
                     <span className={`text-label-sm ${s.badgeEstado}`}>Pedido #{parte.pedido_id}</span>
                 </span>

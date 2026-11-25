@@ -1166,3 +1166,107 @@ test('el cobro en efectivo exige tomar_pedidos', function () {
 
     $this->postJson("/api/mesas/{$mesa->id}/pagos", ['monto' => 100])->assertStatus(401);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Reparto de los pagos por PARTE (lo cobrado no alcanza a partes nuevas)
+|--------------------------------------------------------------------------
+*/
+
+test('un pedido nuevo despues de un pago total no aparece como pagado', function () {
+    pagoHabilitar();
+    pagoHttpFake();
+    $mesa = pagoMesa();
+    $plato = pagoPlato(1000);
+
+    // Primera parte ($1000): la visita se cobra entera.
+    pagoPedidoCobrable($mesa, $plato, 1000);
+
+    Pago::create([
+        'mesa_id' => $mesa->id,
+        'tipo' => Pago::TIPO_TOTAL,
+        'monto' => 1000,
+        'estado' => Pago::ESTADO_APROBADO,
+        'mp_payment_id' => '101010101',
+    ]);
+
+    // Después de cobrar se envía OTRO pedido: no fue parte del cobro.
+    $nueva = pagoPedidoCobrable($mesa, $plato, 800);
+
+    pagoComensal($this, $mesa->codigo_acceso)
+        ->getJson('/api/cliente/pagos')
+        ->assertOk()
+        ->assertJsonPath('saldo.pagado', 1000)
+        ->assertJsonPath('saldo.pendiente', 800)
+        ->assertJsonPath('saldo.partes.0.pagado', 1000)
+        ->assertJsonPath('saldo.partes.0.pendiente', 0)
+        ->assertJsonPath('saldo.partes.1.pagado', 0)
+        ->assertJsonPath('saldo.partes.1.pendiente', 800);
+
+    // Y la parte nueva sí se puede pagar por su parte (con el reparto
+    // viejo respondía 422 "Tu parte ya está saldada").
+    pagoComensal($this, $mesa->codigo_acceso)
+        ->postJson('/api/cliente/pagos', ['tipo' => 'mi_parte', 'pedido_id' => $nueva->id])
+        ->assertStatus(201)
+        ->assertJsonPath('monto', 800);
+});
+
+test('un cobro parcial no marca todas las partes como pagadas', function () {
+    $mesa = pagoMesa();
+    $plato = pagoPlato(1000);
+
+    pagoPedidoCobrable($mesa, $plato, 1000);
+    pagoPedidoCobrable($mesa, $plato, 800);
+
+    // El mozo cobra $400 de los $1800: sólo cubre la primera parte.
+    pagoMozo($this)
+        ->postJson("/api/mesas/{$mesa->id}/pagos", ['monto' => 400])
+        ->assertStatus(201);
+
+    pagoComensal($this, $mesa->codigo_acceso)
+        ->getJson('/api/cliente/pagos')
+        ->assertOk()
+        ->assertJsonPath('saldo.pagado', 400)
+        ->assertJsonPath('saldo.pendiente', 1400)
+        ->assertJsonPath('saldo.partes.0.pagado', 400)
+        ->assertJsonPath('saldo.partes.0.pendiente', 600)
+        ->assertJsonPath('saldo.partes.1.pagado', 0)
+        ->assertJsonPath('saldo.partes.1.pendiente', 800);
+});
+
+test('solo aprueba un pago de mp que vino de la preferencia de la fila', function () {
+    pagoHabilitar();
+    $estado = ['pago' => ['preference_id' => 'pref-viejo']];
+    pagoHttpFakeEstado($estado);
+    $mesa = pagoMesa();
+    $plato = pagoPlato(1000);
+
+    pagoPedir($this, $mesa, $plato, 1)->assertStatus(201);
+    pagoComensal($this, $mesa->codigo_acceso)
+        ->postJson('/api/cliente/pagos', ['tipo' => 'total'])
+        ->assertStatus(201);
+
+    $pago = Pago::sole();
+
+    // MP trae la misma referencia externa pero de OTRA preferencia
+    // (los ids de fila se reutilizan si la base se recrea): no es
+    // nuestro pago y no se aprueba.
+    $this->postJson(
+        '/api/webhooks/mercado-pago?type=payment&data.id=987654',
+        [],
+        pagoFirmar('987654'),
+    )->assertOk()->assertJsonPath('pago_id', null)->assertJsonPath('estado', null);
+
+    expect($pago->fresh()->estado)->toBe('pendiente');
+
+    // Con la preferencia DE LA FILA sí es el pago real: se acredita.
+    $estado['pago'] = ['preference_id' => 'pref-test-1'];
+
+    $this->postJson(
+        '/api/webhooks/mercado-pago?type=payment&data.id=987654',
+        [],
+        pagoFirmar('987654'),
+    )->assertOk()->assertJsonPath('estado', 'aprobado');
+
+    expect($pago->fresh()->estado)->toBe('aprobado');
+});

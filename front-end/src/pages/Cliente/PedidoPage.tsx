@@ -27,29 +27,6 @@ interface RetornoPago {
     preferenceId: string | null
 }
 
-// Lo que había que acreditar al salir hacia Mercado Pago: el saldo
-// sólo se considera acreditado cuando el BACK lo refleja (el webhook
-// es la fuente de verdad, nunca el parámetro de la URL).
-interface RetornoPagoGuardado {
-    monto: number
-    pagadoPrevio: number
-    ts: number
-}
-
-const CLAVE_RETORNO_PAGO = 'gastro_pago_retorno'
-
-function leerRetornoPago(): RetornoPagoGuardado | null {
-    try {
-        const crudo = sessionStorage.getItem(CLAVE_RETORNO_PAGO)
-        if (!crudo) return null
-        const datos = JSON.parse(crudo) as Partial<RetornoPagoGuardado>
-        if (typeof datos.monto !== 'number' || typeof datos.pagadoPrevio !== 'number') return null
-        return { monto: datos.monto, pagadoPrevio: datos.pagadoPrevio, ts: datos.ts ?? 0 }
-    } catch {
-        return null
-    }
-}
-
 const formatearPrecio = (precio: number): string =>
     new Intl.NumberFormat('es-AR', {
         style: 'currency',
@@ -98,8 +75,19 @@ function BloqueParte({
                 <span className='text-body-md'>Parte {indice + 1}</span>
                 <span>
                     {esMia && <Badge bg='primary' className='text-label-sm'>Tu parte</Badge>}
-                    {(saldo?.pagado ?? 0) > 0 && (
-                        <Badge bg='success' className='text-label-sm ms-1'>Pagado</Badge>
+                    {/* "Pagado" sólo si la parte quedó Saldada: con un
+                        cobro parcial (o de otra parte) se avisa el
+                        importe para no leerla como pagada. */}
+                    {saldo && saldo.pagado > 0 && (
+                        <Badge
+                            bg={saldo.pendiente > 0 ? 'warning' : 'success'}
+                            text={saldo.pendiente > 0 ? 'dark' : undefined}
+                            className='text-label-sm ms-1'
+                        >
+                            {saldo.pendiente > 0
+                                ? `Pago parcial ${formatearPrecio(saldo.pagado)}`
+                                : 'Pagado'}
+                        </Badge>
                     )}
                 </span>
             </header>
@@ -311,7 +299,6 @@ export function PedidoPage() {
         let intentos = 0
         let temporizador: ReturnType<typeof setTimeout> | undefined
         const codigo = mesa.codigo_acceso
-        const esperado = leerRetornoPago()
         const rechazado = ['rejected', 'cancelled', 'refunded', 'charged_back'].includes(retornoPago.estado ?? '')
         const referencia = {
             ...(retornoPago.paymentId !== null ? { payment_id: retornoPago.paymentId } : {}),
@@ -320,7 +307,6 @@ export function PedidoPage() {
         const REFERENCIA_VACIA = Object.keys(referencia).length === 0
 
         const resolver = (estado: EstadoVerificacion) => {
-            sessionStorage.removeItem(CLAVE_RETORNO_PAGO)
             setEstadoVerificacion(estado)
         }
 
@@ -346,8 +332,11 @@ export function PedidoPage() {
                         resolver('rechazado')
                         return
                     }
-                    if (estadoMp === 'aprobado'
-                        || (esperado !== null && datos.saldo.pagado >= esperado.pagadoPrevio + esperado.monto - 0.01)) {
+                    // Sólo el ESTADO que devolvió MP (consultado en el
+                    // back) acredita el pago: un saldo que "ya cuadra"
+                    // no alcanza, así el front nunca avisa un pago que
+                    // Mercado Pago no acreditó.
+                    if (estadoMp === 'aprobado') {
                         resolver('acreditado')
                         return
                     }
@@ -437,9 +426,9 @@ export function PedidoPage() {
     }
 
     // Inicia un pago Checkout Pro: el back calcula el monto y devuelve
-    // `init_point` (URL de Mercado Pago). Se guarda lo esperado para
-    // poder detectar la acreditación al volver; la confirmación la da
-    // el webhook del back, nunca el parámetro de la URL.
+    // `init_point` (URL de Mercado Pago). La confirmación la da el
+    // webhook del back contra la API de MP, nunca el parámetro de la
+    // URL ni un saldo que "ya cuadre".
     async function iniciarPago(tipo: TipoPago, pedidoRaizId?: number) {
         if (!mesa || pagoEnCurso !== null) return
         setPagoEnCurso(tipo)
@@ -449,11 +438,6 @@ export function PedidoPage() {
                 tipo,
                 ...(pedidoRaizId !== undefined ? { pedido_id: pedidoRaizId } : {}),
             })
-            sessionStorage.setItem(CLAVE_RETORNO_PAGO, JSON.stringify({
-                monto: preferencia.monto,
-                pagadoPrevio: pagos?.saldo.pagado ?? 0,
-                ts: Date.now(),
-            } satisfies RetornoPagoGuardado))
             window.location.assign(preferencia.init_point)
         } catch (err) {
             // 503 (módulo apagado) y 422 (cuenta saldada) llegan como
