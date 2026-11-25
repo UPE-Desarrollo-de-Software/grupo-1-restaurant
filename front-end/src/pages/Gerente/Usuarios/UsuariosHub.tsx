@@ -13,13 +13,13 @@ export function UsuariosHubPage() {
   return (
     <div className={`${s.page} ${s.hub}`}>
       <h1 className={`text-headline-md ${s.title}`}>Usuarios</h1>
+      <Resumen tipo='usuario' items={items} loading={loading} variante='compacta' />
+      <BotonRedireccion nombre='Nuevo Usuario' ruta='/gerente/usuarios/crear'/>
       <Buscador
         placeHolder='Buscar usuario por nombre, email o id...'
         valor={busqueda}
         onCambio={setBusqueda}
       />
-      <BotonRedireccion nombre='Nuevo Usuario' ruta='/gerente/usuarios/crear'/>
-      <Resumen tipo='usuario' items={items} loading={loading} />
       <Lista tipo='usuario' items={items} loading={loading} error={error} busqueda={busqueda} />
     </div>
   )

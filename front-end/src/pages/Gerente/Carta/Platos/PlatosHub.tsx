@@ -24,16 +24,21 @@ export function PlatosHubPage() {
 
   return (
     <div className={`${s.page} ${s.hub}`}>
+      <Resumen tipo='plato' items={items} loading={loading} variante='compacta' />
+      <div className={s.hubAcciones}>
+        <BotonRedireccion
+          nombre='Actualizar precios'
+          ruta='/gerente/carta/platos/aumentar-precios'
+          variante='outline'
+          icono='bi bi-graph-up-arrow'
+        />
+        <BotonRedireccion nombre='Nuevo Plato' ruta='/gerente/carta/platos/crear'/>
+      </div>
       <Buscador
         placeHolder='Buscar plato por nombre o id...'
         valor={busqueda}
         onCambio={setBusqueda}
       />
-      <div className={s.hubAcciones}>
-        <BotonRedireccion nombre='Nuevo Plato' ruta='/gerente/carta/platos/crear'/>
-        <BotonRedireccion nombre='Aumentar precios' ruta='/gerente/carta/platos/aumentar-precios'/>
-      </div>
-      <Resumen tipo='plato' items={items} loading={loading} />
       <FiltroCategorias
         platos={platos}
         categorias={categorias}

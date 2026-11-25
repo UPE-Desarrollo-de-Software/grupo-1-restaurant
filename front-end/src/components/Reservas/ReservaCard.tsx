@@ -62,7 +62,7 @@ export function ReservaCard({ reserva }: ReservaCardProps) {
         </div>
 
         <div className={`${t.footer} ${t.footerDerecha}`}>
-          <Link className={`btn btn-outline-primary btn-sm text-label-md ${s.botonGestionar}`} to={`${base}/${reserva.id}/editar`}>
+          <Link className={`btn btn-outline-primary btn-sm rounded-pill text-label-md ${s.botonGestionar}`} to={`${base}/${reserva.id}/editar`}>
             <i className={`bi bi-pencil ${t.iconoAccion}`} aria-hidden="true" />
             {esPendiente ? 'Gestionar' : 'Visualizar'}
           </Link>

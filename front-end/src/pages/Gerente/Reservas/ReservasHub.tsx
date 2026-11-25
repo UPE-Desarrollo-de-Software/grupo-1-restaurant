@@ -44,13 +44,13 @@ export function ReservasHubPage() {
     return (
         <div className={`${s.page} ${s.hub}`}>
             <h1 className={`text-headline-md ${s.title}`}>Reservas</h1>
+            <Resumen tipo='reserva' items={items} loading={loading} variante='compacta' />
+            <BotonRedireccion nombre='Nueva Reserva' ruta={`${base}/crear`}/>
             <Buscador
                 placeHolder='Buscar por nombre o código...'
                 valor={busqueda}
                 onCambio={setBusqueda}
             />
-            <BotonRedireccion nombre='Nueva Reserva' ruta={`${base}/crear`}/>
-            <Resumen tipo='reserva' items={items} loading={loading} />
             <div className={s.filtros}>
                 <Form.Select
                     className={`${s.filtro} text-label-md`}

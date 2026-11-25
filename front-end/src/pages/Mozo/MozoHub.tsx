@@ -23,15 +23,15 @@ export function MozoPage() {
 
     return (
         <div className={`${s.page} ${s.hub}`}>
+            <div className={s.toolbar}>
+                <BotonRedireccion nombre='Nueva mesa' ruta='/mozo/mesas/crear' />
+            </div>
+
             <Buscador
                 placeHolder='Buscar mesa por id o código...'
                 valor={busqueda}
                 onCambio={setBusqueda}
             />
-
-            <div className={s.toolbar}>
-                <BotonRedireccion nombre='Nueva mesa' ruta='/mozo/mesas/crear' />
-            </div>
 
             {aviso && <Alert variant='success' className='text-body-md'>{aviso}</Alert>}
 

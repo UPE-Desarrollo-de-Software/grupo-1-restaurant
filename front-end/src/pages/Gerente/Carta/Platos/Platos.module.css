@@ -127,18 +127,21 @@
   margin-top: 0;
 }
 
-/* Acciones del hub de platos: "Nuevo Plato" + "Aumentar precios"
-   lado a lado en pantallas medianas, apiladas en el celular. */
+/* Acciones del hub de platos: "Actualizar precios" (outline) y "Nuevo plato"
+   (primario), en la misma fila y con el mismo ancho, también en el celular. */
 .hubAcciones {
   display: flex;
-  flex-direction: column;
+  align-items: stretch;
   gap: var(--space-sm);
 }
 
-@media (min-width: 576px) {
-  .hubAcciones {
-    flex-direction: row;
-  }
+/* El Link de BotonRedireccion es un <a>: se le gana la base compartida
+   (width: 100%) sin depender del orden de los módulos. `flex: 1 1 0` reparte
+   el ancho en partes iguales sin importar el texto de cada botón. */
+.hubAcciones > a {
+  width: auto;
+  min-width: 0;
+  flex: 1 1 0;
 }
 
 /* ============ AUMENTO MASIVO DE PRECIOS ============ */

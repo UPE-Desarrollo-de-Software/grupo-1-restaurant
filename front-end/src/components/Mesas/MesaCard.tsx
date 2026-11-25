@@ -45,7 +45,7 @@ export function MesaCard({ mesa }: { mesa: Mesa }) {
 
         <div className={`${t.footer} ${t.footerDerecha}`}>
           <Link
-            className={`btn btn-outline-primary btn-sm text-label-md ${t.botonAccion}`}
+            className={`btn btn-outline-primary btn-sm rounded-pill text-label-md ${t.botonAccion}`}
             to={enMozo ? `/mozo/mesas/${mesa.id}` : `/gerente/mesas/gestion/${mesa.id}/editar`}
           >
             <i className={`bi ${enMozo ? 'bi-arrow-right' : 'bi-pencil'} ${t.iconoAccion}`} aria-hidden="true" />

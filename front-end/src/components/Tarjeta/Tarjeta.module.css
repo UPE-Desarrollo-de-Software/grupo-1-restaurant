@@ -22,7 +22,7 @@
 .card {
   background-color: var(--color-surface-container-lowest);
   border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-level-1);
 }
 
@@ -82,6 +82,8 @@
   justify-content: space-between;
 }
 
+/* Botón de acción de la card: colores y layout comunes. El radio de pastilla
+   lo aporta la clase `rounded-pill` de Bootstrap en cada card. */
 .botonAccion {
   display: flex;
   align-items: center;

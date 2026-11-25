@@ -12,13 +12,13 @@ export function PromocionesHubPage() {
 
   return (
     <div className={`${s.page} ${s.hub}`}>
+      <Resumen tipo='promocion' items={items} loading={loading} variante='compacta' />
+      <BotonRedireccion nombre='Nueva Promoción' ruta='/gerente/carta/promociones/crear'/>
       <Buscador
         placeHolder='Buscar promoción por nombre o id...'
         valor={busqueda}
         onCambio={setBusqueda}
       />
-      <BotonRedireccion nombre='Nueva Promoción' ruta='/gerente/carta/promociones/crear'/>
-      <Resumen tipo='promocion' items={items} loading={loading} />
       <Lista tipo='promocion' items={items} loading={loading} error={error} busqueda={busqueda} />
     </div>
   )

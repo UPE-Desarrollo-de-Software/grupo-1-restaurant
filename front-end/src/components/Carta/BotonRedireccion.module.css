@@ -25,3 +25,19 @@
 .icono {
   font-size: 1.15rem;
 }
+
+/* Variante secundaria (Diseño 2.0): contorno en lugar de relleno. Va al
+   final del archivo para ganarle a las reglas base con la misma
+   especificidad. */
+.outline {
+  background-color: var(--color-surface-container-lowest);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.outline:hover,
+.outline:active {
+  background-color: var(--color-primary-container);
+  border-color: var(--color-primary-container);
+  color: var(--color-on-primary);
+}

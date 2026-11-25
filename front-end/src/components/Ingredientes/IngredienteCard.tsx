@@ -38,7 +38,7 @@ export function IngredienteCard({ ingrediente }: IngredienteCardProps) {
         </div>
 
         <div className={`${t.footer} ${t.footerDerecha}`}>
-          <Link className={`btn btn-outline-primary btn-sm text-label-md ${t.botonAccion}`} to={`/gerente/carta/ingredientes/${ingrediente.id}/editar`}>
+          <Link className={`btn btn-outline-primary btn-sm rounded-pill text-label-md ${t.botonAccion}`} to={`/gerente/carta/ingredientes/${ingrediente.id}/editar`}>
             <i className={`bi bi-pencil ${t.iconoAccion}`} aria-hidden="true" />
             Editar
           </Link>

@@ -23,23 +23,70 @@ export interface ConfiguracionIngrediente {
     precioAdicional: string
 }
 
+// `tono` es la clave de color del estado en CSS ('' usa la clave 'excluido').
+export type TonoEstadoIngrediente = 'excluido' | 'obligatorio' | 'por_defecto' | 'agregar'
+
 export interface OpcionEstadoIngrediente {
     valor: OpcionIngredientePlato
+    tono: TonoEstadoIngrediente
+    // Botón de la card y subtítulo que lo explica.
     etiqueta: string
-    badge: string
+    resumen: string
+    // Fila del panel emergente: título, explicación y chip a la derecha.
+    titulo: string
+    descripcion: string
+    tag: string
     icono: string
 }
 
-// Las cuatro opciones de la card, en el orden en que se muestran.
+// Las cuatro opciones en el orden del panel emergente.
 export const OPCIONES_ESTADO_INGREDIENTE: readonly OpcionEstadoIngrediente[] = [
-    { valor: '', etiqueta: 'Excluido', badge: 'Excluido', icono: 'bi-slash-circle' },
-    { valor: 'obligatorio', etiqueta: 'Obligatorio', badge: 'Obligatorio', icono: 'bi-lock-fill' },
-    { valor: 'por_defecto', etiqueta: 'Por defecto', badge: 'Removible', icono: 'bi-check-circle-fill' },
-    { valor: 'agregar', etiqueta: 'Opcional', badge: 'Para agregar', icono: 'bi-plus-circle-fill' },
+    {
+        valor: 'obligatorio',
+        tono: 'obligatorio',
+        etiqueta: 'Obligatorio',
+        resumen: 'Fijo en el plato',
+        titulo: 'Obligatorio',
+        descripcion: 'El cliente no puede quitarlo ni pedir el plato sin este ingrediente.',
+        tag: 'Fijo en plato',
+        icono: 'bi-lock-fill',
+    },
+    {
+        valor: 'por_defecto',
+        tono: 'por_defecto',
+        etiqueta: 'Por defecto',
+        resumen: 'Se puede quitar',
+        titulo: 'Por defecto (Removible)',
+        descripcion: 'Viene con la receta base, pero el comensal puede marcarlo como "sin ...".',
+        tag: '',
+        icono: 'bi-check-circle-fill',
+    },
+    {
+        valor: 'agregar',
+        tono: 'agregar',
+        etiqueta: 'Para agregar',
+        resumen: 'Recargo al agregar',
+        titulo: 'Para agregar (Opcional)',
+        descripcion: 'No viene en la preparación estándar; el comensal puede sumarlo opcionalmente con recargo.',
+        tag: '+Extra configurable',
+        icono: 'bi-plus-circle-fill',
+    },
+    {
+        valor: '',
+        tono: 'excluido',
+        etiqueta: 'Excluido',
+        resumen: 'No se incluye en el plato',
+        titulo: 'No incluir',
+        descripcion: 'Queda excluido del plato y oculto en la carta para evitar confusiones de cocina.',
+        tag: 'Desactivado',
+        icono: 'bi-slash-circle',
+    },
 ]
 
-export function etiquetaBadgeIngrediente(estado: OpcionIngredientePlato): string {
-    return OPCIONES_ESTADO_INGREDIENTE.find(opcion => opcion.valor === estado)?.badge ?? ''
+// Estado sin configurar ('' = excluido) también resuelve: es la última opción.
+export function opcionEstadoIngrediente(estado: OpcionIngredientePlato): OpcionEstadoIngrediente {
+    return OPCIONES_ESTADO_INGREDIENTE.find(opcion => opcion.valor === estado)
+        ?? OPCIONES_ESTADO_INGREDIENTE[OPCIONES_ESTADO_INGREDIENTE.length - 1]
 }
 
 export function estadoDesdePivot(pivot: { opcional: boolean; por_defecto: boolean }): EstadoIngredientePlato | null {

@@ -3,6 +3,7 @@ import { Card, Form, Spinner } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
 import type { PlatoListar } from '../../types/Menu'
 import { cambiarDisponibilidad } from '../../api/platos'
+import { tonoCategoria } from '../../utils/colorCategoria'
 import t from '../Tarjeta/Tarjeta.module.css'
 import s from './PlatoCard.module.css'
 
@@ -50,7 +51,7 @@ export function PlatoCard({ plato, onCambio }: PlatoCardProps) {
   }
 
   return (
-    <Card className={t.card}>
+    <Card className={`${t.card} ${s.card}`} data-categoria={tonoCategoria(plato.categoria_nombre)}>
       <Card.Body className={t.body}>
         <div className={s.fila}>
           <div className={s.media}>
@@ -83,7 +84,7 @@ export function PlatoCard({ plato, onCambio }: PlatoCardProps) {
         </div>
 
         <div className={`${t.footer} ${t.footerEspaciada}`}>
-          <Link className={`btn btn-outline-primary btn-sm text-label-md ${t.botonAccion}`} to={`/gerente/carta/platos/${plato.id}/editar`}>
+          <Link className={`btn btn-outline-primary btn-sm rounded-pill text-label-md ${t.botonAccion}`} to={`/gerente/carta/platos/${plato.id}/editar`}>
             <i className={`bi bi-pencil ${t.iconoAccion}`} aria-hidden="true" />
             Editar
           </Link>

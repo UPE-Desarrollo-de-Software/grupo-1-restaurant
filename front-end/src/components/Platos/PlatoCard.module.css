@@ -2,6 +2,40 @@
    y footer con Editar + switch. La estructura común vive en
    ../Tarjeta/Tarjeta.module.css. */
 
+/* Borde izquierdo por categoría (Diseño 2.0): el color llega por
+   `data-categoria` (utils/colorCategoria.ts) y se resuelve acá a un token
+   de tokens.css. El selector con atributo gana la base compartida sin
+   depender del orden de los módulos. Sin entrada en el mapeo, la variable
+   cae al color secundario. */
+.card[data-categoria] {
+  border-left: 4px solid var(--color-categoria, var(--color-secondary));
+  border-radius: var(--radius-lg);
+}
+
+.card[data-categoria='primario'] {
+  --color-categoria: var(--color-primary);
+}
+
+.card[data-categoria='primario-claro'] {
+  --color-categoria: var(--color-primary-container);
+}
+
+.card[data-categoria='secundario'] {
+  --color-categoria: var(--color-secondary);
+}
+
+.card[data-categoria='terciario'] {
+  --color-categoria: var(--color-tertiary);
+}
+
+.card[data-categoria='terciario-claro'] {
+  --color-categoria: var(--color-tertiary-container);
+}
+
+.card[data-categoria='neutro'] {
+  --color-categoria: var(--color-outline);
+}
+
 /* Se separa de la base: la fila se alinea arriba por la imagen. */
 .fila {
   display: flex;

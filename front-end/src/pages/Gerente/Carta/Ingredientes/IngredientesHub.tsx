@@ -12,13 +12,13 @@ export function IngredientesHubPage() {
 
   return (
     <div className={`${s.page} ${s.hub}`}>
+      <Resumen tipo='ingrediente' items={items} loading={loading} variante='compacta' />
+      <BotonRedireccion nombre='Nuevo Ingrediente' ruta='/gerente/carta/ingredientes/crear'/>
       <Buscador
         placeHolder='Buscar ingrediente por nombre o id...'
         valor={busqueda}
         onCambio={setBusqueda}
       />
-      <BotonRedireccion nombre='Nuevo Ingrediente' ruta='/gerente/carta/ingredientes/crear'/>
-      <Resumen tipo='ingrediente' items={items} loading={loading} />
       <Lista tipo='ingrediente' items={items} loading={loading} error={error} busqueda={busqueda} />
     </div>
   )

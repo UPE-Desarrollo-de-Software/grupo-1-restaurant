@@ -1,3 +1,54 @@
+/* Variante compacta (Diseño 2.0): los tres indicadores en una sola fila
+   centrada, con scroll horizontal si no entran en pantallas muy angostas
+   (`safe center` evita que el scroll recorte el primer indicador). */
+.compacta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-content: safe center;
+  gap: var(--space-md);
+  padding: var(--space-xs) var(--space-md);
+  background-color: var(--color-surface-container-low);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-full);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.compacta::-webkit-scrollbar {
+  display: none;
+}
+
+.compactaItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  white-space: nowrap;
+}
+
+.compactaValor {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-weight: 700;
+}
+
+/* Totales con el color primario del proyecto. */
+.compactaTotal {
+  color: var(--color-primary);
+}
+
+.compactaLabel {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+}
+
+/* En la variante compacta "Pausados" usa gris (neutro), no el rojo de error
+   del grid: el estado pausado no es un error. */
+.compacta .puntoPausados {
+  background-color: var(--color-outline);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));

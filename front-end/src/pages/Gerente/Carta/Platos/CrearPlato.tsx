@@ -258,6 +258,7 @@ export function CrearPlatoPage() {
                             cargando={loadingIngredientes}
                             configuracion={ingredientes}
                             onCambiar={cambiarIngrediente}
+                            vistaInicial='todos'
                         />
                     </Form.Group>
 

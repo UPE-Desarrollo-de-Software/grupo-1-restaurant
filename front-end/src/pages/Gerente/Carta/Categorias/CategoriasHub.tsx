@@ -20,9 +20,9 @@ export function CategoriasPage() {
 
   return (
     <div className={`${s.page} ${s.hub}`}>
-      <Buscador placeHolder='Buscar categoría por nombre...' valor={busqueda} onCambio={setBusqueda}/>
+      <Resumen tipo='categoria' items={items} loading={loading} variante='compacta' />
       <BotonRedireccion nombre='Nueva categoria' ruta='/gerente/carta/categorias/crear'/>
-      <Resumen tipo='categoria' items={items} loading={loading} />
+      <Buscador placeHolder='Buscar categoría por nombre...' valor={busqueda} onCambio={setBusqueda}/>
       <FiltroEstadoCategorias categorias={categorias} filtro={filtro} onFiltro={setFiltro} />
       <Lista
         tipo='categoria'

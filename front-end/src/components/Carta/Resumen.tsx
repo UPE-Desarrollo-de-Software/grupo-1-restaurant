@@ -50,8 +50,37 @@ function calcularStats(items: ItemLista[], tipo: Tipo) {
   return stats
 }
 
-export function Resumen({ tipo, items, loading }: { tipo: Tipo; items: ItemLista[]; loading?: boolean }) {
+interface ResumenProps {
+  tipo: Tipo
+  items: ItemLista[]
+  loading?: boolean
+  // 'grid' (default) = tarjetas con el número grande, como venían usando los
+  // hubs. 'compacta' = una sola fila (Diseño 2.0), la que usa PlatosHub.
+  variante?: 'grid' | 'compacta'
+}
+
+export function Resumen({ tipo, items, loading, variante = 'grid' }: ResumenProps) {
   const stats = calcularStats(items, tipo)
+
+  // Fila compacta: punto de estado + valor + etiqueta, todo en una línea.
+  // El valor de "Totales" va en el color primario del proyecto.
+  if (variante === 'compacta') {
+    return (
+      <div className={s.compacta}>
+        {stats.map(stat => (
+          <div key={stat.label} className={s.compactaItem}>
+            <span className={`${s.punto} ${s[stat.punto]}`} aria-hidden="true" />
+            <span
+              className={`text-label-md ${s.compactaValor} ${stat.punto === 'puntoTotales' ? s.compactaTotal : ''}`}
+            >
+              {loading ? '...' : stat.valor}
+            </span>
+            <span className={`text-label-md ${s.compactaLabel}`}>{stat.label}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className={s.grid}>
