@@ -83,6 +83,15 @@ class ReporteService
                 ])
                 ->values()
                 ->all(),
+            'categorias_mas_vendidas' => $this->pedidos->categoriasMasVendidas($desde, $hasta, self::ESTADOS_VENTA)
+                ->map(fn ($fila) => [
+                    'categoria_id' => (int) $fila->categoria_id,
+                    'nombre' => (string) $fila->nombre,
+                    'unidades' => (int) $fila->unidades,
+                    'total' => round((float) $fila->total, 2),
+                ])
+                ->values()
+                ->all(),
             'ocupacion_actual' => $this->ocupacionActual(),
             'reservas_hoy' => $this->resumenReservasDeHoy(),
         ];

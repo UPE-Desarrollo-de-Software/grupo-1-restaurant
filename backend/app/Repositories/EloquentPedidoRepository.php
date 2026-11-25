@@ -123,6 +123,21 @@ class EloquentPedidoRepository implements PedidoRepository
             ->get();
     }
 
+    public function categoriasMasVendidas(string $desde, string $hasta, array $estados, int $limite = 10): Collection
+    {
+        return DetallePedido::query()
+            ->join('pedidos', 'pedidos.id', '=', 'detalle_pedidos.pedido_id')
+            ->join('platos', 'platos.id', '=', 'detalle_pedidos.plato_id')
+            ->join('categorias', 'categorias.id', '=', 'platos.categoria_id')
+            ->whereIn('pedidos.estado', $estados)
+            ->whereBetween('pedidos.fecha', ["{$desde} 00:00:00", "{$hasta} 23:59:59"])
+            ->groupBy('categorias.id', 'categorias.nombre')
+            ->selectRaw('categorias.id as categoria_id, categorias.nombre, sum(detalle_pedidos.cantidad) as unidades, sum(detalle_pedidos.subtotal) as total')
+            ->orderByDesc('unidades')
+            ->limit($limite)
+            ->get();
+    }
+
     public function historialPaginado(?string $desde, ?string $hasta, ?string $estado, ?int $mesaId, int $pagina, int $porPagina): LengthAwarePaginator
     {
         return Pedido::query()

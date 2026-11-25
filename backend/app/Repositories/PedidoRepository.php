@@ -99,6 +99,14 @@ interface PedidoRepository
     public function platosMasVendidos(string $desde, string $hasta, array $estados, int $limite = 10): Collection;
 
     /**
+     * Top de categorías más vendidas en un período, por unidades desc.
+     *
+     * @param  list<string>  $estados
+     * @return Collection<int, object{categoria_id: int, nombre: string, unidades: int, total: float}>
+     */
+    public function categoriasMasVendidas(string $desde, string $hasta, array $estados, int $limite = 10): Collection;
+
+    /**
      * HISTORIAL DE COMANDAS: pedidos paginados con su mesa (incluso
      * destruida) y sus líneas. Sin filtro de estado se limita a
      * `listo` + finalizados (listo/entregado/cancelado).

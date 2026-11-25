@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Categoria;
 use App\Models\DetallePedido;
 use App\Models\Mesa;
 use App\Models\Pago;
@@ -91,6 +92,7 @@ test('el dashboard devuelve el shape completo con los 7 estados en 0', function 
             'ventas' => ['cantidad_pedidos', 'total', 'ticket_promedio'],
             'pedidos_por_estado',
             'platos_mas_vendidos',
+            'categorias_mas_vendidas',
             'ocupacion_actual' => [
                 'mesas' => ['libres', 'ocupadas', 'total'],
                 'cubiertos_ocupados',
@@ -264,4 +266,53 @@ test('el dashboard desglosa los cobros aprobados por medio de pago', function ()
         ->assertJsonPath('cobros.efectivo.total', 500)
         ->assertJsonPath('cobros.mercado_pago.cantidad', 1)
         ->assertJsonPath('cobros.mercado_pago.total', 300);
+});
+
+test('las categorias mas vendidas agrupan por categoria y solo cuentan entregado', function () {
+    $postres = Categoria::factory()->create(['nombre' => 'Postres']);
+    $principales = Categoria::factory()->create(['nombre' => 'Principales']);
+
+    $flan = Plato::factory()->create(['nombre' => 'Flan', 'categoria_id' => $postres->id]);
+    $helado = Plato::factory()->create(['nombre' => 'Helado', 'categoria_id' => $postres->id]);
+    $milanesa = Plato::factory()->create(['nombre' => 'Milanesa', 'categoria_id' => $principales->id]);
+
+    $linea = function (Pedido $pedido, Plato $plato, int $cantidad, float $subtotal): void {
+        DetallePedido::create([
+            'pedido_id' => $pedido->id,
+            'plato_id' => $plato->id,
+            'cantidad' => $cantidad,
+            'precio_lista' => $subtotal / $cantidad,
+            'subtotal' => $subtotal,
+            'confirmado' => true,
+        ]);
+    };
+
+    $pedido = pedidoDashboard(['total' => 12000]);
+    $linea($pedido, $flan, 5, 5000);
+    $linea($pedido, $helado, 3, 3000);
+    $linea($pedido, $milanesa, 2, 4000);
+
+    // Un cancelado y uno fuera del período no cuentan como venta.
+    $linea(pedidoDashboard(['estado' => 'cancelado', 'total' => 0]), $flan, 99, 99000);
+    $linea(
+        pedidoDashboard(['total' => 0, 'fecha' => now()->subDays(2)->toDateTimeString()]),
+        $flan,
+        50,
+        50000,
+    );
+
+    $respuesta = conReporte($this, tokenReporte('Gerente'))
+        ->getJson('/api/dashboard')
+        ->assertOk();
+
+    $categorias = $respuesta->json('categorias_mas_vendidas');
+    expect($categorias)->toHaveCount(2)
+        ->and($categorias[0]['categoria_id'])->toBe($postres->id)
+        ->and($categorias[0]['nombre'])->toBe('Postres')
+        ->and($categorias[0]['unidades'])->toBe(8)
+        ->and($categorias[0]['total'])->toBe(8000)
+        ->and($categorias[1]['categoria_id'])->toBe($principales->id)
+        ->and($categorias[1]['nombre'])->toBe('Principales')
+        ->and($categorias[1]['unidades'])->toBe(2)
+        ->and($categorias[1]['total'])->toBe(4000);
 });

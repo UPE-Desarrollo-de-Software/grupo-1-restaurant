@@ -1,0 +1,531 @@
+/* ============================================================
+   Dashboard.module.css
+   Estilos del dashboard del Gerente (rediseño MVP).
+   Solo usa los design tokens de styles/tokens.css.
+   ============================================================ */
+
+.contenedor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--gutter-mobile) var(--space-2xl);
+}
+
+/* ============ CABECERA ============ */
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.titulo {
+  color: var(--color-on-surface);
+  margin: 0 0 var(--space-2xs) 0;
+}
+
+.subtitulo {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+.chipRol {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+  white-space: nowrap;
+}
+
+/* ============ FILTRO DE PERÍODO ============ */
+
+.filtro {
+  display: flex;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  padding-bottom: var(--space-2xs);
+  scrollbar-width: none;
+}
+
+.filtro::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex-shrink: 0;
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface-container-lowest);
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.chipActivo,
+.chipActivo:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+/* ============ LAYOUT EN COLUMNAS ============ */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.columna {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+/* ============ PANEL BASE ============ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+  padding: var(--space-lg);
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-level-1);
+}
+
+.panelCabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.panelTitulo {
+  color: var(--color-on-surface);
+  margin: 0;
+}
+
+.panelSubtitulo {
+  color: var(--color-on-surface-variant);
+  margin: var(--space-2xs) 0 0 0;
+}
+
+.icono {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface-container);
+  color: var(--color-primary);
+  font-size: 1.15rem;
+}
+
+.nota {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+.vacio {
+  color: var(--color-on-surface-variant);
+  margin: 0;
+}
+
+/* ============ VARIACIÓN (chip) ============ */
+
+.variacion {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.variacionPos {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+
+.variacionNeg {
+  background-color: var(--color-error-container);
+  color: var(--color-on-error-container);
+}
+
+.variacionNeutra {
+  background-color: var(--color-surface-container-high);
+  color: var(--color-on-surface-variant);
+}
+
+/* ============ FACTURACIÓN ============ */
+
+.facturacionMonto {
+  margin: var(--space-2xs) 0 0 0;
+  font-size: clamp(1.75rem, 8vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.facturacionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-on-surface-variant);
+}
+
+/* ============ KPIs ============ */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.kpiCabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2xs);
+}
+
+.kpiIcono {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface-container);
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+
+.kpiValor {
+  margin: var(--space-2xs) 0 0 0;
+  font-size: clamp(1.25rem, 5.5vw, var(--text-headline-lg-size));
+  font-weight: var(--text-headline-lg-weight);
+  line-height: 1.2;
+  letter-spacing: var(--text-headline-lg-tracking);
+  color: var(--color-on-surface);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.kpiLabel {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+}
+
+/* ============ COBROS ============ */
+
+.cobrosResumen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.cobrosTotal {
+  margin: 0;
+  font-size: var(--text-headline-lg-size);
+  font-weight: var(--text-headline-lg-weight);
+  line-height: var(--text-headline-lg-line);
+  color: var(--color-on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.barraCobros {
+  display: flex;
+  width: 100%;
+  height: 0.75rem;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background-color: var(--color-surface-container-high);
+}
+
+.barraMp {
+  height: 100%;
+  background-color: var(--color-primary);
+}
+
+.barraEfectivo {
+  height: 100%;
+  background-color: var(--color-secondary);
+}
+
+.cobroFilas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.cobroFila {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.cobroPunto {
+  flex-shrink: 0;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+}
+
+.cobroTexto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cobroPuntoMp {
+  background-color: var(--color-primary);
+}
+
+.cobroPuntoEfectivo {
+  background-color: var(--color-secondary);
+}
+
+.cobroMeta {
+  color: var(--color-on-surface-variant);
+  white-space: nowrap;
+}
+
+.cobroMonto {
+  color: var(--color-on-surface);
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============ TOP PLATOS ============ */
+
+.topLista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.topFila {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.topLinea {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.topPos {
+  min-width: 1.5rem;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.topNombre {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topUnidades {
+  color: var(--color-on-surface-variant);
+  white-space: nowrap;
+}
+
+.topMonto {
+  color: var(--color-on-surface);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.topBarra {
+  width: 100%;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background-color: var(--color-surface-container-high);
+}
+
+.topBarraRelleno {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary-container);
+}
+
+/* ============ DONUT CATEGORÍAS ============ */
+
+.donut {
+  position: relative;
+  width: 100%;
+}
+
+.donutCentro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donutTotal {
+  color: var(--color-on-surface);
+  font-size: var(--text-headline-md-size);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.donutTotalLabel {
+  color: var(--color-on-surface-variant);
+}
+
+.leyenda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.leyendaFila {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.leyendaPunto {
+  flex-shrink: 0;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+}
+
+.leyendaNombre {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leyendaValor {
+  color: var(--color-on-surface-variant);
+  white-space: nowrap;
+}
+
+/* ============ RESERVAS ============ */
+
+.reservasGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+}
+
+.reservaCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-container-low);
+  min-width: 0;
+}
+
+.reservaValor {
+  color: var(--color-on-surface);
+  font-size: var(--text-headline-md-size);
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.reservaLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--color-on-surface-variant);
+}
+
+.reservaPunto {
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.puntoPendiente {
+  background-color: var(--color-tertiary);
+}
+
+.puntoFinalizada {
+  background-color: var(--color-secondary);
+}
+
+.puntoCancelada {
+  background-color: var(--color-outline);
+}
+
+.puntoNoAsistio {
+  background-color: var(--color-error);
+}
+
+/* ============ RESPONSIVE ============ */
+
+@media (min-width: 768px) {
+  .contenedor {
+    padding-left: var(--space-xl);
+    padding-right: var(--space-xl);
+  }
+}
+
+@media (min-width: 992px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
